@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-05T17:30:26.271Z
+ * 自动生成于 2026-09-05T17:35:12.419Z
  */
 (function() {
     'use strict';
@@ -16716,6 +16716,14 @@ class GameEngine {
     }
 
     bindEvents() {
+        // 移动端抽屉日志侧栏开闭
+        document.getElementById("btn-toggle-log-drawer")?.addEventListener("click", () => {
+            document.getElementById("action-log-sidebar")?.classList.toggle("mobile-open");
+        });
+        document.getElementById("btn-close-log-sidebar")?.addEventListener("click", () => {
+            document.getElementById("action-log-sidebar")?.classList.remove("mobile-open");
+        });
+
         // 顶栏任务清单入口
         this.btnViewMissions?.addEventListener("click", () => {
             this.showMissionsModal();

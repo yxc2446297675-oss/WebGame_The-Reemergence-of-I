@@ -126,6 +126,14 @@ export class GameEngine {
     }
 
     bindEvents() {
+        // 移动端抽屉日志侧栏开闭
+        document.getElementById("btn-toggle-log-drawer")?.addEventListener("click", () => {
+            document.getElementById("action-log-sidebar")?.classList.toggle("mobile-open");
+        });
+        document.getElementById("btn-close-log-sidebar")?.addEventListener("click", () => {
+            document.getElementById("action-log-sidebar")?.classList.remove("mobile-open");
+        });
+
         // 顶栏任务清单入口
         this.btnViewMissions?.addEventListener("click", () => {
             this.showMissionsModal();
