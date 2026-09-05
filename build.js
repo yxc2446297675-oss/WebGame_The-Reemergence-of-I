@@ -73,3 +73,15 @@ bundleContent += `    // 挂载全局对象以便于调试和扩展
 
 fs.writeFileSync(outputFile, bundleContent, 'utf8');
 console.log(`[OK] app.bundle.js 生成成功，大小: ${(bundleContent.length / 1024).toFixed(2)} KB`);
+
+// 自动更新 index.html 中的防强缓存版本戳
+const indexPath = path.join(__dirname, 'index.html');
+if (fs.existsSync(indexPath)) {
+    let indexHtml = fs.readFileSync(indexPath, 'utf8');
+    const timestamp = Date.now();
+    indexHtml = indexHtml.replace(/style\.css(\?v=[^"']*)?/g, `style.css?v=${timestamp}`);
+    indexHtml = indexHtml.replace(/app\.bundle\.js(\?v=[^"']*)?/g, `app.bundle.js?v=${timestamp}`);
+    fs.writeFileSync(indexPath, indexHtml, 'utf8');
+    console.log(`[OK] index.html 资源防缓存戳已自动刷新为: ?v=${timestamp}`);
+}
+

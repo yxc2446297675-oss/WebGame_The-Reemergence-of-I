@@ -2186,7 +2186,7 @@ html, body {
    4. 移动端横屏引导与强制横屏适配 (Mobile Landscape Mode & Orientation System)
    ========================================================================== */
 
-/* 横屏引导提示层 */
+/* 横屏引导提示层 (手机竖屏自动浮现，横屏自动隐藏) */
 .orientation-hint-overlay {
     position: fixed;
     inset: 0;
@@ -2197,6 +2197,20 @@ html, body {
     justify-content: center;
     backdrop-filter: blur(16px);
     animation: fadeIn 0.3s ease;
+}
+
+/* 电脑大屏 (宽度>=850px) 或设备处于横屏时，绝对不显示引导层 */
+@media (min-width: 850px), (orientation: landscape) {
+    .orientation-hint-overlay {
+        display: none !important;
+    }
+}
+
+/* 当玩家点击了关闭或者开启了强制横屏，彻底隐藏 */
+body.force-landscape .orientation-hint-overlay,
+.orientation-hint-overlay.dismissed,
+.orientation-hint-overlay.hidden {
+    display: none !important;
 }
 
 .orientation-hint-content {
