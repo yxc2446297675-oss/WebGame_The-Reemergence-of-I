@@ -109,7 +109,7 @@ export class MapRenderer {
         if (!levelMap || !levelMap.nodes) return null;
         const layout = this.getLayout();
         const boxSize = layout.boxSize;
-        const half = boxSize / 2 + Math.max(Math.floor(boxSize * 0.15), 5);
+        const half = boxSize / 2 + Math.max(Math.floor(boxSize * 0.25), 14);
 
         for (const node of Object.values(levelMap.nodes)) {
             const p = this.getNodeCenter(node);

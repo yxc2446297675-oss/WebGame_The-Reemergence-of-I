@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-05T17:42:26.450Z
+ * 自动生成于 2026-09-05T17:55:13.146Z
  */
 (function() {
     'use strict';
@@ -15367,7 +15367,7 @@ class MapRenderer {
         if (!levelMap || !levelMap.nodes) return null;
         const layout = this.getLayout();
         const boxSize = layout.boxSize;
-        const half = boxSize / 2 + Math.max(Math.floor(boxSize * 0.15), 5);
+        const half = boxSize / 2 + Math.max(Math.floor(boxSize * 0.25), 14);
 
         for (const node of Object.values(levelMap.nodes)) {
             const p = this.getNodeCenter(node);

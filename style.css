@@ -1048,41 +1048,62 @@ html, body {
 .map-view-container {
     width: 100%;
     flex: 1;
-    min-height: 220px;
-    max-height: 58vh;
-    max-height: 58dvh;
+    min-height: 180px;
+    max-height: 62vh;
+    max-height: 62dvh;
     display: flex;
-    justify-content: flex-start;
-    align-items: flex-start;
+    justify-content: center;
+    align-items: center;
     background: #080d1a;
     border-radius: 8px;
     border: 1px solid rgba(56, 189, 248, 0.3);
-    overflow: auto !important; /* 解锁自由滑动与双向拖拽查看大地图 */
+    overflow: hidden;
+    padding: 6px;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.7);
+    position: relative;
+}
+.map-view-container.pan-mode {
+    overflow: auto !important;
     -webkit-overflow-scrolling: touch !important;
     touch-action: pan-x pan-y !important;
     cursor: grab;
-    padding: 10px;
-    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.7);
+    justify-content: flex-start;
+    align-items: flex-start;
 }
-.map-view-container:active {
+.map-view-container.pan-mode:active {
     cursor: grabbing;
 }
 .live-canvas {
-    min-width: 600px;
-    max-width: none;
-    height: auto;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain !important;
     display: block;
+    margin: auto;
     user-select: none;
     -webkit-user-select: none;
     touch-action: manipulation;
 }
+.map-view-container.pan-mode .live-canvas {
+    max-width: none !important;
+    max-height: none !important;
+    width: 680px !important;
+}
 .full-map-image {
-    min-width: 600px;
-    max-width: none;
-    height: auto;
-    max-height: 65vh;
-    object-fit: contain;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain !important;
     border-radius: 8px;
+    display: block;
+    margin: auto;
+}
+.map-view-container.pan-mode .full-map-image {
+    max-width: none !important;
+    max-height: none !important;
+    width: 680px !important;
 }
 .map-pan-hint {
     text-align: center;
@@ -1456,9 +1477,17 @@ html, body {
         gap: 6px;
     }
     .nav-btn {
-        min-width: 85px;
-        padding: 7px 10px;
+        min-width: 80px;
+        max-width: 110px;
+        padding: 6px 8px;
         font-size: 0.78rem;
+    }
+    .nav-btn .dest-preview {
+        max-width: 90px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
     }
     .compass-center-hub {
         width: 32px;
@@ -1493,12 +1522,17 @@ html, body {
         height: 82px !important;
     }
 
-    /* 小地图微型雷达缩放对齐 */
-    .mini-radar-widget {
-        top: 8px !important;
-        right: 8px !important;
-        transform: scale(0.75) !important;
-        transform-origin: top right !important;
+    /* 战术微型雷达手机端居中紧凑 */
+    .mini-radar-widget.embedded-radar {
+        position: static !important;
+        transform: none !important;
+        width: 100% !important;
+        max-width: 190px !important;
+        margin-bottom: 6px !important;
+    }
+    .mini-radar-widget.embedded-radar canvas {
+        width: 78px !important;
+        height: 78px !important;
     }
 
     /* 主菜单手机端等比自适应 */
@@ -2774,71 +2808,178 @@ body.force-landscape .orientation-hint-overlay,
 
     /* 游戏核心视口排版 */
     .game-center-viewport {
-        padding-bottom: 105px;
+        width: 100% !important;
+        height: calc(100% - 38px) !important;
+        padding-bottom: 78px !important;
+        overflow: hidden !important;
     }
     .action-log-sidebar {
-        width: 220px;
-        height: 100%;
-        position: relative;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        width: min(320px, 86vw) !important;
+        height: 100% !important;
+        z-index: 500 !important;
+        transform: translateX(-100%) !important;
+        transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        box-shadow: 4px 0 30px rgba(0, 0, 0, 0.85) !important;
+        background: rgba(10, 16, 32, 0.98) !important;
+        border-right: 1px solid var(--border-cyan) !important;
+    }
+    .action-log-sidebar.mobile-open {
+        transform: translateX(0) !important;
     }
     .log-panel-header {
-        padding: 5px 10px;
-        font-size: 0.75rem;
+        padding: 6px 12px;
+        font-size: 0.78rem;
     }
     .log-entry {
-        font-size: 0.72rem;
+        font-size: 0.74rem;
         line-height: 1.35;
+    }
+
+    /* 屏幕正中区域：横屏下顶部遥测与羁绊栏、中部水平操作盘 */
+    .stage-center-area {
+        width: 100% !important;
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        padding: 4px 8px !important;
+        overflow: hidden !important;
+        gap: 2px !important;
+    }
+
+    .sector-telemetry-hud {
+        margin-bottom: 2px !important;
+        padding: 2px 8px !important;
+        gap: 6px !important;
+    }
+    .telemetry-chip {
+        font-size: 0.66rem !important;
+        padding: 1px 6px !important;
+    }
+    .team-roster-deck {
+        margin-bottom: 2px !important;
+        padding: 2px 6px !important;
+        gap: 6px !important;
+    }
+    .roster-card {
+        padding: 1px 5px !important;
+        gap: 4px !important;
+    }
+    .roster-avatar {
+        width: 20px !important;
+        height: 20px !important;
+    }
+    .roster-name {
+        font-size: 0.68rem !important;
+    }
+    .roster-status {
+        font-size: 0.62rem !important;
+    }
+
+    /* 横屏操作盘核心：左右并列横向排布！左边雷达球，右边十字方向键！高度降至 90px，向后走绝不被截断 */
+    .exploration-hud {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 20px !important;
+        padding: 4px 14px !important;
+        margin: auto 0 4px 0 !important;
+        background: rgba(15, 23, 42, 0.94) !important;
+        border-radius: 10px !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7) !important;
+        z-index: 15 !important;
+    }
+
+    .mini-radar-widget.embedded-radar {
+        position: static !important;
+        transform: none !important;
+        width: auto !important;
+        max-width: 120px !important;
+        margin-bottom: 0 !important;
+        border-radius: 8px !important;
+    }
+    .mini-radar-widget.embedded-radar .radar-header {
+        padding: 2px 6px !important;
+    }
+    .mini-radar-widget.embedded-radar .radar-title {
+        font-size: 0.66rem !important;
+    }
+    .mini-radar-widget.embedded-radar .radar-pos-tag {
+        display: none !important;
+    }
+    .mini-radar-widget.embedded-radar .radar-btn {
+        font-size: 0.64rem !important;
+        padding: 1px 4px !important;
+    }
+    .mini-radar-widget.embedded-radar .radar-body-wrap {
+        padding: 3px !important;
+    }
+    .mini-radar-widget.embedded-radar canvas {
+        width: 64px !important;
+        height: 64px !important;
+    }
+
+    /* 十字导航键紧凑防截断 */
+    .compass-cross {
+        gap: 3px !important;
+    }
+    .compass-mid-row {
+        gap: 5px !important;
+    }
+    .compass-center-hub {
+        width: 26px !important;
+        height: 26px !important;
+        font-size: 0.76rem !important;
+    }
+    .nav-btn {
+        min-width: 64px !important;
+        max-width: 90px !important;
+        padding: 3px 6px !important;
+        font-size: 0.72rem !important;
+        gap: 1px !important;
+    }
+    .nav-btn .dest-preview {
+        font-size: 0.62rem !important;
+        max-width: 72px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        display: block !important;
     }
 
     /* 对话框紧凑横屏 */
     .vn-dialogue-wrapper {
-        height: 105px;
-        padding: 16px 14px 8px 14px;
+        height: 76px !important;
+        padding: 8px 12px 4px 12px !important;
+        z-index: 30 !important;
     }
     .vn-name-badge {
-        top: -13px;
-        left: 16px;
-        font-size: 0.8rem;
-        padding: 2px 14px;
+        top: -11px !important;
+        left: 14px !important;
+        font-size: 0.72rem !important;
+        padding: 1px 10px !important;
     }
     .vn-text-content {
-        font-size: 0.88rem;
-        line-height: 1.45;
-        padding-right: 80px;
+        font-size: 0.8rem !important;
+        line-height: 1.32 !important;
+        padding-right: 60px !important;
     }
     .vn-corner-portrait-slot {
-        right: 12px;
-        bottom: 42px;
+        right: 8px !important;
+        bottom: 10px !important;
     }
     .corner-avatar-frame {
-        width: 70px;
-        height: 90px;
+        width: 46px !important;
+        height: 60px !important;
     }
-
-    /* 探索操作盘 */
-    .exploration-hud {
-        padding: 8px 14px;
-    }
-    .compass-cross {
-        gap: 6px;
-    }
-    .nav-btn {
-        min-width: 80px;
-        padding: 5px 10px;
-        font-size: 0.76rem;
-    }
-    .compass-center-hub {
-        width: 32px;
-        height: 32px;
-        font-size: 0.88rem;
-    }
-
-    /* 小地图雷达缩放对齐 */
-    .mini-radar-widget {
-        top: 6px;
-        right: 12px;
-        transform: scale(0.82);
-        transform-origin: top right;
+    .center-portrait-container {
+        display: none !important; /* 横屏下立绘已由对话框右上角挂载，避免中央立绘挤占按键空间 */
     }
 
     /* 5×5 关卡弹窗横屏自适应 */
@@ -2912,6 +3053,21 @@ body.force-landscape .orientation-hint-overlay,
     }
     .mission-item-card {
         padding: 5px 8px;
+    }
+
+    /* 地图弹窗横屏自适应 (100%全景居中适配，防超屏防偏移) */
+    .map-modal-box {
+        max-height: 96vh !important;
+        max-height: 96dvh !important;
+        width: 96% !important;
+        max-width: 680px !important;
+        padding: 6px 12px !important;
+    }
+    .map-modal-box .map-view-container {
+        min-height: 130px !important;
+        max-height: 54vh !important;
+        max-height: 54dvh !important;
+        padding: 4px !important;
     }
 }
 
