@@ -414,7 +414,28 @@
         </div>
     </div>
 
+    <!-- 移动端横屏引导提示层 (Landscape Orientation Prompt) -->
+    <div id="screen-orientation-hint" class="orientation-hint-overlay hidden">
+        <div class="orientation-hint-content">
+            <div class="orientation-phone-icon">📱</div>
+            <div class="orientation-title">建议横屏游玩</div>
+            <div class="orientation-desc">为了获得完整的太空星舰星图、角色立绘与战术推演视野<br>请旋转手机至横屏体验</div>
+            <div class="orientation-actions">
+                <button id="btn-force-landscape" class="btn-force-rotate">
+                    <span>🔄 强制横屏显示 (Force Rotate)</span>
+                </button>
+                <button id="btn-ignore-orientation" class="btn-ignore-hint">
+                    <span>保持竖屏继续</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 悬浮横屏旋转快捷切换按钮 (仅在移动端显示，随时可按) -->
+    <button id="btn-toggle-landscape" class="btn-float-rotate" title="旋转屏幕方向">🔄</button>
+
     <!-- 游戏启动引导脚本 (单文件普通JS，彻底规避file://协议CORS限制，双击即可直接畅玩) -->
     <script src="js/app.bundle.js"></script>
 </body>
 </html>
+

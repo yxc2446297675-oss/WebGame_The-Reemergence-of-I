@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-05T17:17:23.804Z
+ * 自动生成于 2026-09-05T17:24:33.142Z
  */
 (function() {
     'use strict';
@@ -16707,6 +16707,12 @@ class GameEngine {
         this.btnRadarToggle = document.getElementById("btn-radar-toggle");
         this.radarBodyWrap = document.getElementById("radar-body-wrap");
         this.radarPosTag = document.getElementById("radar-pos-tag");
+
+        // 移动端横屏引导与旋转控制器 DOM
+        this.screenOrientationHint = document.getElementById("screen-orientation-hint");
+        this.btnForceLandscape = document.getElementById("btn-force-landscape");
+        this.btnIgnoreOrientation = document.getElementById("btn-ignore-orientation");
+        this.btnToggleLandscape = document.getElementById("btn-toggle-landscape");
     }
 
     bindEvents() {
@@ -16887,6 +16893,78 @@ class GameEngine {
 
         // 检查存档并激活“加载存档”按钮
         this.updateMenuButtons();
+
+        // 移动端横屏自动检测与旋转控制
+        this.initOrientationManager();
+    }
+
+    initOrientationManager() {
+        const updateOrientationState = () => {
+            if (typeof window === "undefined") return;
+            const isPortrait = window.matchMedia && window.matchMedia("(orientation: portrait)").matches;
+            const isNarrow = window.innerWidth <= 820 || (window.screen && window.screen.width <= 820);
+            const isForceLandscape = document.body?.classList.contains("force-landscape");
+
+            // 如果处于原生横屏状态，或者玩家已经开启了强制横屏旋转，则隐藏提示层
+            if (!isPortrait || isForceLandscape) {
+                this.screenOrientationHint?.classList.add("hidden");
+            } else if (isPortrait && isNarrow) {
+                let ignored = false;
+                try {
+                    ignored = sessionStorage.getItem("gnosia_ignore_orientation_hint") === "1";
+                } catch (e) {}
+                if (!ignored) {
+                    this.screenOrientationHint?.classList.remove("hidden");
+                }
+            }
+        };
+
+        // 监听系统屏幕尺寸与旋转
+        window.addEventListener("resize", () => {
+            updateOrientationState();
+            if (this.currentLevelMap && this.mapRenderer) {
+                setTimeout(() => {
+                    this.mapRenderer.render(this.currentLevelMap, this.explorationEngine?.visitedNodes, this.explorationEngine?.currentNodeId);
+                }, 50);
+            }
+        });
+
+        window.addEventListener("orientationchange", () => {
+            setTimeout(updateOrientationState, 150);
+        });
+
+        // 提示层：强制横屏显示
+        this.btnForceLandscape?.addEventListener("click", () => {
+            document.body?.classList.add("force-landscape");
+            this.screenOrientationHint?.classList.add("hidden");
+            if (this.currentLevelMap && this.mapRenderer) {
+                setTimeout(() => {
+                    this.mapRenderer.render(this.currentLevelMap, this.explorationEngine?.visitedNodes, this.explorationEngine?.currentNodeId);
+                }, 100);
+            }
+        });
+
+        // 提示层：保持竖屏直接玩
+        this.btnIgnoreOrientation?.addEventListener("click", () => {
+            this.screenOrientationHint?.classList.add("hidden");
+            try {
+                sessionStorage.setItem("gnosia_ignore_orientation_hint", "1");
+            } catch (e) {}
+        });
+
+        // 右上角浮动快捷旋转按钮：随时一键自由切换
+        this.btnToggleLandscape?.addEventListener("click", () => {
+            const nowForced = document.body?.classList.toggle("force-landscape");
+            this.screenOrientationHint?.classList.add("hidden");
+            if (this.currentLevelMap && this.mapRenderer) {
+                setTimeout(() => {
+                    this.mapRenderer.render(this.currentLevelMap, this.explorationEngine?.visitedNodes, this.explorationEngine?.currentNodeId);
+                }, 100);
+            }
+        });
+
+        // 首次加载检测
+        setTimeout(updateOrientationState, 80);
     }
 
     updateMenuButtons() {

@@ -2182,4 +2182,344 @@ html, body {
     overscroll-behavior: contain;
 }
 
+/* ==========================================================================
+   4. 移动端横屏引导与强制横屏适配 (Mobile Landscape Mode & Orientation System)
+   ========================================================================== */
+
+/* 横屏引导提示层 */
+.orientation-hint-overlay {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(15, 23, 42, 0.98) 0%, rgba(3, 7, 18, 0.99) 100%);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(16px);
+    animation: fadeIn 0.3s ease;
+}
+
+.orientation-hint-content {
+    max-width: 320px;
+    width: 86%;
+    text-align: center;
+    padding: 26px 20px;
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid var(--border-cyan);
+    border-radius: 16px;
+    box-shadow: 0 0 35px rgba(56, 189, 248, 0.3), inset 0 0 15px rgba(56, 189, 248, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.orientation-phone-icon {
+    font-size: 3rem;
+    animation: phoneRotateSwing 2.2s infinite ease-in-out;
+}
+
+@keyframes phoneRotateSwing {
+    0%, 20% { transform: rotate(0deg) scale(1); }
+    50%, 75% { transform: rotate(-90deg) scale(1.15); filter: drop-shadow(0 0 12px #38bdf8); }
+    100% { transform: rotate(0deg) scale(1); }
+}
+
+.orientation-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 1px;
+}
+
+.orientation-desc {
+    font-size: 0.84rem;
+    color: #94a3b8;
+    line-height: 1.5;
+}
+
+.orientation-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    margin-top: 6px;
+}
+
+.btn-force-rotate {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #0284c7, #38bdf8);
+    border: 1px solid #7dd3fc;
+    color: #ffffff;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+    transition: all 0.2s;
+}
+
+.btn-force-rotate:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 24px rgba(56, 189, 248, 0.6);
+}
+
+.btn-ignore-hint {
+    background: transparent;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    color: #94a3b8;
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+/* 浮动旋转切换按钮 (在移动端屏幕常驻右上角) */
+.btn-float-rotate {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    z-index: 999;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid var(--border-cyan);
+    color: #38bdf8;
+    font-size: 1rem;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+    backdrop-filter: blur(8px);
+    transition: all 0.2s;
+}
+
+@media (max-width: 900px), (max-height: 520px) {
+    .btn-float-rotate {
+        display: flex;
+    }
+}
+
+/* ==========================================================================
+   CSS 90° 强制横屏渲染引擎 (针对手机竖屏锁定用户)
+   ========================================================================== */
+@media (orientation: portrait) {
+    body.force-landscape {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vh !important;
+        width: 100dvh !important;
+        height: 100vw !important;
+        height: 100dvw !important;
+        transform: rotate(90deg) translateY(-100%) !important;
+        transform-origin: top left !important;
+        overflow: hidden !important;
+    }
+}
+
+/* ==========================================================================
+   横屏排版精细化适配 (无论是原生横屏还是强制横屏)
+   ========================================================================== */
+@media (orientation: landscape) and (max-height: 520px) {
+    /* 顶栏紧凑化 */
+    .game-top-bar {
+        height: 38px;
+        padding: 0 12px;
+    }
+    .status-box {
+        font-size: 0.76rem;
+        padding: 2px 6px;
+        gap: 4px;
+    }
+    .stamina-track {
+        width: 65px;
+        height: 7px;
+    }
+    .location-name {
+        max-width: 120px;
+    }
+    .tool-btn {
+        padding: 3px 8px;
+        font-size: 0.74rem;
+    }
+
+    /* 主菜单横屏双列紧凑布局 */
+    .menu-container {
+        padding: 14px 24px;
+        max-height: 96vh;
+        max-width: 640px;
+    }
+    .glow-title {
+        font-size: 2.2rem;
+        letter-spacing: 4px;
+        margin-bottom: 2px;
+    }
+    .menu-subtitle {
+        font-size: 0.82rem;
+        margin-bottom: 12px;
+    }
+    .menu-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+    .menu-btn {
+        padding: 8px 12px;
+        font-size: 0.86rem;
+        gap: 6px;
+    }
+    .menu-system-info {
+        padding-top: 8px;
+        font-size: 0.72rem;
+    }
+
+    /* 游戏核心视口排版 */
+    .game-center-viewport {
+        padding-bottom: 105px;
+    }
+    .action-log-sidebar {
+        width: 220px;
+        height: 100%;
+        position: relative;
+    }
+    .log-panel-header {
+        padding: 5px 10px;
+        font-size: 0.75rem;
+    }
+    .log-entry {
+        font-size: 0.72rem;
+        line-height: 1.35;
+    }
+
+    /* 对话框紧凑横屏 */
+    .vn-dialogue-wrapper {
+        height: 105px;
+        padding: 16px 14px 8px 14px;
+    }
+    .vn-name-badge {
+        top: -13px;
+        left: 16px;
+        font-size: 0.8rem;
+        padding: 2px 14px;
+    }
+    .vn-text-content {
+        font-size: 0.88rem;
+        line-height: 1.45;
+        padding-right: 80px;
+    }
+    .vn-corner-portrait-slot {
+        right: 12px;
+        bottom: 42px;
+    }
+    .corner-avatar-frame {
+        width: 70px;
+        height: 90px;
+    }
+
+    /* 探索操作盘 */
+    .exploration-hud {
+        padding: 8px 14px;
+    }
+    .compass-cross {
+        gap: 6px;
+    }
+    .nav-btn {
+        min-width: 80px;
+        padding: 5px 10px;
+        font-size: 0.76rem;
+    }
+    .compass-center-hub {
+        width: 32px;
+        height: 32px;
+        font-size: 0.88rem;
+    }
+
+    /* 小地图雷达缩放对齐 */
+    .mini-radar-widget {
+        top: 6px;
+        right: 12px;
+        transform: scale(0.82);
+        transform-origin: top right;
+    }
+
+    /* 5×5 关卡弹窗横屏自适应 */
+    .level-select-modal-box {
+        max-height: 96vh;
+        width: 96%;
+        max-width: 860px;
+        padding: 10px 14px;
+    }
+    .level-grid-5x5 {
+        gap: 6px;
+        max-height: 60vh;
+        margin: 6px 0;
+    }
+    .level-card {
+        padding: 6px 6px;
+        min-height: 52px;
+    }
+    .level-card .card-num {
+        font-size: 0.68rem;
+    }
+    .level-card .card-name {
+        font-size: 0.74rem;
+        margin-bottom: 2px;
+    }
+    .level-card .card-status {
+        font-size: 0.62rem;
+        padding: 1px 3px;
+    }
+
+    /* 人物图鉴横屏自适应 */
+    .persona-modal-box {
+        max-height: 96vh;
+        width: 96%;
+        padding: 10px 14px;
+    }
+    .persona-hero-header {
+        padding: 6px 10px;
+        gap: 8px;
+    }
+    .persona-hero-avatar {
+        width: 44px;
+        height: 44px;
+    }
+    .persona-hero-name {
+        font-size: 1rem;
+    }
+    .persona-secrets-grid {
+        gap: 6px;
+    }
+    .persona-secret-card {
+        padding: 6px 8px;
+        gap: 2px;
+    }
+    .persona-secret-title {
+        font-size: 0.78rem;
+    }
+    .persona-secret-desc {
+        font-size: 0.72rem;
+        line-height: 1.3;
+    }
+
+    /* 任务清单横屏自适应 */
+    .mission-modal-box {
+        max-height: 96vh;
+        width: 96%;
+    }
+    .mission-modal-cards-list {
+        max-height: 58vh;
+        gap: 6px;
+    }
+    .mission-item-card {
+        padding: 5px 8px;
+    }
+}
+
+
 
