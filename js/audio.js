@@ -1,0 +1,405 @@
+/**
+ * 纯前端 Web Audio API 过程式科幻音效引擎 (Zero External Assets)
+ * 纯代码实时合成音频震荡波，无需下载任何 mp3/wav 即可发声
+ * 内置移动端 Webview 触摸自动解锁机制
+ */
+
+class SoundEngine {
+    constructor() {
+        this.ctx = null;
+        this.isMuted = false;
+        this.initialized = false;
+    }
+
+    init() {
+        if (this.initialized) return;
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) {
+                this.ctx = new AudioCtx();
+                this.initialized = true;
+            }
+        } catch (e) {
+            console.warn("Web Audio API not supported", e);
+        }
+    }
+
+    // 触摸解锁：应对手机浏览器及 iOS Safari / WebView 的 Autoplay Policy 限制
+    unlock() {
+        this.init();
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+        // iOS Safari 唤醒：触发一个 1-frame 静音 buffer 彻底激活硬件声道
+        if (this.ctx && typeof this.ctx.createBuffer === "function") {
+            try {
+                const buffer = this.ctx.createBuffer(1, 1, 22050);
+                const source = this.ctx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(this.ctx.destination);
+                source.start(0);
+            } catch (e) {
+                // ignore
+            }
+        }
+    }
+
+    // 1. 科幻打字/按钮滴答音 (Tick/Blip)
+    playTick() {
+        if (this.isMuted || !this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1400, this.ctx.currentTime + 0.04);
+
+        gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.04);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.04);
+    }
+
+    // 2. 辩论核心标志性音效：提出怀疑！(Doubt Bass Impact)
+    playDoubt() {
+        if (this.isMuted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        
+        // 低频下潜重击
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.35);
+
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.35);
+
+        // 高频紧张警报谐波
+        const alertOsc = this.ctx.createOscillator();
+        const alertGain = this.ctx.createGain();
+        alertOsc.type = "square";
+        alertOsc.frequency.setValueAtTime(620, now);
+        alertOsc.frequency.setValueAtTime(580, now + 0.1);
+        alertGain.gain.setValueAtTime(0.12, now);
+        alertGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+        alertOsc.connect(alertGain);
+        alertGain.connect(this.ctx.destination);
+        alertOsc.start(now);
+        alertOsc.stop(now + 0.25);
+    }
+
+    // 3. 赞同与附和 (Agree Chime)
+    playAgree() {
+        if (this.isMuted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.18);
+
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.2);
+    }
+
+    // 4. 辩护与反驳 (Defend Shield)
+    playDefend() {
+        if (this.isMuted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.linearRampToValueAtTime(640, now + 0.12);
+        osc.frequency.linearRampToValueAtTime(480, now + 0.25);
+
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
+    }
+
+    // 5. 投票放逐与冷冻舱启动 (Cold Sleep Alert)
+    playColdSleep() {
+        if (this.isMuted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(55, now + 1.2);
+
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 1.2);
+    }
+
+    // 6. 胜利与战败提示音
+    playVictory() {
+        if (this.isMuted || !this.ctx) return;
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const start = this.ctx.currentTime + idx * 0.12;
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.18, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.3);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.3);
+        });
+    }
+
+    playDefeat() {
+        if (this.isMuted || !this.ctx) return;
+        [300, 260, 220, 160].forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const start = this.ctx.currentTime + idx * 0.15;
+            osc.type = "sawtooth";
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.2, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.35);
+        });
+    }
+
+    // 通用外部音频文件播放器（支持中文路径编码与 Web Audio 合成兜底）
+    playAudioFile(primaryUrl, volume, fallbackFn, label = "音频") {
+        if (this.isMuted) return;
+
+        if (typeof Audio !== "undefined" && primaryUrl) {
+            try {
+                // 安全转义处理中文字符路径
+                const safeUrl = encodeURI(primaryUrl);
+                const audio = new Audio(safeUrl);
+                audio.volume = Math.max(0, Math.min(1, volume));
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        console.log(`[Sound] 成功播放${label}:`, primaryUrl);
+                    }).catch(err => {
+                        // 若转义路径加载失败，尝试原始URL二次加载
+                        try {
+                            const rawAudio = new Audio(primaryUrl);
+                            rawAudio.volume = Math.max(0, Math.min(1, volume));
+                            const rawPromise = rawAudio.play();
+                            if (rawPromise !== undefined) {
+                                rawPromise.catch(() => {
+                                    if (fallbackFn) fallbackFn.call(this);
+                                });
+                            }
+                        } catch (e2) {
+                            if (fallbackFn) fallbackFn.call(this);
+                        }
+                    });
+                }
+            } catch (e) {
+                if (fallbackFn) fallbackFn.call(this);
+            }
+        } else {
+            if (fallbackFn) fallbackFn.call(this);
+        }
+    }
+
+    // 7. 遇害死者揭晓专属音效 (支持自定义 death.mp3 + Web Audio 惊悚重音保底)
+    playDeathSound(customUrl = null) {
+        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.deathSoundUrl) || "assets/audio/death.mp3";
+        const volume = (typeof AudioConfig !== 'undefined' && AudioConfig.deathSoundVolume !== undefined) ? AudioConfig.deathSoundVolume : 0.85;
+        this.playAudioFile(soundUrl, volume, this.synthesizeDeathImpact, "遇害死亡音效");
+    }
+
+    // 8. 物资获取/食物发现专属音效 (支持自定义 物资获取.wav + Web Audio 能量充能铃音保底)
+    playFoodSound(customUrl = null) {
+        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.foodSoundUrl) || "assets/audio/物资获取.wav";
+        const volume = (typeof AudioConfig !== 'undefined' && AudioConfig.foodSoundVolume !== undefined) ? AudioConfig.foodSoundVolume : 0.80;
+        this.playAudioFile(soundUrl, volume, this.synthesizeFoodChime, "物资获取音效");
+    }
+
+    // 9. 广播警报/危险警告专属音效 (支持自定义 警告.wav + Web Audio 红警蜂鸣双音保底)
+    playAlarmSound(customUrl = null) {
+        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.alarmSoundUrl) || "assets/audio/警告.wav";
+        const volume = (typeof AudioConfig !== 'undefined' && AudioConfig.alarmSoundVolume !== undefined) ? AudioConfig.alarmSoundVolume : 0.85;
+        this.playAudioFile(soundUrl, volume, this.synthesizeAlarmKlaxon, "广播警报音效");
+    }
+
+    // 10. 移动探索位移专属音效 (支持自定义 移动.wav + Web Audio 气动步进音保底)
+    playMoveSound(customUrl = null) {
+        const now = Date.now();
+        if (this.lastMoveSoundTime && now - this.lastMoveSoundTime < 120) return;
+        this.lastMoveSoundTime = now;
+
+        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.moveSoundUrl) || "assets/audio/移动.wav";
+        const volume = (typeof AudioConfig !== 'undefined' && AudioConfig.moveSoundVolume !== undefined) ? AudioConfig.moveSoundVolume : 0.65;
+        this.playAudioFile(soundUrl, volume, this.synthesizeMoveStep, "移动音效");
+    }
+
+    // 过程式实时合成：震撼的死亡警报低频冲击波 (Sub-bass Impact + Alarm Flatline)
+    synthesizeDeathImpact() {
+        this.init();
+        if (this.isMuted || !this.ctx) return;
+
+        const now = this.ctx.currentTime;
+
+        // A. 低频沉重下潜重击 (Sawtooth Drop 160Hz -> 32Hz)
+        const subOsc = this.ctx.createOscillator();
+        const subGain = this.ctx.createGain();
+        subOsc.type = "sawtooth";
+        subOsc.frequency.setValueAtTime(160, now);
+        subOsc.frequency.exponentialRampToValueAtTime(32, now + 0.9);
+
+        subGain.gain.setValueAtTime(0.45, now);
+        subGain.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+
+        subOsc.connect(subGain);
+        subGain.connect(this.ctx.destination);
+        subOsc.start(now);
+        subOsc.stop(now + 1.1);
+
+        // B. 刺耳的惊悚减五度失真警报 (Eb4 / Bb4 Dissonance)
+        const alertOsc = this.ctx.createOscillator();
+        const alertGain = this.ctx.createGain();
+        alertOsc.type = "square";
+        alertOsc.frequency.setValueAtTime(466.16, now);
+        alertOsc.frequency.setValueAtTime(311.13, now + 0.2);
+
+        alertGain.gain.setValueAtTime(0.18, now);
+        alertGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+        alertOsc.connect(alertGain);
+        alertGain.connect(this.ctx.destination);
+        alertOsc.start(now);
+        alertOsc.stop(now + 0.8);
+
+        // C. 心跳骤停长音脉冲 (Flatline Tone)
+        const lineOsc = this.ctx.createOscillator();
+        const lineGain = this.ctx.createGain();
+        lineOsc.type = "sine";
+        lineOsc.frequency.setValueAtTime(780, now + 0.1);
+        lineGain.gain.setValueAtTime(0.1, now + 0.1);
+        lineGain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+
+        lineOsc.connect(lineGain);
+        lineGain.connect(this.ctx.destination);
+        lineOsc.start(now + 0.1);
+        lineOsc.stop(now + 0.7);
+    }
+
+    // 过程式实时合成：清脆晶莹的物资补给充能琶音 (Food/Supplies Energy Chime)
+    synthesizeFoodChime() {
+        this.init();
+        if (this.isMuted || !this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const freqs = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 闪烁上扬琶音
+        freqs.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const start = now + idx * 0.08;
+
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(freq, start);
+            osc.frequency.exponentialRampToValueAtTime(freq * 1.05, start + 0.25);
+
+            gain.gain.setValueAtTime(0.2, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.3);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.3);
+        });
+    }
+
+    // 过程式实时合成：紧急警报红光双重脉冲鸣响 (Broadcast Warning Siren)
+    synthesizeAlarmKlaxon() {
+        this.init();
+        if (this.isMuted || !this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        [0, 0.28].forEach((offset) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const start = now + offset;
+
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(880, start);
+            osc.frequency.exponentialRampToValueAtTime(587.33, start + 0.22); // A5 -> D5 急促下滑
+
+            gain.gain.setValueAtTime(0.25, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.25);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.25);
+        });
+    }
+
+    // 过程式实时合成：科幻舱室气压/脚步踏步位移音 (Movement Step Whoosh)
+    synthesizeMoveStep() {
+        this.init();
+        if (this.isMuted || !this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(260, now);
+        osc.frequency.exponentialRampToValueAtTime(110, now + 0.12);
+
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.12);
+    }
+
+    toggleMute() {
+        this.isMuted = !this.isMuted;
+        return this.isMuted;
+    }
+}
+
+export const Sound = new SoundEngine();
+
+// 移动端/iOS Safari 首次手势（触摸/点击/轻扫）全局静默激活音频上下文
+if (typeof window !== "undefined") {
+    const autoUnlock = () => {
+        Sound.unlock();
+        ["touchstart", "touchend", "pointerdown", "click", "keydown"].forEach(evt => {
+            window.removeEventListener(evt, autoUnlock, true);
+        });
+    };
+    ["touchstart", "touchend", "pointerdown", "click", "keydown"].forEach(evt => {
+        window.addEventListener(evt, autoUnlock, { capture: true, passive: true, once: true });
+    });
+}
+

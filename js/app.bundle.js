@@ -1,0 +1,19048 @@
+/**
+ * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
+ * 自动生成于 2026-09-05T16:37:03.544Z
+ */
+(function() {
+    'use strict';
+
+    // =========================================================================
+    // 模块: config.js
+    // =========================================================================
+/**
+ * 游戏核心配置表 (Game Configuration)
+ * 允许用户极简修改身份名称、世界观用词、体力与概率参数
+ */
+
+const WorldviewConfig = {
+    gameTitle: "潜伏危机：循环伪装体",
+    protagonistName: "L.P.H",
+    
+    // 身份牌别名映射（改这里即可全局改动游戏内显示的身份名与世界观描述）
+    roleNames: {
+        wolf: {
+            id: "wolf",
+            name: "伪人",              // 传统狼人杀对应：狼人
+            alias: "拟态感染体",
+            team: "enemy",
+            color: "#ff3366",
+            desc: "潜伏在人类身边的未知拟态感染体，会伺机在夜晚猎杀同伴。"
+        },
+        villager: {
+            id: "villager",
+            name: "同伴",              // 传统狼人杀对应：村民 / 普通人类
+            alias: "普通幸存者",
+            team: "human",
+            color: "#38bdf8",
+            desc: "没有特殊能力的普通幸存者，依靠理智与信任求生。"
+        },
+        seer: {
+            id: "seer",
+            name: "魔镜",              // 传统狼人杀对应：预言家
+            alias: "透视真理者",
+            team: "human",
+            color: "#facc15",
+            desc: "每晚可以查验一名同伴的真身，看透其是否已被伪人替换。"
+        },
+        guard: {
+            id: "guard",
+            name: "护卫",              // 传统狼人杀对应：守卫
+            alias: "守护天使",
+            team: "human",
+            color: "#4ade80",
+            desc: "每晚可以设立护盾守护一名同伴，使其免于今晚的袭击。"
+        },
+        witch: {
+            id: "witch",
+            name: "歌咏者",            // 传统狼人杀对应：女巫
+            alias: "生命救赎者",
+            team: "human",
+            color: "#c084fc",
+            desc: "夜间能感知受到伪人袭击的濒死同伴，并决定是否施加救助。"
+        }
+    }
+};
+
+// 体力消耗与食物回复配置
+const StaminaConfig = {
+    initialStamina: 100,
+    maxStamina: 100,
+    stepCost: 8, // 无论如何走都消耗 8 点体力
+    fastTravelStepCost: 0, // 快速往返已探明区域消耗0点体力（不计入面临选择步数）
+    
+    // 食物回复数值：根据当前队伍人数递减
+    // 1人50，2人45，3人38，4人35，5人32，6人28，7人25，8人22等
+    foodRecoveryTable: {
+        1: 50,
+        2: 45,
+        3: 38,
+        4: 35,
+        5: 32,
+        6: 28,
+        7: 25,
+        8: 22
+    },
+    
+    // 获取当前队伍人数对应的体力回复值
+    getFoodRecovery(teamCount) {
+        if (this.foodRecoveryTable[teamCount] !== undefined) {
+            return this.foodRecoveryTable[teamCount];
+        }
+        // 超过8人按阶梯递减，最低不低于10
+        return Math.max(10, 22 - (teamCount - 8) * 2);
+    }
+};
+
+// 傍晚时刻触发概率（面临选择次数）
+const EveningTriggerConfig = {
+    // 1,2次概率为0；3次40%，4次70%，5次100%
+    chances: {
+        1: 0.0,
+        2: 0.0,
+        3: 0.40,
+        4: 0.70,
+        5: 1.00
+    },
+    getChance(choiceCount) {
+        if (choiceCount <= 2) return 0.0;
+        if (choiceCount === 3) return 0.40;
+        if (choiceCount === 4) return 0.70;
+        return 1.00; // 5次及以上必触发
+    }
+};
+
+// 夜间伪人袭击触发概率（根据队伍存活人数）
+const NightAttackConfig = {
+    // 伪人每晚必定自主猎杀（无论玩家选择什么，必定刀人 100%）
+    getChance(teamCount) {
+        return 1.00;
+    }
+};
+
+// =========================================================================
+// 遇害展现与音效配置表 (Death Reveal & Audio Configuration)
+// =========================================================================
+const AudioConfig = {
+    // 1. 遇害死亡展示时的音效文件路径 (支持 mp3, wav, ogg 等格式)
+    deathSoundUrl: "assets/audio/death.mp3",
+    deathSoundVolume: 0.85,
+
+    // 2. 物资获取/食物发现时的音效文件路径
+    foodSoundUrl: "assets/audio/物资获取.wav",
+    foodSoundVolume: 0.80,
+
+    // 3. 广播发出警报/警告时的音效文件路径
+    alarmSoundUrl: "assets/audio/警告.wav",
+    alarmSoundVolume: 0.85,
+
+    // 4. 移动探索时的脚步/位移音效文件路径
+    moveSoundUrl: "assets/audio/移动.wav",
+    moveSoundVolume: 0.65,
+
+    // 是否在自定义音效文件未就绪时，使用内置的高质科幻合成音效作为兜底发声
+    useFallbackSynthesizer: true
+};
+
+const DeathRevealConfig = {
+    // 夜晚行动结束后，纯黑屏悬念时长（毫秒，默认 2000 即 2 秒）
+    blackScreenDurationMs: 2000,
+
+    // 死者渐渐浮现动画过渡时长（毫秒，默认 1200 即 1.2 秒）
+    fadeInDurationMs: 1200
+};
+
+
+    // =========================================================================
+    // 模块: audio.js
+    // =========================================================================
+/**
+ * 纯前端 Web Audio API 过程式科幻音效引擎 (Zero External Assets)
+ * 纯代码实时合成音频震荡波，无需下载任何 mp3/wav 即可发声
+ * 内置移动端 Webview 触摸自动解锁机制
+ */
+
+class SoundEngine {
+    constructor() {
+        this.ctx = null;
+        this.isMuted = false;
+        this.initialized = false;
+    }
+
+    init() {
+        if (this.initialized) return;
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) {
+                this.ctx = new AudioCtx();
+                this.initialized = true;
+            }
+        } catch (e) {
+            console.warn("Web Audio API not supported", e);
+        }
+    }
+
+    // 触摸解锁：应对手机浏览器 Autoplay Policy 限制
+    unlock() {
+        this.init();
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    }
+
+    // 1. 科幻打字/按钮滴答音 (Tick/Blip)
+    playTick() {
+        if (this.isMuted || !this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1400, this.ctx.currentTime + 0.04);
+
+        gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.04);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.04);
+    }
+
+    // 2. 辩论核心标志性音效：提出怀疑！(Doubt Bass Impact)
+    playDoubt() {
+        if (this.isMuted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        
+        // 低频下潜重击
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.35);
+
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.35);
+
+        // 高频紧张警报谐波
+        const alertOsc = this.ctx.createOscillator();
+        const alertGain = this.ctx.createGain();
+        alertOsc.type = "square";
+        alertOsc.frequency.setValueAtTime(620, now);
+        alertOsc.frequency.setValueAtTime(580, now + 0.1);
+        alertGain.gain.setValueAtTime(0.12, now);
+        alertGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+        alertOsc.connect(alertGain);
+        alertGain.connect(this.ctx.destination);
+        alertOsc.start(now);
+        alertOsc.stop(now + 0.25);
+    }
+
+    // 3. 赞同与附和 (Agree Chime)
+    playAgree() {
+        if (this.isMuted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.18);
+
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.2);
+    }
+
+    // 4. 辩护与反驳 (Defend Shield)
+    playDefend() {
+        if (this.isMuted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.linearRampToValueAtTime(640, now + 0.12);
+        osc.frequency.linearRampToValueAtTime(480, now + 0.25);
+
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
+    }
+
+    // 5. 投票放逐与冷冻舱启动 (Cold Sleep Alert)
+    playColdSleep() {
+        if (this.isMuted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(55, now + 1.2);
+
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 1.2);
+    }
+
+    // 6. 胜利与战败提示音
+    playVictory() {
+        if (this.isMuted || !this.ctx) return;
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const start = this.ctx.currentTime + idx * 0.12;
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.18, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.3);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.3);
+        });
+    }
+
+    playDefeat() {
+        if (this.isMuted || !this.ctx) return;
+        [300, 260, 220, 160].forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const start = this.ctx.currentTime + idx * 0.15;
+            osc.type = "sawtooth";
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.2, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.35);
+        });
+    }
+
+    // 通用外部音频文件播放器（支持中文路径编码与 Web Audio 合成兜底）
+    playAudioFile(primaryUrl, volume, fallbackFn, label = "音频") {
+        if (this.isMuted) return;
+
+        if (typeof Audio !== "undefined" && primaryUrl) {
+            try {
+                // 安全转义处理中文字符路径
+                const safeUrl = encodeURI(primaryUrl);
+                const audio = new Audio(safeUrl);
+                audio.volume = Math.max(0, Math.min(1, volume));
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        console.log(`[Sound] 成功播放${label}:`, primaryUrl);
+                    }).catch(err => {
+                        // 若转义路径加载失败，尝试原始URL二次加载
+                        try {
+                            const rawAudio = new Audio(primaryUrl);
+                            rawAudio.volume = Math.max(0, Math.min(1, volume));
+                            const rawPromise = rawAudio.play();
+                            if (rawPromise !== undefined) {
+                                rawPromise.catch(() => {
+                                    if (fallbackFn) fallbackFn.call(this);
+                                });
+                            }
+                        } catch (e2) {
+                            if (fallbackFn) fallbackFn.call(this);
+                        }
+                    });
+                }
+            } catch (e) {
+                if (fallbackFn) fallbackFn.call(this);
+            }
+        } else {
+            if (fallbackFn) fallbackFn.call(this);
+        }
+    }
+
+    // 7. 遇害死者揭晓专属音效 (支持自定义 death.mp3 + Web Audio 惊悚重音保底)
+    playDeathSound(customUrl = null) {
+        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.deathSoundUrl) || "assets/audio/death.mp3";
+        const volume = (typeof AudioConfig !== 'undefined' && AudioConfig.deathSoundVolume !== undefined) ? AudioConfig.deathSoundVolume : 0.85;
+        this.playAudioFile(soundUrl, volume, this.synthesizeDeathImpact, "遇害死亡音效");
+    }
+
+    // 8. 物资获取/食物发现专属音效 (支持自定义 物资获取.wav + Web Audio 能量充能铃音保底)
+    playFoodSound(customUrl = null) {
+        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.foodSoundUrl) || "assets/audio/物资获取.wav";
+        const volume = (typeof AudioConfig !== 'undefined' && AudioConfig.foodSoundVolume !== undefined) ? AudioConfig.foodSoundVolume : 0.80;
+        this.playAudioFile(soundUrl, volume, this.synthesizeFoodChime, "物资获取音效");
+    }
+
+    // 9. 广播警报/危险警告专属音效 (支持自定义 警告.wav + Web Audio 红警蜂鸣双音保底)
+    playAlarmSound(customUrl = null) {
+        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.alarmSoundUrl) || "assets/audio/警告.wav";
+        const volume = (typeof AudioConfig !== 'undefined' && AudioConfig.alarmSoundVolume !== undefined) ? AudioConfig.alarmSoundVolume : 0.85;
+        this.playAudioFile(soundUrl, volume, this.synthesizeAlarmKlaxon, "广播警报音效");
+    }
+
+    // 10. 移动探索位移专属音效 (支持自定义 移动.wav + Web Audio 气动步进音保底)
+    playMoveSound(customUrl = null) {
+        const now = Date.now();
+        if (this.lastMoveSoundTime && now - this.lastMoveSoundTime < 120) return;
+        this.lastMoveSoundTime = now;
+
+        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.moveSoundUrl) || "assets/audio/移动.wav";
+        const volume = (typeof AudioConfig !== 'undefined' && AudioConfig.moveSoundVolume !== undefined) ? AudioConfig.moveSoundVolume : 0.65;
+        this.playAudioFile(soundUrl, volume, this.synthesizeMoveStep, "移动音效");
+    }
+
+    // 过程式实时合成：震撼的死亡警报低频冲击波 (Sub-bass Impact + Alarm Flatline)
+    synthesizeDeathImpact() {
+        this.init();
+        if (this.isMuted || !this.ctx) return;
+
+        const now = this.ctx.currentTime;
+
+        // A. 低频沉重下潜重击 (Sawtooth Drop 160Hz -> 32Hz)
+        const subOsc = this.ctx.createOscillator();
+        const subGain = this.ctx.createGain();
+        subOsc.type = "sawtooth";
+        subOsc.frequency.setValueAtTime(160, now);
+        subOsc.frequency.exponentialRampToValueAtTime(32, now + 0.9);
+
+        subGain.gain.setValueAtTime(0.45, now);
+        subGain.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+
+        subOsc.connect(subGain);
+        subGain.connect(this.ctx.destination);
+        subOsc.start(now);
+        subOsc.stop(now + 1.1);
+
+        // B. 刺耳的惊悚减五度失真警报 (Eb4 / Bb4 Dissonance)
+        const alertOsc = this.ctx.createOscillator();
+        const alertGain = this.ctx.createGain();
+        alertOsc.type = "square";
+        alertOsc.frequency.setValueAtTime(466.16, now);
+        alertOsc.frequency.setValueAtTime(311.13, now + 0.2);
+
+        alertGain.gain.setValueAtTime(0.18, now);
+        alertGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+        alertOsc.connect(alertGain);
+        alertGain.connect(this.ctx.destination);
+        alertOsc.start(now);
+        alertOsc.stop(now + 0.8);
+
+        // C. 心跳骤停长音脉冲 (Flatline Tone)
+        const lineOsc = this.ctx.createOscillator();
+        const lineGain = this.ctx.createGain();
+        lineOsc.type = "sine";
+        lineOsc.frequency.setValueAtTime(780, now + 0.1);
+        lineGain.gain.setValueAtTime(0.1, now + 0.1);
+        lineGain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+
+        lineOsc.connect(lineGain);
+        lineGain.connect(this.ctx.destination);
+        lineOsc.start(now + 0.1);
+        lineOsc.stop(now + 0.7);
+    }
+
+    // 过程式实时合成：清脆晶莹的物资补给充能琶音 (Food/Supplies Energy Chime)
+    synthesizeFoodChime() {
+        this.init();
+        if (this.isMuted || !this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const freqs = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 闪烁上扬琶音
+        freqs.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const start = now + idx * 0.08;
+
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(freq, start);
+            osc.frequency.exponentialRampToValueAtTime(freq * 1.05, start + 0.25);
+
+            gain.gain.setValueAtTime(0.2, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.3);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.3);
+        });
+    }
+
+    // 过程式实时合成：紧急警报红光双重脉冲鸣响 (Broadcast Warning Siren)
+    synthesizeAlarmKlaxon() {
+        this.init();
+        if (this.isMuted || !this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        [0, 0.28].forEach((offset) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const start = now + offset;
+
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(880, start);
+            osc.frequency.exponentialRampToValueAtTime(587.33, start + 0.22); // A5 -> D5 急促下滑
+
+            gain.gain.setValueAtTime(0.25, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.25);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.25);
+        });
+    }
+
+    // 过程式实时合成：科幻舱室气压/脚步踏步位移音 (Movement Step Whoosh)
+    synthesizeMoveStep() {
+        this.init();
+        if (this.isMuted || !this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(260, now);
+        osc.frequency.exponentialRampToValueAtTime(110, now + 0.12);
+
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.12);
+    }
+
+    toggleMute() {
+        this.isMuted = !this.isMuted;
+        return this.isMuted;
+    }
+}
+
+const Sound = new SoundEngine();
+
+
+    // =========================================================================
+    // 模块: characters.js
+    // =========================================================================
+/**
+ * 角色模型与预设配置 (Characters Definition)
+ * 包含多表情差分立绘系统 (Expression Sprite System)
+ * 支持表情：default(平静), angry(生气), doubt(疑惑), sad(悲伤), smile(微笑), shock(震惊)
+ */
+
+const CharacterRegistry = {
+    // 主角
+    protagonist: {
+        id: "lph",
+        name: "L.P.H",
+        isProtagonist: true,
+        themeColor: "#38bdf8", // 科技冰蓝
+        boxBorderColor: "rgba(56, 189, 248, 0.85)",
+        boxBgGlow: "rgba(56, 189, 248, 0.2)",
+        avatarUrl: "",
+        defaultRole: "seer",
+        description: "探索小队的指挥队长，冷峻、克制而敏锐。"
+    },
+
+    // 候选NPC角色库 (采用 kaze/, shaokexin/, mode/ 独立文件夹管理)
+    npcs: {
+        // NPC 1：卡泽 (男，文字框蓝色，文件夹 kaze)
+        kaze: {
+            id: "kaze",
+            folder: "kaze",
+            name: "卡泽",
+            gender: "男",
+            themeColor: "#38bdf8", // 科技明蓝
+            boxBorderColor: "rgba(56, 189, 248, 0.9)",
+            boxBgGlow: "rgba(56, 189, 248, 0.25)",
+            avatarUrl: "assets/characters/kaze/clam.png",
+            expressions: {
+                clam: "assets/characters/kaze/clam.png",     // 平静 (无指示时的默认照片)
+                happy: "assets/characters/kaze/happy.png",   // 开心 / 微笑
+                sad: "assets/characters/kaze/sad.png",       // 悲伤 / 沮丧
+                normal: "assets/characters/kaze/normal.png", // 正常
+                angry: "assets/characters/kaze/angry.png",   // 生气 / 质问
+                doubt: "assets/characters/kaze/doubt.png",   // 疑惑 / 审视
+                shock: "assets/characters/kaze/shock.png",   // 震惊 / 错愕
+                dead: "assets/characters/kaze/dead.jpg"      // 遇害 / 死亡 (用户已放置 dead.jpg)
+            },
+            introDialogue: [
+                { text: "（一名穿着破损战术服的年轻男子捂着手臂，眼神凌厉而冷漠地抬起头）", expression: "clam" },
+                { text: "……是你？呵，原来你还活着，队长。", expression: "doubt" },
+                { text: "既然遇上了，那就一起行动吧。但我把话放在前头，如果发现你被感染了，我不会犹豫的。", expression: "angry" }
+            ],
+            inquiryDialogues: [
+                // 对话 1 (第 1 次交谈)
+                [
+                    { text: "当时，你为什么不在基地里？", expression: "angry" },
+                    { text: "难道你都忘了？", expression: "doubt" },
+                    { text: "也对，你一直都这样，一直冷冰冰的对待我们。", expression: "sad" },
+                    { text: "我没什么想跟你说的，就这样。", expression: "clam" }
+                ],
+                // 对话 2 (第 2 次交谈)
+                [
+                    { text: "又来找我？你不像是这样的人。", expression: "happy" },
+                    { text: "随你便，反正现在也没有什么更好的办法了。", expression: "clam" },
+                    { text: "希望我们还能一起看见太阳。", expression: "clam" }
+                ],
+                // 对话 3 (第 3 次及后续备选)
+                [
+                    { text: "终点就在前方，保持警戒。", expression: "clam" },
+                    { text: "今晚如果进行裁决，别感情用事，看清楚谁是真正的威胁。", expression: "angry" }
+                ]
+            ],
+            // 白天得知有角色遇害时触发的特殊反应语句库
+            deathReactions: [
+                { text: "……可恶！[${victim}]居然……！伪人到底藏在谁的皮囊底下？！", expression: "angry" },
+                { text: "别发呆了，队长！[${victim}]已经遇害了，下一个可能就是我们之中的任何一人！", expression: "shock" },
+                { text: "……昨晚如果我能更警惕一点的话，[${victim}]就不会……切，我绝不会放过那个潜伏的怪物！", expression: "angry" },
+                { text: "悲伤解决不了任何问题。[${victim}]的仇，只有把伪人彻底揪出来才能报！", expression: "clam" }
+            ],
+            // 角色深度机密图鉴与专属分支
+            persona: {
+                title: "前锋哨兵 · 冷峻执行者",
+                secrets: [
+                    {
+                        id: "kaze_taste",
+                        title: "味觉抗拒",
+                        desc: "极度抗拒任何甜味食品与高糖军用补给，偏好苦涩的浓缩咖啡因咀嚼片以保持警戒神经高度紧绷。",
+                        hint: "在傍晚时刻与其单独交谈 2 次",
+                        unlockType: "inquiry_count",
+                        threshold: 2
+                    },
+                    {
+                        id: "kaze_scar",
+                        title: "战术警惕",
+                        desc: "小臂上的撕裂伤痕源于第7巡逻区为了掩护新兵断后，看似冷血寡言，实则对同行队员有着近乎偏执的护短意愿。",
+                        hint: "成功带领卡泽撤离至终点脱出",
+                        unlockType: "evacuate_with",
+                        threshold: 1
+                    },
+                    {
+                        id: "kaze_instinct",
+                        title: "因果逆流直觉",
+                        desc: "在过往某次闭环中曾目睹时间逆转的幻象，对拟态伪装体脸部神经的抽搐有着超乎常人的辨识嗅觉。",
+                        hint: "卡泽存活且在队时成功指认或放逐伪人",
+                        unlockType: "exile_wolf_with",
+                        threshold: 1
+                    },
+                    {
+                        id: "kaze_resolve",
+                        title: "终末决绝",
+                        desc: "若自己不幸遭到高熵伪装体同化，会在意识彻底崩解前将自己锁死在减压气阀内，绝不向队友挥动利刃。",
+                        hint: "见证卡泽在黑夜中遇害牺牲或被禁锢",
+                        unlockType: "suffer_fate",
+                        threshold: 1
+                    }
+                ],
+                passiveSkill: {
+                    name: "战术反制 (Tactical Counter)",
+                    icon: "🛡️",
+                    desc: "当夜间潜伏伪装体选定卡泽为刺杀目标时，有 35% 概率由卡泽反制脱身，强制转化为平安夜！"
+                },
+                exclusiveBranch: {
+                    levelId: 101,
+                    badge: "EX-K",
+                    title: "扇区 EX-K：孤狼战术突破",
+                    subtitle: "卡泽主导视角 · 单兵诱敌潜入回廊",
+                    desc: "以卡泽单兵前锋视角展开的特殊突破行动。在重度感染的机房深处开辟通道，直面拟态巢穴。"
+                }
+            }
+        },
+
+        // NPC 2：邵可欣 (女，文字框粉色，文件夹 shaokexin)
+        shaokexin: {
+            id: "shaokexin",
+            folder: "shaokexin",
+            name: "邵可欣",
+            gender: "女",
+            themeColor: "#f43f5e", // 玫瑰粉红
+            boxBorderColor: "rgba(244, 63, 94, 0.9)",
+            boxBgGlow: "rgba(244, 63, 94, 0.25)",
+            avatarUrl: "assets/characters/shaokexin/clam.png",
+            expressions: {
+                clam: "assets/characters/shaokexin/clam.png",     // 平静 (无指示时的默认照片)
+                happy: "assets/characters/shaokexin/happy.png",   // 开心 / 微笑
+                sad: "assets/characters/shaokexin/sad.png",       // 悲伤 / 委屈
+                normal: "assets/characters/shaokexin/normal.png", // 正常
+                angry: "assets/characters/shaokexin/angry.png",   // 生气
+                doubt: "assets/characters/shaokexin/doubt.png",   // 疑惑 / 茫然
+                shock: "assets/characters/shaokexin/shock.png",   // 震惊 / 害怕
+                dead: "assets/characters/shaokexin/dead.jpg"      // 遇害 / 死亡 (用户已放置 dead.jpg)
+            },
+            introDialogue: [
+                { text: "（昏暗的管道阴影中，一名少女抱膝缩在角落，听到脚步声猛地颤抖起来）", expression: "shock" },
+                { text: "请……请别过来！……等等，队长？！真的是你吗？！", expression: "shock" },
+                { text: "太好了……我以为我真的要死在这里了……呜，请带我一起走！", expression: "sad" }
+            ],
+            inquiryDialogues: [
+                // 对话 1 (第 1 次交谈)
+                [
+                    { text: "真的是你，我以为我死定了...", expression: "sad" },
+                    { text: "基地不知为何发生爆炸，我们遗落于此....", expression: "doubt" },
+                    { text: "不过还好，我们都活着...对吗？", expression: "happy" }
+                ],
+                // 对话 2 (第 2 次交谈)
+                [
+                    { text: "不知道该不该说...我挺庆幸你在这里，又为你感到惋惜....", expression: "sad" },
+                    { text: "当时我以为你已经不在基地了，还在为你感到高兴，你不用像我们一样在这里....", expression: "clam" },
+                    { text: "没想到你遗落于此，我们也算是有个照应，对吧？", expression: "happy" }
+                ],
+                // 对话 3 (第 3 次及后续备选)
+                [
+                    { text: "天黑之后这里好安静……安静得让人害怕。", expression: "sad" },
+                    { text: "队长，今晚我能离你的舱房近一点吗？我总觉得黑暗里有视线在盯视着大家。", expression: "doubt" }
+                ]
+            ],
+            // 白天得知有角色遇害时触发的特殊反应语句库
+            deathReactions: [
+                { text: "怎、怎么会这样……[${victim}]明明昨晚还好好的……呜呜……", expression: "sad" },
+                { text: "骗人的吧……[${victim}]……为什么大家会被一个个杀掉……队长，我好害怕……", expression: "shock" },
+                { text: "连[${victim}]都遇害了……下一个会不会轮到我……队长，不要丢下我……", expression: "sad" },
+                { text: "太可怕了……昨晚还和[${victim}]在同一片舱室，现在却……伪人昨夜就在暗中看着我们……", expression: "shock" }
+            ],
+            // 角色深度机密图鉴与专属分支
+            persona: {
+                title: "后勤观测员 · 纯真共鸣者",
+                secrets: [
+                    {
+                        id: "shaokexin_allergy",
+                        title: "生理排异",
+                        desc: "天生体质对超弦折跃射线严重排异，每次穿越气密闸口都会产生强烈眩晕，却从不在队友面前抱怨。",
+                        hint: "在傍晚时刻与其单独交谈 2 次",
+                        unlockType: "inquiry_count",
+                        threshold: 2
+                    },
+                    {
+                        id: "shaokexin_ribbon",
+                        title: "救援缎带",
+                        desc: "腕间系着的浅粉色缎带是因空难丧生的妹妹唯一的遗物，也是她在永无止境的循环死局中守住人性的锚点。",
+                        hint: "成功带领邵可欣撤离至终点脱出",
+                        unlockType: "evacuate_with",
+                        threshold: 1
+                    },
+                    {
+                        id: "shaokexin_sixth_sense",
+                        title: "共鸣第六感",
+                        desc: "对潜伏拟态伪装体散发的冰冷负熵臭氧气味异常敏感，身侧存在未探明的危机时心跳会莫名加速。",
+                        hint: "邵可欣在队且存活时平安度过黑夜",
+                        unlockType: "peaceful_night_with",
+                        threshold: 1
+                    },
+                    {
+                        id: "shaokexin_faith",
+                        title: "最后的祷告",
+                        desc: "在被困废墟的绝望黑暗中，她始终紧握着通讯器信标，坚信无论循环多少次队长一定会赶来救她。",
+                        hint: "见证邵可欣遇害牺牲或搜救其入队",
+                        unlockType: "suffer_fate",
+                        threshold: 1
+                    }
+                ],
+                passiveSkill: {
+                    name: "第六感预警 (Intuitive Pulse)",
+                    icon: "📡",
+                    desc: "白天探索时，若邻近未探索房间内存在潜伏伪装体，微型雷达将发出闪烁黄色高熵危机预警！"
+                },
+                exclusiveBranch: {
+                    levelId: 102,
+                    badge: "EX-S",
+                    title: "扇区 EX-S：邵可欣的记忆回溯",
+                    subtitle: "邵可欣回忆视角 · 爆炸前夕的实验室真相",
+                    desc: "探寻基地爆炸前最后 15 分钟的失落记忆，搜寻散落的生物样本黑匣子，解开最初的感染之谜。"
+                }
+            }
+        },
+
+        // NPC 3：莫德 (男，文字框紫色，文件夹 mode)
+        mode: {
+            id: "mode",
+            folder: "mode",
+            name: "莫德",
+            gender: "男",
+            themeColor: "#a855f7", // 幽邃紫晶
+            boxBorderColor: "rgba(168, 85, 247, 0.9)",
+            boxBgGlow: "rgba(168, 85, 247, 0.25)",
+            avatarUrl: "assets/characters/mode/clam.png",
+            expressions: {
+                clam: "assets/characters/mode/clam.png",     // 平静 (无指示时的默认照片)
+                happy: "assets/characters/mode/happy.png",   // 开心 / 冷笑
+                sad: "assets/characters/mode/sad.png",       // 沮丧
+                normal: "assets/characters/mode/normal.png", // 正常
+                angry: "assets/characters/mode/angry.png",   // 生气 / 凶狠
+                doubt: "assets/characters/mode/doubt.png",   // 疑惑 / 警惕
+                shock: "assets/characters/mode/shock.png",   // 震惊
+                dead: "assets/characters/mode/dead.jpg"      // 遇害 / 死亡 (用户已放置 dead.jpg)
+            },
+            introDialogue: [
+                { text: "（靠在金属隔板旁的魁梧男子捂着胸口艰难喘息，看到你的徽章后冷笑了一声）", expression: "angry" },
+                { text: "咳咳……真是阴魂不散啊，L.P.H。", expression: "happy" },
+                { text: "不过算了，算我欠你一次。在这鬼地方多个人掩护总比单打独斗强，拉我一把。", expression: "clam" }
+            ],
+            inquiryDialogues: [
+                // 对话 1 (第 1 次交谈)
+                [
+                    { text: "真没想到我们会在这里相遇。", expression: "doubt" },
+                    { text: "老实说，我还是挺讨厌你的。", expression: "angry" },
+                    { text: "虽然不得不承认你很有能力....", expression: "clam" },
+                    { text: "队长，希望今晚...我们能安度噩梦。", expression: "clam" }
+                ],
+                // 对话 2 (第 2 次交谈)
+                [
+                    { text: "我能问你一件事吗？关于基地爆炸的事情。", expression: "doubt" },
+                    { text: "当时...你在哪里？", expression: "angry" },
+                    { text: "不记得了？没事...我也只是好奇而已...", expression: "happy" }
+                ],
+                // 对话 3 (第 3 次及后续备选)
+                [
+                    { text: "你查验过大家了吗？", expression: "doubt" },
+                    { text: "别用那种怀疑的眼神看着老子，老子要是伪人，在爆炸当天就把你捏死了。", expression: "angry" }
+                ]
+            ],
+            // 白天得知有角色遇害时触发的特殊反应语句库
+            deathReactions: [
+                { text: "啧，[${victim}]那家伙到底还是没撑过去。伪人的胃口比我想象的还要贪婪。", expression: "angry" },
+                { text: "收起眼泪吧。死了一个[${victim}]，意味着剩下的活人里伪人的比例更高了，看清楚身边的每一个人！", expression: "clam" },
+                { text: "[${victim}]的死法很干净……伪人很熟悉这里的死角。队长，你的怀疑名单可以缩小了。", expression: "doubt" },
+                { text: "[${victim}]倒下了，队伍的防御缺口更大了。今晚裁决要是再抓不出凶手，大家就一起等死吧。", expression: "angry" }
+            ],
+            // 角色深度机密图鉴与专属分支
+            persona: {
+                title: "重装安保主管 · 铁血守望者",
+                secrets: [
+                    {
+                        id: "mode_photo",
+                        title: "坚硬护甲",
+                        desc: "看似坚不可摧的重型战术防爆背心内层，贴身珍藏着一张泛黄卷边的女儿童年照片。",
+                        hint: "在傍晚时刻与其单独交谈 2 次",
+                        unlockType: "inquiry_count",
+                        threshold: 2
+                    },
+                    {
+                        id: "mode_loyalty",
+                        title: "铁血义气",
+                        desc: "嘴上永远骂骂咧咧、口口声声讨厌队长，但每一次遭遇冲击波与坍塌时，身躯总是不自觉地挡在最前面。",
+                        hint: "成功带领莫德撤离至终点脱出",
+                        unlockType: "evacuate_with",
+                        threshold: 1
+                    },
+                    {
+                        id: "mode_fortify",
+                        title: "重装戒备",
+                        desc: "曾担任特勤工程兵，对基地应急断路闸和承重立柱结构烂熟于心，懂得如何快速加固避难所气密门。",
+                        hint: "莫德在队时探索行进超过 8 步",
+                        unlockType: "steps_with",
+                        threshold: 8
+                    },
+                    {
+                        id: "mode_iron_will",
+                        title: "无悔执念",
+                        desc: "无论在循环中经历了多么惨烈可怖的死亡，再次睁开眼时，依然会第一时间拉响枪栓沉稳起身。",
+                        hint: "见证莫德在黑夜中遇害牺牲或被禁锢",
+                        unlockType: "suffer_fate",
+                        threshold: 1
+                    }
+                ],
+                passiveSkill: {
+                    name: "防爆坚守 (Iron Bastion)",
+                    icon: "🛡️",
+                    desc: "若黑夜中伪装体企图突袭队长主角，莫德只要在队存活，将誓死挺身格挡抵御，化解当夜致命伤！"
+                },
+                exclusiveBranch: {
+                    levelId: 103,
+                    badge: "EX-M",
+                    title: "扇区 EX-M：莫德的铁壁守望",
+                    subtitle: "莫德防守视角 · 中枢配电总厅死守战",
+                    desc: "在动力炉临界暴走的断电大厅内，指挥应急重型火力网，坚守最后一道物理折跃屏障。"
+                }
+            }
+        }
+    },
+
+    /**
+     * 规范化表情代号 (兼容中英文标签与各种输入)
+     */
+    normalizeExpression(exp) {
+        if (!exp) return "clam";
+        const clean = String(exp).trim().toLowerCase();
+        const tagMap = {
+            "clam": "clam",
+            "calm": "clam",
+            "平静": "clam",
+            "normal": "normal",
+            "正常": "normal",
+            "默认": "clam",
+            "default": "clam",
+            "happy": "happy",
+            "开心": "happy",
+            "微笑": "happy",
+            "smile": "happy",
+            "sad": "sad",
+            "悲伤": "sad",
+            "沮丧": "sad",
+            "angry": "angry",
+            "生气": "angry",
+            "doubt": "doubt",
+            "疑惑": "doubt",
+            "shock": "shock",
+            "震惊": "shock",
+            "dead": "dead",
+            "死亡": "dead",
+            "牺牲": "dead",
+            "遇害": "dead"
+        };
+        return tagMap[clean] || clean;
+    },
+
+    /**
+     * 解析单条文本或对象中的表情
+     * 核心规则：当文本没有指示用什么表情时，默认用平静“clam”照片
+     */
+    parseDialogueLine(lineItem) {
+        if (typeof lineItem === "object" && lineItem !== null) {
+            return {
+                text: lineItem.text || "",
+                expression: this.normalizeExpression(lineItem.expression || "clam")
+            };
+        }
+
+        const rawText = String(lineItem || "");
+        // 匹配前置中英文标签 [xxx]
+        const match = rawText.match(/^\[(clam|calm|normal|happy|smile|sad|angry|doubt|shock|dead|default|平静|正常|开心|微笑|悲伤|沮丧|生气|疑惑|震惊|死亡|牺牲|遇害|默认)\]\s*(.*)$/i);
+        if (match) {
+            return {
+                text: match[2],
+                expression: this.normalizeExpression(match[1])
+            };
+        }
+
+        // 当文本没有指示用什么表情时，严格默认用平静“clam”
+        return {
+            text: rawText,
+            expression: "clam"
+        };
+    },
+
+    /**
+     * 随机获取针对特定受害者的特殊反应语句
+     */
+    getRandomDeathReaction(character, victim) {
+        if (!character) return null;
+        const reactions = character.deathReactions || [];
+        const victimName = (victim && victim.name) ? victim.name : "同伴";
+        if (reactions.length === 0) {
+            return {
+                text: `……[${victimName}]居然遇害了……大家一定要加倍小心！`,
+                expression: "shock"
+            };
+        }
+        const picked = reactions[Math.floor(Math.random() * reactions.length)];
+        const text = picked.text
+            .replace(/\[\$\{victim\}\]/g, `[${victimName}]`)
+            .replace(/\$\{victim\}/g, victimName);
+        return {
+            text: text,
+            expression: this.normalizeExpression(picked.expression || "shock")
+        };
+    },
+
+    /**
+     * 获取指定角色在特定表情下的候选立绘URL队列 (自动按优先级排序尝试)
+     * 支持 kaze/, shaokexin/, mode/ 独立文件夹架构与 png/jpg/webp 自动探测
+     */
+    getCharacterImageCandidates(character, expression = "clam") {
+        if (!character) return [];
+        // 广播、终端、系统通知、主角等绝对不加载角色立绘
+        if (character.isProtagonist || character.isBroadcast || character.isSystem ||
+            character.id === "lph" || character.id === "system" || character.id === "broadcast" ||
+            /广播|系统|终端|通信|审决|全员/i.test(character.name || "")) {
+            return [];
+        }
+        const exp = this.normalizeExpression(expression);
+        const folder = character.folder || character.id;
+        if (!folder) return [];
+        
+        // 支持 mode 与 morde 别名映射
+        const folders = [folder];
+        if (folder === "mode") folders.push("morde");
+        if (folder === "morde") folders.push("mode");
+        if (character.name && !folders.includes(character.name)) {
+            folders.push(character.name);
+        }
+
+        const expAliases = {
+            clam: ["clam", "calm", "normal", "平静"],
+            calm: ["clam", "calm", "normal", "平静"],
+            normal: ["normal", "clam", "calm", "正常", "default"],
+            happy: ["happy", "smile", "开心", "微笑"],
+            sad: ["sad", "悲伤", "沮丧"],
+            angry: ["angry", "生气"],
+            doubt: ["doubt", "疑惑"],
+            shock: ["shock", "震惊"],
+            dead: ["dead", "死亡", "die", "corpse", "sad", "clam"]
+        };
+
+        const namesToTry = expAliases[exp] || [exp];
+        // 针对遇害立绘 dead，由于用户放置了 dead.jpg，优先探测 jpg，同时兼顾 png
+        const extensions = (exp === "dead") ? ["jpg", "png", "jpeg", "webp"] : ["png", "jpg", "jpeg", "webp"];
+
+        const candidates = [];
+
+        // 0. 优先尝试角色 expressions 字典中明确配置的立绘路径
+        if (character.expressions && character.expressions[exp]) {
+            candidates.push(character.expressions[exp]);
+        }
+
+        // 1. 在各目标文件夹下探测对应的表情切图
+        for (const f of folders) {
+            for (const name of namesToTry) {
+                for (const ext of extensions) {
+                    candidates.push(`assets/characters/${f}/${name}.${ext}`);
+                }
+            }
+        }
+
+        // 2. 如果请求的是非平静表情但特定切图缺失，降级尝试该角色的平静/默认图 (clam / calm / normal)
+        if (exp !== "clam" && exp !== "normal") {
+            for (const f of folders) {
+                for (const calmName of ["clam", "calm", "normal", "平静"]) {
+                    for (const ext of extensions) {
+                        candidates.push(`assets/characters/${f}/${calmName}.${ext}`);
+                    }
+                }
+            }
+        }
+
+        // 3. 根目录保底 (如 assets/characters/kaze.png)
+        for (const f of folders) {
+            for (const ext of extensions) {
+                candidates.push(`assets/characters/${f}.${ext}`);
+            }
+        }
+
+        return [...new Set(candidates)];
+    },
+
+    /**
+     * 获取指定角色在特定表情下的标准立绘URL
+     */
+    getCharacterImageUrl(character, expression = "clam") {
+        if (!character) return "";
+        if (character.isProtagonist || character.isBroadcast || character.isSystem ||
+            character.id === "lph" || character.id === "system" || character.id === "broadcast" ||
+            /广播|系统|终端|通信|审决|全员/i.test(character.name || "")) {
+            return "";
+        }
+        const exp = this.normalizeExpression(expression);
+        const candidates = this.getCharacterImageCandidates(character, exp);
+        return candidates[0] || (character.folder || character.id ? `assets/characters/${character.folder || character.id}/${exp}.png` : "");
+    },
+
+    /**
+     * 生成带表情状态特质的SVG头像 (作为图片完全未放入时的保底呈现)
+     */
+    getAvatarSvg(character, expression = "clam") {
+        if (!character) return "";
+        if (character.isProtagonist || character.isBroadcast || character.isSystem ||
+            character.id === "lph" || character.id === "system" || character.id === "broadcast" ||
+            /广播|系统|终端|通信|审决|全员/i.test(character.name || "")) {
+            return "";
+        }
+        const color = character.themeColor || "#38bdf8";
+        const nameInitial = character.name ? character.name.charAt(0) : "L";
+        const isFemale = character.gender === "女";
+        const exp = this.normalizeExpression(expression);
+        
+        const headRadius = isFemale ? 44 : 48;
+        const shoulderWidth = isFemale ? 34 : 42;
+
+        // 表情特征小标
+        const emojiMap = {
+            clam: "•_•",
+            calm: "•_•",
+            normal: "•_•",
+            default: "•_•",
+            happy: "✨",
+            smile: "✨",
+            sad: "💧",
+            angry: "💢",
+            doubt: "❓",
+            shock: "❗",
+            dead: "💀"
+        };
+        const badge = emojiMap[exp] || "•_•";
+
+        const expCnMap = {
+            clam: "平静",
+            calm: "平静",
+            normal: "正常",
+            happy: "开心",
+            sad: "悲伤",
+            angry: "生气",
+            doubt: "疑惑",
+            shock: "震惊",
+            dead: "已遇害"
+        };
+        const expLabel = expCnMap[exp] || exp;
+
+        const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+            <defs>
+                <radialGradient id="grad-${character.id}-${exp}" cx="50%" cy="40%" r="60%">
+                    <stop offset="0%" stop-color="${color}" stop-opacity="0.85"/>
+                    <stop offset="100%" stop-color="#080c18" stop-opacity="0.98"/>
+                </radialGradient>
+                <linearGradient id="glow-${character.id}-${exp}" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="${color}" stop-opacity="1"/>
+                    <stop offset="100%" stop-color="#ffffff" stop-opacity="0.3"/>
+                </linearGradient>
+            </defs>
+            <rect width="200" height="200" rx="16" fill="#090e1c" stroke="${color}" stroke-width="2.5"/>
+            <!-- 头部剪影 -->
+            <circle cx="100" cy="80" r="${headRadius}" fill="url(#grad-${character.id}-${exp})" stroke="url(#glow-${character.id}-${exp})" stroke-width="2"/>
+            <!-- 躯干剪影 -->
+            <path d="M${100 - shoulderWidth * 1.5} 185 C${100 - shoulderWidth} 130, ${100 - shoulderWidth * 0.7} 122, 100 122 C${100 + shoulderWidth * 0.7} 122, ${100 + shoulderWidth} 130, ${100 + shoulderWidth * 1.5} 185 Z" fill="url(#grad-${character.id}-${exp})" opacity="0.9" stroke="${color}" stroke-width="1.5"/>
+            <!-- HUD刻度圆环 -->
+            <circle cx="100" cy="80" r="56" fill="none" stroke="${color}" stroke-width="1.2" stroke-dasharray="6 6" opacity="0.5"/>
+            <!-- 角色姓名首字 -->
+            <text x="100" y="93" font-family="'Orbitron', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="34" font-weight="bold" fill="#ffffff" text-anchor="middle" filter="drop-shadow(0px 2px 5px rgba(0,0,0,0.9))">
+                ${nameInitial}
+            </text>
+            <!-- 表情徽章气泡 -->
+            <circle cx="152" cy="48" r="18" fill="#0b1120" stroke="${color}" stroke-width="1.5"/>
+            <text x="152" y="54" font-size="14" text-anchor="middle">${badge}</text>
+            <!-- 底部姓名牌 -->
+            <rect x="25" y="165" width="150" height="22" rx="4" fill="#000000" opacity="0.75" stroke="${color}" stroke-width="1"/>
+            <text x="100" y="180" font-family="'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="12" font-weight="bold" fill="${color}" text-anchor="middle" letter-spacing="1.5">
+                ${character.name} · ${expLabel}
+            </text>
+        </svg>
+        `;
+        return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+    }
+};
+
+// 保持 morde 与 mode 双重映射兼容性
+CharacterRegistry.npcs.morde = CharacterRegistry.npcs.mode;
+
+
+    // =========================================================================
+    // 模块: generatedLevels.js
+    // =========================================================================
+/**
+ * 自动生成的高维关卡地图拓扑表 (Levels 3 to 25)
+ * 严格按照关卡梯级规模配置：
+ * - 关卡 3~5：3×5 网格，房间数 12~14 (误差控制在 +3~-4 范围内)
+ * - 关卡 6~10：5×6 网格，房间数 22~26 (误差控制在 +3~-4 范围内)
+ * - 关卡 11~20：7×7 网格，房间数 38~42 (误差控制在 +3~-4 范围内)
+ * - 关卡 21~25：8×8 网格，房间数 52~56 (误差控制在 +3~-4 范围内)
+ * 所有地图 100% 双向连通，起终点可达，包含战略补给站。
+ */
+
+const GeneratedLevels = [
+    {
+        "levelId": 3,
+        "title": "第3关：湮灭奇点 · 引力撕裂重构",
+        "subtitle": "引力撕裂重构 · 边缘坍缩区",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 03：湮灭奇点】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl3_start",
+            "nodes": {
+                "lvl3_start": {
+                    "id": "lvl3_start",
+                    "name": "【扇区入口】湮灭奇点起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "right": "lvl3_r1",
+                        "forward": "lvl3_r2"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 3
+                    },
+                    "isStart": true
+                },
+                "lvl3_r1": {
+                    "id": "lvl3_r1",
+                    "name": "【光学晶体室】S3-13",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl3_start",
+                        "forward": "lvl3_r3"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    }
+                },
+                "lvl3_r2": {
+                    "id": "lvl3_r2",
+                    "name": "【减压过渡井】S3-02",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl3_start",
+                        "right": "lvl3_r3",
+                        "forward": "lvl3_r4"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 2
+                    }
+                },
+                "lvl3_r3": {
+                    "id": "lvl3_r3",
+                    "name": "【声学屏蔽舱】S3-12",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl3_r2",
+                        "right": "lvl3_r7",
+                        "backward": "lvl3_r1"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 2
+                    }
+                },
+                "lvl3_r4": {
+                    "id": "lvl3_r4",
+                    "name": "【中继交接所】S3-01",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl3_r2",
+                        "right": "lvl3_r6"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 1
+                    }
+                },
+                "lvl3_r5": {
+                    "id": "lvl3_r5",
+                    "name": "【动力机房副厅】S3-23",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl3_r7",
+                        "right": "lvl3_r11"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    }
+                },
+                "lvl3_r6": {
+                    "id": "lvl3_r6",
+                    "name": "【折射观测哨】S3-11",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl3_r4",
+                        "right": "lvl3_r9"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                "lvl3_r7": {
+                    "id": "lvl3_r7",
+                    "name": "【能源配电副室】S3-22",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl3_r3",
+                        "backward": "lvl3_r5"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 2
+                    }
+                },
+                "lvl3_r8": {
+                    "id": "lvl3_r8",
+                    "name": "【通风十字口】S3-32",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl3_r10"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 2
+                    }
+                },
+                "lvl3_r9": {
+                    "id": "lvl3_r9",
+                    "name": "【中继交接所】S3-21",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl3_r6",
+                        "right": "lvl3_r10"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 1
+                    }
+                },
+                "lvl3_r10": {
+                    "id": "lvl3_r10",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl3_r9",
+                        "right": "lvl3_exit",
+                        "backward": "lvl3_r8"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl3_r11": {
+                    "id": "lvl3_r11",
+                    "name": "【通风十字口】S3-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl3_r5"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl3_exit": {
+                    "id": "lvl3_exit",
+                    "name": "【奇点折跃门】湮灭奇点逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "left": "lvl3_r10"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 3 脱离折跃门"
+                    },
+                    "isExit": true
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l3_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    4
+                ],
+                "taskName": "任务一：成功撤离 (湮灭奇点脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "湮灭奇点探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 4,
+        "title": "第4关：高熵裂隙 · 热力学破缺",
+        "subtitle": "热力学破缺 · 能量紊乱回廊",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 04：高熵裂隙】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl4_start",
+            "nodes": {
+                "lvl4_start": {
+                    "id": "lvl4_start",
+                    "name": "【扇区入口】高熵裂隙起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "forward": "lvl4_r1",
+                        "right": "lvl4_r2"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    },
+                    "isStart": true
+                },
+                "lvl4_r1": {
+                    "id": "lvl4_r1",
+                    "name": "【主干换乘站】S4-22",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl4_start",
+                        "left": "lvl4_r6",
+                        "forward": "lvl4_r3"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 2
+                    }
+                },
+                "lvl4_r2": {
+                    "id": "lvl4_r2",
+                    "name": "【重力维持站】S4-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl4_start",
+                        "right": "lvl4_r12",
+                        "forward": "lvl4_r5"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl4_r3": {
+                    "id": "lvl4_r3",
+                    "name": "【脉冲分流室】S4-21",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl4_r1"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 1
+                    }
+                },
+                "lvl4_r4": {
+                    "id": "lvl4_r4",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "forward": "lvl4_r6",
+                        "left": "lvl4_exit"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl4_r5": {
+                    "id": "lvl4_r5",
+                    "name": "【通风十字口】S4-32",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl4_r2",
+                        "forward": "lvl4_r7"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 2
+                    }
+                },
+                "lvl4_r6": {
+                    "id": "lvl4_r6",
+                    "name": "【流体循环厅】S4-12",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl4_r1",
+                        "backward": "lvl4_r4",
+                        "forward": "lvl4_r11",
+                        "left": "lvl4_r10"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 2
+                    }
+                },
+                "lvl4_r7": {
+                    "id": "lvl4_r7",
+                    "name": "【光学晶体室】S4-31",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl4_r5",
+                        "right": "lvl4_r8"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 1
+                    }
+                },
+                "lvl4_r8": {
+                    "id": "lvl4_r8",
+                    "name": "【流体循环厅】S4-41",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl4_r9",
+                        "left": "lvl4_r7"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 1
+                    }
+                },
+                "lvl4_r9": {
+                    "id": "lvl4_r9",
+                    "name": "【外围气闸】S4-42",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl4_r12",
+                        "forward": "lvl4_r8"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 2
+                    }
+                },
+                "lvl4_r10": {
+                    "id": "lvl4_r10",
+                    "name": "【动力机房副厅】S4-02",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl4_r6"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 2
+                    }
+                },
+                "lvl4_r11": {
+                    "id": "lvl4_r11",
+                    "name": "【脉冲分流室】S4-11",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl4_r6"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                "lvl4_r12": {
+                    "id": "lvl4_r12",
+                    "name": "【能源配电副室】S4-43",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl4_r2",
+                        "forward": "lvl4_r9"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    }
+                },
+                "lvl4_exit": {
+                    "id": "lvl4_exit",
+                    "name": "【奇点折跃门】高熵裂隙逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "right": "lvl4_r4"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 4 脱离折跃门"
+                    },
+                    "isExit": true
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l4_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    5
+                ],
+                "taskName": "任务一：成功撤离 (高熵裂隙脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "高熵裂隙探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 5,
+        "title": "第5关：拟态深渊 · 深渊凝视",
+        "subtitle": "深渊凝视 · 阴影潜伏巢穴",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 05：拟态深渊】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl5_start",
+            "nodes": {
+                "lvl5_start": {
+                    "id": "lvl5_start",
+                    "name": "【扇区入口】拟态深渊起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "right": "lvl5_r3",
+                        "forward": "lvl5_r1"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 3
+                    },
+                    "isStart": true
+                },
+                "lvl5_r1": {
+                    "id": "lvl5_r1",
+                    "name": "【流体循环厅】S5-02",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl5_start",
+                        "right": "lvl5_r2"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 2
+                    }
+                },
+                "lvl5_r2": {
+                    "id": "lvl5_r2",
+                    "name": "【声学屏蔽舱】S5-12",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl5_r3",
+                        "right": "lvl5_r7",
+                        "forward": "lvl5_r6",
+                        "left": "lvl5_r1"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 2
+                    }
+                },
+                "lvl5_r3": {
+                    "id": "lvl5_r3",
+                    "name": "【通风十字口】S5-13",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl5_start",
+                        "forward": "lvl5_r2",
+                        "right": "lvl5_r5"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    }
+                },
+                "lvl5_r4": {
+                    "id": "lvl5_r4",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "right": "lvl5_r6"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl5_r5": {
+                    "id": "lvl5_r5",
+                    "name": "【能源配电副室】S5-23",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl5_r3",
+                        "right": "lvl5_r10"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    }
+                },
+                "lvl5_r6": {
+                    "id": "lvl5_r6",
+                    "name": "【声学屏蔽舱】S5-11",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl5_r2",
+                        "left": "lvl5_r4",
+                        "right": "lvl5_r8"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                "lvl5_r7": {
+                    "id": "lvl5_r7",
+                    "name": "【深潜隔离室】S5-22",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl5_r2"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 2
+                    }
+                },
+                "lvl5_r8": {
+                    "id": "lvl5_r8",
+                    "name": "【流体循环厅】S5-21",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl5_r6",
+                        "right": "lvl5_r9"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 1
+                    }
+                },
+                "lvl5_r9": {
+                    "id": "lvl5_r9",
+                    "name": "【减压过渡井】S5-31",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl5_r8",
+                        "right": "lvl5_exit"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 1
+                    }
+                },
+                "lvl5_r10": {
+                    "id": "lvl5_r10",
+                    "name": "【重力维持站】S5-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl5_r5"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl5_exit": {
+                    "id": "lvl5_exit",
+                    "name": "【奇点折跃门】拟态深渊逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "left": "lvl5_r9"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 5 脱离折跃门"
+                    },
+                    "isExit": true
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l5_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    6
+                ],
+                "taskName": "任务一：成功撤离 (拟态深渊脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "拟态深渊探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 6,
+        "title": "第6关：量子回声 · 波函数坍缩",
+        "subtitle": "波函数坍缩 · 概率弥散走廊",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 06：量子回声】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl6_start",
+            "nodes": {
+                "lvl6_start": {
+                    "id": "lvl6_start",
+                    "name": "【扇区入口】量子回声起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "left": "lvl6_r1",
+                        "forward": "lvl6_r3",
+                        "right": "lvl6_r6"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    },
+                    "isStart": true
+                },
+                "lvl6_r1": {
+                    "id": "lvl6_r1",
+                    "name": "【冷凝储液厅】S6-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl6_start",
+                        "left": "lvl6_r5",
+                        "forward": "lvl6_r2"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl6_r2": {
+                    "id": "lvl6_r2",
+                    "name": "【外围气闸】S6-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl6_r1",
+                        "right": "lvl6_r3"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl6_r3": {
+                    "id": "lvl6_r3",
+                    "name": "【光学晶体室】S6-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl6_start",
+                        "forward": "lvl6_r4",
+                        "left": "lvl6_r2"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl6_r4": {
+                    "id": "lvl6_r4",
+                    "name": "【深潜隔离室】S6-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl6_r3",
+                        "left": "lvl6_r13",
+                        "right": "lvl6_r12"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl6_r5": {
+                    "id": "lvl6_r5",
+                    "name": "【深潜隔离室】S6-15",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl6_r1",
+                        "left": "lvl6_r9"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 5
+                    }
+                },
+                "lvl6_r6": {
+                    "id": "lvl6_r6",
+                    "name": "【流体循环厅】S6-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl6_start",
+                        "forward": "lvl6_r7",
+                        "right": "lvl6_r16"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl6_r7": {
+                    "id": "lvl6_r7",
+                    "name": "【动力机房副厅】S6-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl6_r6",
+                        "forward": "lvl6_r12"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl6_r8": {
+                    "id": "lvl6_r8",
+                    "name": "【动力机房副厅】S6-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl6_r10",
+                        "forward": "lvl6_r14"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl6_r9": {
+                    "id": "lvl6_r9",
+                    "name": "【冷凝储液厅】S6-05",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl6_r5",
+                        "forward": "lvl6_r10"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 5
+                    }
+                },
+                "lvl6_r10": {
+                    "id": "lvl6_r10",
+                    "name": "【能源配电副室】S6-04",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl6_r9",
+                        "right": "lvl6_r8"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 4
+                    }
+                },
+                "lvl6_r11": {
+                    "id": "lvl6_r11",
+                    "name": "【折射观测哨】S6-03",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl6_r14"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 3
+                    }
+                },
+                "lvl6_r12": {
+                    "id": "lvl6_r12",
+                    "name": "【环形廊道】S6-43",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl6_r7",
+                        "right": "lvl6_r17",
+                        "left": "lvl6_r4"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    }
+                },
+                "lvl6_r13": {
+                    "id": "lvl6_r13",
+                    "name": "【生化样本舱】S6-23",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl6_r4"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    }
+                },
+                "lvl6_r14": {
+                    "id": "lvl6_r14",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl6_r8",
+                        "forward": "lvl6_exit",
+                        "left": "lvl6_r11"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl6_r15": {
+                    "id": "lvl6_r15",
+                    "name": "【应急维生站】S6-54",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl6_r16",
+                        "forward": "lvl6_r17"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 4
+                    }
+                },
+                "lvl6_r16": {
+                    "id": "lvl6_r16",
+                    "name": "【生化样本舱】S6-55",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl6_r6",
+                        "forward": "lvl6_r15"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 5
+                    }
+                },
+                "lvl6_r17": {
+                    "id": "lvl6_r17",
+                    "name": "【外围气闸】S6-53",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl6_r15",
+                        "forward": "lvl6_r21",
+                        "left": "lvl6_r12"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 3
+                    }
+                },
+                "lvl6_r18": {
+                    "id": "lvl6_r18",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "right": "lvl6_r19"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl6_exit": {
+                    "id": "lvl6_exit",
+                    "name": "【奇点折跃门】量子回声逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "backward": "lvl6_r14"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 6 脱离折跃门"
+                    },
+                    "isExit": true
+                },
+                "lvl6_r19": {
+                    "id": "lvl6_r19",
+                    "name": "【流体循环厅】S6-42",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl6_r21",
+                        "left": "lvl6_r18",
+                        "forward": "lvl6_r20"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 2
+                    }
+                },
+                "lvl6_r20": {
+                    "id": "lvl6_r20",
+                    "name": "【能源配电副室】S6-41",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl6_r19"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 1
+                    }
+                },
+                "lvl6_r21": {
+                    "id": "lvl6_r21",
+                    "name": "【应急维生站】S6-52",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl6_r17",
+                        "left": "lvl6_r19"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 2
+                    }
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l6_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    7
+                ],
+                "taskName": "任务一：成功撤离 (量子回声脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "量子回声探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 7,
+        "title": "第7关：虚数空间 · 复数坐标轴",
+        "subtitle": "复数坐标轴 · 负折射回音",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 07：虚数空间】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl7_start",
+            "nodes": {
+                "lvl7_start": {
+                    "id": "lvl7_start",
+                    "name": "【扇区入口】虚数空间起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "left": "lvl7_r2",
+                        "right": "lvl7_r3",
+                        "forward": "lvl7_r1"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 5
+                    },
+                    "isStart": true
+                },
+                "lvl7_r1": {
+                    "id": "lvl7_r1",
+                    "name": "【深潜隔离室】S7-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl7_start",
+                        "forward": "lvl7_r5"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl7_r2": {
+                    "id": "lvl7_r2",
+                    "name": "【重力维持站】S7-05",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl7_start",
+                        "forward": "lvl7_r7"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 5
+                    }
+                },
+                "lvl7_r3": {
+                    "id": "lvl7_r3",
+                    "name": "【折射观测哨】S7-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl7_start",
+                        "forward": "lvl7_r4",
+                        "right": "lvl7_r6"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl7_r4": {
+                    "id": "lvl7_r4",
+                    "name": "【减压过渡井】S7-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl7_r3",
+                        "right": "lvl7_r13"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl7_r5": {
+                    "id": "lvl7_r5",
+                    "name": "【光学晶体室】S7-13",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl7_r1",
+                        "right": "lvl7_r14",
+                        "left": "lvl7_r9",
+                        "forward": "lvl7_r8"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    }
+                },
+                "lvl7_r6": {
+                    "id": "lvl7_r6",
+                    "name": "【脉冲分流室】S7-35",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl7_r3",
+                        "right": "lvl7_r10"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    }
+                },
+                "lvl7_r7": {
+                    "id": "lvl7_r7",
+                    "name": "【折射观测哨】S7-04",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl7_r2"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 4
+                    }
+                },
+                "lvl7_r8": {
+                    "id": "lvl7_r8",
+                    "name": "【环形廊道】S7-12",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl7_r5",
+                        "forward": "lvl7_r23",
+                        "left": "lvl7_r20",
+                        "right": "lvl7_r19"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 2
+                    }
+                },
+                "lvl7_r9": {
+                    "id": "lvl7_r9",
+                    "name": "【生化样本舱】S7-03",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl7_r5",
+                        "forward": "lvl7_r20"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 3
+                    }
+                },
+                "lvl7_r10": {
+                    "id": "lvl7_r10",
+                    "name": "【深潜隔离室】S7-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl7_r12",
+                        "right": "lvl7_r11",
+                        "left": "lvl7_r6"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl7_r11": {
+                    "id": "lvl7_r11",
+                    "name": "【同位素库房】S7-55",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl7_r10"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 5
+                    }
+                },
+                "lvl7_r12": {
+                    "id": "lvl7_r12",
+                    "name": "【通风十字口】S7-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl7_r13",
+                        "backward": "lvl7_r10",
+                        "forward": "lvl7_r17",
+                        "right": "lvl7_r15"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl7_r13": {
+                    "id": "lvl7_r13",
+                    "name": "【环形廊道】S7-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl7_r4",
+                        "right": "lvl7_r12"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl7_r14": {
+                    "id": "lvl7_r14",
+                    "name": "【光学晶体室】S7-23",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl7_r5",
+                        "forward": "lvl7_r19"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    }
+                },
+                "lvl7_r15": {
+                    "id": "lvl7_r15",
+                    "name": "【通风十字口】S7-54",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl7_r12"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 4
+                    }
+                },
+                "lvl7_r16": {
+                    "id": "lvl7_r16",
+                    "name": "【声学屏蔽舱】S7-53",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl7_r17",
+                        "forward": "lvl7_exit"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 3
+                    }
+                },
+                "lvl7_r17": {
+                    "id": "lvl7_r17",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl7_r12",
+                        "left": "lvl7_r18",
+                        "right": "lvl7_r16"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl7_exit": {
+                    "id": "lvl7_exit",
+                    "name": "【奇点折跃门】虚数空间逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "backward": "lvl7_r16",
+                        "left": "lvl7_r21"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 7 脱离折跃门"
+                    },
+                    "isExit": true
+                },
+                "lvl7_r18": {
+                    "id": "lvl7_r18",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "right": "lvl7_r17"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl7_r19": {
+                    "id": "lvl7_r19",
+                    "name": "【重力维持站】S7-22",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl7_r14",
+                        "right": "lvl7_r22",
+                        "left": "lvl7_r8"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 2
+                    }
+                },
+                "lvl7_r20": {
+                    "id": "lvl7_r20",
+                    "name": "【脉冲分流室】S7-02",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl7_r9",
+                        "right": "lvl7_r8"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 2
+                    }
+                },
+                "lvl7_r21": {
+                    "id": "lvl7_r21",
+                    "name": "【主干换乘站】S7-42",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl7_exit",
+                        "left": "lvl7_r22"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 2
+                    }
+                },
+                "lvl7_r22": {
+                    "id": "lvl7_r22",
+                    "name": "【同位素库房】S7-32",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl7_r21",
+                        "left": "lvl7_r19"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 2
+                    }
+                },
+                "lvl7_r23": {
+                    "id": "lvl7_r23",
+                    "name": "【重力维持站】S7-11",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl7_r8"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 1
+                    }
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l7_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    8
+                ],
+                "taskName": "任务一：成功撤离 (虚数空间脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "虚数空间探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 8,
+        "title": "第8关：超弦引力 · 多维共振膜",
+        "subtitle": "多维共振膜 · 时空扭率陷阱",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 08：超弦引力】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl8_start",
+            "nodes": {
+                "lvl8_start": {
+                    "id": "lvl8_start",
+                    "name": "【扇区入口】超弦引力起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "right": "lvl8_r7",
+                        "left": "lvl8_r1"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    },
+                    "isStart": true
+                },
+                "lvl8_r1": {
+                    "id": "lvl8_r1",
+                    "name": "【动力机房副厅】S8-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl8_start",
+                        "forward": "lvl8_r5",
+                        "left": "lvl8_r12"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl8_r2": {
+                    "id": "lvl8_r2",
+                    "name": "【冷凝储液厅】S8-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl8_r5",
+                        "right": "lvl8_r3"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl8_r3": {
+                    "id": "lvl8_r3",
+                    "name": "【流体循环厅】S8-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl8_r11",
+                        "backward": "lvl8_r7",
+                        "left": "lvl8_r2"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl8_r4": {
+                    "id": "lvl8_r4",
+                    "name": "【重力维持站】S8-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl8_r17",
+                        "right": "lvl8_r9",
+                        "forward": "lvl8_r15"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl8_r5": {
+                    "id": "lvl8_r5",
+                    "name": "【外围气闸】S8-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl8_r1",
+                        "forward": "lvl8_r17",
+                        "right": "lvl8_r2"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl8_r6": {
+                    "id": "lvl8_r6",
+                    "name": "【动力机房副厅】S8-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl8_r12",
+                        "left": "lvl8_r8"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl8_r7": {
+                    "id": "lvl8_r7",
+                    "name": "【流体循环厅】S8-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl8_start",
+                        "right": "lvl8_r10",
+                        "forward": "lvl8_r3"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl8_r8": {
+                    "id": "lvl8_r8",
+                    "name": "【通风十字口】S8-04",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl8_r6",
+                        "forward": "lvl8_r16"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 4
+                    }
+                },
+                "lvl8_r9": {
+                    "id": "lvl8_r9",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl8_r4"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl8_r10": {
+                    "id": "lvl8_r10",
+                    "name": "【外围气闸】S8-55",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl8_r7",
+                        "forward": "lvl8_r11"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 5
+                    }
+                },
+                "lvl8_r11": {
+                    "id": "lvl8_r11",
+                    "name": "【应急维生站】S8-54",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl8_r10",
+                        "left": "lvl8_r3",
+                        "forward": "lvl8_r13"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 4
+                    }
+                },
+                "lvl8_r12": {
+                    "id": "lvl8_r12",
+                    "name": "【折射观测哨】S8-15",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl8_r1",
+                        "forward": "lvl8_r6",
+                        "left": "lvl8_r14"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 5
+                    }
+                },
+                "lvl8_r13": {
+                    "id": "lvl8_r13",
+                    "name": "【中继交接所】S8-53",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl8_r11"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 3
+                    }
+                },
+                "lvl8_r14": {
+                    "id": "lvl8_r14",
+                    "name": "【光学晶体室】S8-05",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl8_r12"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 5
+                    }
+                },
+                "lvl8_r15": {
+                    "id": "lvl8_r15",
+                    "name": "【生化样本舱】S8-32",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl8_r4",
+                        "forward": "lvl8_exit"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 2
+                    }
+                },
+                "lvl8_exit": {
+                    "id": "lvl8_exit",
+                    "name": "【奇点折跃门】超弦引力逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "backward": "lvl8_r15"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 8 脱离折跃门"
+                    },
+                    "isExit": true
+                },
+                "lvl8_r16": {
+                    "id": "lvl8_r16",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl8_r8",
+                        "forward": "lvl8_r18"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl8_r17": {
+                    "id": "lvl8_r17",
+                    "name": "【环形廊道】S8-23",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl8_r5",
+                        "right": "lvl8_r4",
+                        "forward": "lvl8_r20"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    }
+                },
+                "lvl8_r18": {
+                    "id": "lvl8_r18",
+                    "name": "【主干换乘站】S8-02",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl8_r16"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 2
+                    }
+                },
+                "lvl8_r19": {
+                    "id": "lvl8_r19",
+                    "name": "【折射观测哨】S8-21",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl8_r20"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 1
+                    }
+                },
+                "lvl8_r20": {
+                    "id": "lvl8_r20",
+                    "name": "【减压过渡井】S8-22",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl8_r17",
+                        "forward": "lvl8_r19"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 2
+                    }
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l8_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    9
+                ],
+                "taskName": "任务一：成功撤离 (超弦引力脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "超弦引力探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 9,
+        "title": "第9关：矩阵崩塌 · 拓扑断层",
+        "subtitle": "拓扑断层 · 逻辑死锁核心",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 09：矩阵崩塌】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl9_start",
+            "nodes": {
+                "lvl9_start": {
+                    "id": "lvl9_start",
+                    "name": "【扇区入口】矩阵崩塌起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "right": "lvl9_r1",
+                        "forward": "lvl9_r4",
+                        "left": "lvl9_r2"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 5
+                    },
+                    "isStart": true
+                },
+                "lvl9_r1": {
+                    "id": "lvl9_r1",
+                    "name": "【减压过渡井】S9-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl9_start",
+                        "right": "lvl9_r6",
+                        "forward": "lvl9_r5"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl9_r2": {
+                    "id": "lvl9_r2",
+                    "name": "【主干换乘站】S9-05",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl9_start",
+                        "forward": "lvl9_r3"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 5
+                    }
+                },
+                "lvl9_r3": {
+                    "id": "lvl9_r3",
+                    "name": "【声学屏蔽舱】S9-04",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl9_r4",
+                        "backward": "lvl9_r2"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 4
+                    }
+                },
+                "lvl9_r4": {
+                    "id": "lvl9_r4",
+                    "name": "【应急维生站】S9-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl9_start",
+                        "forward": "lvl9_r9",
+                        "left": "lvl9_r3"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl9_r5": {
+                    "id": "lvl9_r5",
+                    "name": "【折射观测哨】S9-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl9_r1"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl9_r6": {
+                    "id": "lvl9_r6",
+                    "name": "【应急维生站】S9-35",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl9_r1",
+                        "right": "lvl9_r12",
+                        "forward": "lvl9_r7"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    }
+                },
+                "lvl9_r7": {
+                    "id": "lvl9_r7",
+                    "name": "【减压过渡井】S9-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl9_r6",
+                        "forward": "lvl9_r11"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl9_r8": {
+                    "id": "lvl9_r8",
+                    "name": "【环形廊道】S9-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl9_r12",
+                        "right": "lvl9_r23"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl9_r9": {
+                    "id": "lvl9_r9",
+                    "name": "【减压过渡井】S9-13",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl9_r4",
+                        "right": "lvl9_r17",
+                        "left": "lvl9_r10"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    }
+                },
+                "lvl9_r10": {
+                    "id": "lvl9_r10",
+                    "name": "【脉冲分流室】S9-03",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl9_r9",
+                        "forward": "lvl9_r20"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 3
+                    }
+                },
+                "lvl9_r11": {
+                    "id": "lvl9_r11",
+                    "name": "【重力维持站】S9-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl9_r17",
+                        "forward": "lvl9_r14",
+                        "backward": "lvl9_r7"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl9_r12": {
+                    "id": "lvl9_r12",
+                    "name": "【脉冲分流室】S9-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl9_r6",
+                        "forward": "lvl9_r8"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl9_r13": {
+                    "id": "lvl9_r13",
+                    "name": "【光学晶体室】S9-55",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl9_r23"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 5
+                    }
+                },
+                "lvl9_r14": {
+                    "id": "lvl9_r14",
+                    "name": "【重力维持站】S9-32",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl9_r11",
+                        "left": "lvl9_r19",
+                        "forward": "lvl9_r16",
+                        "right": "lvl9_r15"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 2
+                    }
+                },
+                "lvl9_r15": {
+                    "id": "lvl9_r15",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl9_r14",
+                        "right": "lvl9_r22"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl9_r16": {
+                    "id": "lvl9_r16",
+                    "name": "【能源配电副室】S9-31",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl9_r14",
+                        "left": "lvl9_r21"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 1
+                    }
+                },
+                "lvl9_r17": {
+                    "id": "lvl9_r17",
+                    "name": "【动力机房副厅】S9-23",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl9_r9",
+                        "right": "lvl9_r11"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    }
+                },
+                "lvl9_r18": {
+                    "id": "lvl9_r18",
+                    "name": "【量子总线枢纽】S9-12",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl9_r19"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 2
+                    }
+                },
+                "lvl9_r19": {
+                    "id": "lvl9_r19",
+                    "name": "【同位素库房】S9-22",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl9_r14",
+                        "left": "lvl9_r18",
+                        "forward": "lvl9_r21"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 2
+                    }
+                },
+                "lvl9_exit": {
+                    "id": "lvl9_exit",
+                    "name": "【奇点折跃门】矩阵崩塌逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "right": "lvl9_r21"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 9 脱离折跃门"
+                    },
+                    "isExit": true
+                },
+                "lvl9_r20": {
+                    "id": "lvl9_r20",
+                    "name": "【环形廊道】S9-02",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl9_r10"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 2
+                    }
+                },
+                "lvl9_r21": {
+                    "id": "lvl9_r21",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "right": "lvl9_r16",
+                        "left": "lvl9_exit",
+                        "backward": "lvl9_r19"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl9_r22": {
+                    "id": "lvl9_r22",
+                    "name": "【冷凝储液厅】S9-52",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl9_r15"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 2
+                    }
+                },
+                "lvl9_r23": {
+                    "id": "lvl9_r23",
+                    "name": "【深潜隔离室】S9-54",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl9_r8",
+                        "forward": "lvl9_r24",
+                        "backward": "lvl9_r13"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 4
+                    }
+                },
+                "lvl9_r24": {
+                    "id": "lvl9_r24",
+                    "name": "【深潜隔离室】S9-53",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl9_r23"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 3
+                    }
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l9_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    10
+                ],
+                "taskName": "任务一：成功撤离 (矩阵崩塌脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "矩阵崩塌探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 10,
+        "title": "第10关：绝对零度 · 冷冻沉寂",
+        "subtitle": "冷冻沉寂 · 零点能干涉带",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 10：绝对零度】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl10_start",
+            "nodes": {
+                "lvl10_start": {
+                    "id": "lvl10_start",
+                    "name": "【扇区入口】绝对零度起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "left": "lvl10_r4",
+                        "right": "lvl10_r1"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    },
+                    "isStart": true
+                },
+                "lvl10_r1": {
+                    "id": "lvl10_r1",
+                    "name": "【声学屏蔽舱】S10-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl10_start",
+                        "right": "lvl10_r7"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl10_r2": {
+                    "id": "lvl10_r2",
+                    "name": "【外围气闸】S10-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl10_r6",
+                        "right": "lvl10_r8",
+                        "forward": "lvl10_r3"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl10_r3": {
+                    "id": "lvl10_r3",
+                    "name": "【量子总线枢纽】S10-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl10_r2",
+                        "left": "lvl10_r10"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl10_r4": {
+                    "id": "lvl10_r4",
+                    "name": "【生化样本舱】S10-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl10_start",
+                        "left": "lvl10_r9"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl10_r5": {
+                    "id": "lvl10_r5",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl10_r18",
+                        "forward": "lvl10_r12",
+                        "right": "lvl10_r17"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl10_r6": {
+                    "id": "lvl10_r6",
+                    "name": "【减压过渡井】S10-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl10_r11",
+                        "right": "lvl10_r2",
+                        "forward": "lvl10_r10"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl10_r7": {
+                    "id": "lvl10_r7",
+                    "name": "【动力机房副厅】S10-55",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl10_r1",
+                        "forward": "lvl10_r13"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 5
+                    }
+                },
+                "lvl10_r8": {
+                    "id": "lvl10_r8",
+                    "name": "【深潜隔离室】S10-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl10_r2",
+                        "right": "lvl10_r13",
+                        "forward": "lvl10_r15"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl10_r9": {
+                    "id": "lvl10_r9",
+                    "name": "【折射观测哨】S10-15",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl10_r4",
+                        "forward": "lvl10_r11"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 5
+                    }
+                },
+                "lvl10_r10": {
+                    "id": "lvl10_r10",
+                    "name": "【光学晶体室】S10-23",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl10_r21",
+                        "forward": "lvl10_r18",
+                        "right": "lvl10_r3",
+                        "backward": "lvl10_r6"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    }
+                },
+                "lvl10_r11": {
+                    "id": "lvl10_r11",
+                    "name": "【量子总线枢纽】S10-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl10_r9",
+                        "right": "lvl10_r6",
+                        "forward": "lvl10_r21"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl10_r12": {
+                    "id": "lvl10_r12",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl10_r5",
+                        "left": "lvl10_exit",
+                        "right": "lvl10_r19"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl10_r13": {
+                    "id": "lvl10_r13",
+                    "name": "【应急维生站】S10-54",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl10_r8",
+                        "forward": "lvl10_r14",
+                        "backward": "lvl10_r7"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 4
+                    }
+                },
+                "lvl10_r14": {
+                    "id": "lvl10_r14",
+                    "name": "【光学晶体室】S10-53",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl10_r13"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 3
+                    }
+                },
+                "lvl10_exit": {
+                    "id": "lvl10_exit",
+                    "name": "【奇点折跃门】绝对零度逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "right": "lvl10_r12"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 10 脱离折跃门"
+                    },
+                    "isExit": true
+                },
+                "lvl10_r15": {
+                    "id": "lvl10_r15",
+                    "name": "【中继交接所】S10-43",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl10_r8",
+                        "forward": "lvl10_r17"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    }
+                },
+                "lvl10_r16": {
+                    "id": "lvl10_r16",
+                    "name": "【动力机房副厅】S10-52",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl10_r17",
+                        "forward": "lvl10_r20"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 2
+                    }
+                },
+                "lvl10_r17": {
+                    "id": "lvl10_r17",
+                    "name": "【环形廊道】S10-42",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl10_r5",
+                        "right": "lvl10_r16",
+                        "backward": "lvl10_r15"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 2
+                    }
+                },
+                "lvl10_r18": {
+                    "id": "lvl10_r18",
+                    "name": "【同位素库房】S10-22",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl10_r10",
+                        "right": "lvl10_r5",
+                        "left": "lvl10_r22"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 2
+                    }
+                },
+                "lvl10_r19": {
+                    "id": "lvl10_r19",
+                    "name": "【动力机房副厅】S10-41",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl10_r12"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 1
+                    }
+                },
+                "lvl10_r20": {
+                    "id": "lvl10_r20",
+                    "name": "【冷凝储液厅】S10-51",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl10_r16"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 1
+                    }
+                },
+                "lvl10_r21": {
+                    "id": "lvl10_r21",
+                    "name": "【动力机房副厅】S10-13",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl10_r11",
+                        "right": "lvl10_r10"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    }
+                },
+                "lvl10_r22": {
+                    "id": "lvl10_r22",
+                    "name": "【冷凝储液厅】S10-12",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl10_r18"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 2
+                    }
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l10_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    11
+                ],
+                "taskName": "任务一：成功撤离 (绝对零度脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "绝对零度探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 11,
+        "title": "第11关：暗物质界 · 不可见引力源",
+        "subtitle": "不可见引力源 · 暗晕交织网",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 11：暗物质界】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl11_start",
+            "nodes": {
+                "lvl11_start": {
+                    "id": "lvl11_start",
+                    "name": "【扇区入口】暗物质界起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "right": "lvl11_r1",
+                        "left": "lvl11_r3"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 7
+                    },
+                    "isStart": true
+                },
+                "lvl11_r1": {
+                    "id": "lvl11_r1",
+                    "name": "【减压过渡井】S11-27",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl11_start",
+                        "forward": "lvl11_r6"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 7
+                    }
+                },
+                "lvl11_r2": {
+                    "id": "lvl11_r2",
+                    "name": "【外围气闸】S11-37",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl11_r7",
+                        "right": "lvl11_r5"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 7
+                    }
+                },
+                "lvl11_r3": {
+                    "id": "lvl11_r3",
+                    "name": "【重力维持站】S11-07",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl11_start"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 7
+                    }
+                },
+                "lvl11_r4": {
+                    "id": "lvl11_r4",
+                    "name": "【流体循环厅】S11-16",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl11_r6",
+                        "left": "lvl11_r9",
+                        "forward": "lvl11_r13"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 6
+                    }
+                },
+                "lvl11_r5": {
+                    "id": "lvl11_r5",
+                    "name": "【动力机房副厅】S11-47",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl11_r2"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 7
+                    }
+                },
+                "lvl11_r6": {
+                    "id": "lvl11_r6",
+                    "name": "【冷凝储液厅】S11-26",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl11_r1",
+                        "forward": "lvl11_r10",
+                        "right": "lvl11_r7",
+                        "left": "lvl11_r4"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 6
+                    }
+                },
+                "lvl11_r7": {
+                    "id": "lvl11_r7",
+                    "name": "【重力维持站】S11-36",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl11_r6",
+                        "backward": "lvl11_r2",
+                        "forward": "lvl11_r16",
+                        "right": "lvl11_r8"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 6
+                    }
+                },
+                "lvl11_r8": {
+                    "id": "lvl11_r8",
+                    "name": "【通风十字口】S11-46",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl11_r7",
+                        "right": "lvl11_r15"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 6
+                    }
+                },
+                "lvl11_r9": {
+                    "id": "lvl11_r9",
+                    "name": "【减压过渡井】S11-06",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl11_r4",
+                        "forward": "lvl11_r19"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 6
+                    }
+                },
+                "lvl11_r10": {
+                    "id": "lvl11_r10",
+                    "name": "【深潜隔离室】S11-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl11_r6",
+                        "left": "lvl11_r13",
+                        "forward": "lvl11_r18"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl11_r11": {
+                    "id": "lvl11_r11",
+                    "name": "【动力机房副厅】S11-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl11_r16"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl11_r12": {
+                    "id": "lvl11_r12",
+                    "name": "【主干换乘站】S11-57",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl11_r15",
+                        "right": "lvl11_r22"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 7
+                    }
+                },
+                "lvl11_r13": {
+                    "id": "lvl11_r13",
+                    "name": "【主干换乘站】S11-15",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl11_r10",
+                        "forward": "lvl11_r14",
+                        "backward": "lvl11_r4",
+                        "left": "lvl11_r19"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 5
+                    }
+                },
+                "lvl11_r14": {
+                    "id": "lvl11_r14",
+                    "name": "【冷凝储液厅】S11-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl11_r13",
+                        "left": "lvl11_r17"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl11_r15": {
+                    "id": "lvl11_r15",
+                    "name": "【生化样本舱】S11-56",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl11_r8",
+                        "forward": "lvl11_r25",
+                        "backward": "lvl11_r12"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 6
+                    }
+                },
+                "lvl11_r16": {
+                    "id": "lvl11_r16",
+                    "name": "【应急维生站】S11-35",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl11_r7",
+                        "right": "lvl11_r11",
+                        "forward": "lvl11_r21"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    }
+                },
+                "lvl11_r17": {
+                    "id": "lvl11_r17",
+                    "name": "【外围气闸】S11-04",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl11_r19",
+                        "forward": "lvl11_r20",
+                        "right": "lvl11_r14"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 4
+                    }
+                },
+                "lvl11_r18": {
+                    "id": "lvl11_r18",
+                    "name": "【流体循环厅】S11-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl11_r10",
+                        "forward": "lvl11_r33",
+                        "right": "lvl11_r21"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl11_r19": {
+                    "id": "lvl11_r19",
+                    "name": "【应急维生站】S11-05",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl11_r9",
+                        "forward": "lvl11_r17",
+                        "right": "lvl11_r13"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 5
+                    }
+                },
+                "lvl11_r20": {
+                    "id": "lvl11_r20",
+                    "name": "【能源配电副室】S11-03",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl11_r17",
+                        "forward": "lvl11_r24"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 3
+                    }
+                },
+                "lvl11_r21": {
+                    "id": "lvl11_r21",
+                    "name": "【量子总线枢纽】S11-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl11_r16",
+                        "left": "lvl11_r18",
+                        "forward": "lvl11_r31"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl11_r22": {
+                    "id": "lvl11_r22",
+                    "name": "【流体循环厅】S11-67",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl11_r12",
+                        "forward": "lvl11_r23"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 7
+                    }
+                },
+                "lvl11_r23": {
+                    "id": "lvl11_r23",
+                    "name": "【流体循环厅】S11-66",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl11_r22"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 6
+                    }
+                },
+                "lvl11_r24": {
+                    "id": "lvl11_r24",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl11_r20",
+                        "forward": "lvl11_exit"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl11_r25": {
+                    "id": "lvl11_r25",
+                    "name": "【同位素库房】S11-55",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl11_r15",
+                        "right": "lvl11_r28"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 5
+                    }
+                },
+                "lvl11_r26": {
+                    "id": "lvl11_r26",
+                    "name": "【冷凝储液厅】S11-13",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl11_r33",
+                        "forward": "lvl11_r29"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    }
+                },
+                "lvl11_r27": {
+                    "id": "lvl11_r27",
+                    "name": "【冷凝储液厅】S11-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl11_r35"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl11_r28": {
+                    "id": "lvl11_r28",
+                    "name": "【生化样本舱】S11-65",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl11_r25"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 5
+                    }
+                },
+                "lvl11_r29": {
+                    "id": "lvl11_r29",
+                    "name": "【减压过渡井】S11-12",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl11_r37",
+                        "backward": "lvl11_r26"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 2
+                    }
+                },
+                "lvl11_r30": {
+                    "id": "lvl11_r30",
+                    "name": "【动力机房副厅】S11-54",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl11_r32"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 4
+                    }
+                },
+                "lvl11_r31": {
+                    "id": "lvl11_r31",
+                    "name": "【生化样本舱】S11-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl11_r33",
+                        "right": "lvl11_r35",
+                        "backward": "lvl11_r21"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl11_r32": {
+                    "id": "lvl11_r32",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl11_r35",
+                        "right": "lvl11_r34",
+                        "backward": "lvl11_r30"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl11_r33": {
+                    "id": "lvl11_r33",
+                    "name": "【中继交接所】S11-23",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl11_r18",
+                        "forward": "lvl11_r37",
+                        "left": "lvl11_r26",
+                        "right": "lvl11_r31"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    }
+                },
+                "lvl11_r34": {
+                    "id": "lvl11_r34",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl11_r32"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl11_r35": {
+                    "id": "lvl11_r35",
+                    "name": "【深潜隔离室】S11-43",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl11_r31",
+                        "right": "lvl11_r32",
+                        "forward": "lvl11_r36",
+                        "backward": "lvl11_r27"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    }
+                },
+                "lvl11_exit": {
+                    "id": "lvl11_exit",
+                    "name": "【奇点折跃门】暗物质界逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "backward": "lvl11_r24"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 11 脱离折跃门"
+                    },
+                    "isExit": true
+                },
+                "lvl11_r36": {
+                    "id": "lvl11_r36",
+                    "name": "【深潜隔离室】S11-42",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl11_r35"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 2
+                    }
+                },
+                "lvl11_r37": {
+                    "id": "lvl11_r37",
+                    "name": "【重力维持站】S11-22",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl11_r33",
+                        "left": "lvl11_r29"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 2
+                    }
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l11_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    12
+                ],
+                "taskName": "任务一：成功撤离 (暗物质界脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "暗物质界探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 12,
+        "title": "第12关：时间牢笼 · 因果钟摆",
+        "subtitle": "因果钟摆 · 相对论环路",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 12：时间牢笼】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl12_start",
+            "nodes": {
+                "lvl12_start": {
+                    "id": "lvl12_start",
+                    "name": "【扇区入口】时间牢笼起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "forward": "lvl12_r1",
+                        "right": "lvl12_r2",
+                        "left": "lvl12_r6"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 7
+                    },
+                    "isStart": true
+                },
+                "lvl12_r1": {
+                    "id": "lvl12_r1",
+                    "name": "【通风十字口】S12-36",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl12_start",
+                        "left": "lvl12_r11",
+                        "right": "lvl12_r13"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 6
+                    }
+                },
+                "lvl12_r2": {
+                    "id": "lvl12_r2",
+                    "name": "【主干换乘站】S12-47",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl12_start",
+                        "right": "lvl12_r3"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 7
+                    }
+                },
+                "lvl12_r3": {
+                    "id": "lvl12_r3",
+                    "name": "【环形廊道】S12-57",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl12_r4",
+                        "left": "lvl12_r2"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 7
+                    }
+                },
+                "lvl12_r4": {
+                    "id": "lvl12_r4",
+                    "name": "【外围气闸】S12-56",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl12_r13",
+                        "right": "lvl12_r16",
+                        "forward": "lvl12_r23",
+                        "backward": "lvl12_r3"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 6
+                    }
+                },
+                "lvl12_r5": {
+                    "id": "lvl12_r5",
+                    "name": "【通风十字口】S12-67",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl12_r16"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 7
+                    }
+                },
+                "lvl12_r6": {
+                    "id": "lvl12_r6",
+                    "name": "【流体循环厅】S12-27",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl12_r11",
+                        "left": "lvl12_r7",
+                        "right": "lvl12_start"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 7
+                    }
+                },
+                "lvl12_r7": {
+                    "id": "lvl12_r7",
+                    "name": "【深潜隔离室】S12-17",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl12_r9",
+                        "left": "lvl12_r8",
+                        "right": "lvl12_r6"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 7
+                    }
+                },
+                "lvl12_r8": {
+                    "id": "lvl12_r8",
+                    "name": "【通风十字口】S12-07",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl12_r7",
+                        "forward": "lvl12_r10"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 7
+                    }
+                },
+                "lvl12_r9": {
+                    "id": "lvl12_r9",
+                    "name": "【环形廊道】S12-16",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl12_r17",
+                        "backward": "lvl12_r7",
+                        "left": "lvl12_r10"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 6
+                    }
+                },
+                "lvl12_r10": {
+                    "id": "lvl12_r10",
+                    "name": "【外围气闸】S12-06",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl12_r8",
+                        "right": "lvl12_r9"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 6
+                    }
+                },
+                "lvl12_r11": {
+                    "id": "lvl12_r11",
+                    "name": "【同位素库房】S12-26",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl12_r1",
+                        "forward": "lvl12_r12",
+                        "backward": "lvl12_r6"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 6
+                    }
+                },
+                "lvl12_r12": {
+                    "id": "lvl12_r12",
+                    "name": "【生化样本舱】S12-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl12_r11",
+                        "left": "lvl12_r17",
+                        "forward": "lvl12_r15",
+                        "right": "lvl12_r14"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl12_r13": {
+                    "id": "lvl12_r13",
+                    "name": "【中继交接所】S12-46",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl12_r1",
+                        "forward": "lvl12_r19",
+                        "right": "lvl12_r4"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 6
+                    }
+                },
+                "lvl12_r14": {
+                    "id": "lvl12_r14",
+                    "name": "【折射观测哨】S12-35",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl12_r12",
+                        "forward": "lvl12_r22"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    }
+                },
+                "lvl12_r15": {
+                    "id": "lvl12_r15",
+                    "name": "【减压过渡井】S12-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl12_r12",
+                        "right": "lvl12_r22",
+                        "left": "lvl12_r21"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl12_r16": {
+                    "id": "lvl12_r16",
+                    "name": "【量子总线枢纽】S12-66",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl12_r4",
+                        "backward": "lvl12_r5",
+                        "forward": "lvl12_r37"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 6
+                    }
+                },
+                "lvl12_r17": {
+                    "id": "lvl12_r17",
+                    "name": "【减压过渡井】S12-15",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl12_r12",
+                        "backward": "lvl12_r9",
+                        "left": "lvl12_r20",
+                        "forward": "lvl12_r21"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 5
+                    }
+                },
+                "lvl12_r18": {
+                    "id": "lvl12_r18",
+                    "name": "【量子总线枢纽】S12-23",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl12_r27",
+                        "forward": "lvl12_r29"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    }
+                },
+                "lvl12_r19": {
+                    "id": "lvl12_r19",
+                    "name": "【流体循环厅】S12-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl12_r13",
+                        "forward": "lvl12_r24"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl12_r20": {
+                    "id": "lvl12_r20",
+                    "name": "【流体循环厅】S12-05",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl12_r17",
+                        "forward": "lvl12_r28"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 5
+                    }
+                },
+                "lvl12_r21": {
+                    "id": "lvl12_r21",
+                    "name": "【同位素库房】S12-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl12_r17",
+                        "forward": "lvl12_r27",
+                        "left": "lvl12_r28",
+                        "right": "lvl12_r15"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl12_r22": {
+                    "id": "lvl12_r22",
+                    "name": "【动力机房副厅】S12-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl12_r15",
+                        "forward": "lvl12_r25",
+                        "backward": "lvl12_r14"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl12_r23": {
+                    "id": "lvl12_r23",
+                    "name": "【冷凝储液厅】S12-55",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl12_r4",
+                        "right": "lvl12_r37"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 5
+                    }
+                },
+                "lvl12_r24": {
+                    "id": "lvl12_r24",
+                    "name": "【折射观测哨】S12-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl12_r19",
+                        "right": "lvl12_r31"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl12_r25": {
+                    "id": "lvl12_r25",
+                    "name": "【外围气闸】S12-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl12_r22",
+                        "forward": "lvl12_r35"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl12_r26": {
+                    "id": "lvl12_r26",
+                    "name": "【光学晶体室】S12-43",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl12_r36"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    }
+                },
+                "lvl12_r27": {
+                    "id": "lvl12_r27",
+                    "name": "【能源配电副室】S12-13",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl12_r21",
+                        "right": "lvl12_r18",
+                        "left": "lvl12_r32"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    }
+                },
+                "lvl12_r28": {
+                    "id": "lvl12_r28",
+                    "name": "【动力机房副厅】S12-04",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl12_r20",
+                        "right": "lvl12_r21"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 4
+                    }
+                },
+                "lvl12_r29": {
+                    "id": "lvl12_r29",
+                    "name": "【折射观测哨】S12-22",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl12_r18",
+                        "left": "lvl12_r30"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 2
+                    }
+                },
+                "lvl12_r30": {
+                    "id": "lvl12_r30",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "right": "lvl12_r29",
+                        "left": "lvl12_exit"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl12_r31": {
+                    "id": "lvl12_r31",
+                    "name": "【外围气闸】S12-54",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl12_r24",
+                        "forward": "lvl12_r33"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 4
+                    }
+                },
+                "lvl12_r32": {
+                    "id": "lvl12_r32",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "right": "lvl12_r27"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl12_r33": {
+                    "id": "lvl12_r33",
+                    "name": "【冷凝储液厅】S12-53",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl12_r31",
+                        "right": "lvl12_r39"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 3
+                    }
+                },
+                "lvl12_r34": {
+                    "id": "lvl12_r34",
+                    "name": "【能源配电副室】S12-64",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl12_r37"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 4
+                    }
+                },
+                "lvl12_r35": {
+                    "id": "lvl12_r35",
+                    "name": "【折射观测哨】S12-32",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl12_r25",
+                        "right": "lvl12_r36"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 2
+                    }
+                },
+                "lvl12_r36": {
+                    "id": "lvl12_r36",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl12_r35",
+                        "right": "lvl12_r38",
+                        "backward": "lvl12_r26"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl12_r37": {
+                    "id": "lvl12_r37",
+                    "name": "【主干换乘站】S12-65",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl12_r23",
+                        "forward": "lvl12_r34",
+                        "backward": "lvl12_r16"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 5
+                    }
+                },
+                "lvl12_exit": {
+                    "id": "lvl12_exit",
+                    "name": "【奇点折跃门】时间牢笼逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "right": "lvl12_r30"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 12 脱离折跃门"
+                    },
+                    "isExit": true
+                },
+                "lvl12_r38": {
+                    "id": "lvl12_r38",
+                    "name": "【重力维持站】S12-52",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl12_r36"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 2
+                    }
+                },
+                "lvl12_r39": {
+                    "id": "lvl12_r39",
+                    "name": "【减压过渡井】S12-63",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl12_r33"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 3
+                    }
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l12_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    13
+                ],
+                "taskName": "任务一：成功撤离 (时间牢笼脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "时间牢笼探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 13,
+        "title": "第13关：拟人茧房 · 生物拟态工坊",
+        "subtitle": "生物拟态工坊 · 培养液槽林",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 13：拟人茧房】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl13_start",
+            "nodes": {
+                "lvl13_start": {
+                    "id": "lvl13_start",
+                    "name": "【扇区入口】拟人茧房起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "right": "lvl13_r4",
+                        "forward": "lvl13_r1"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 7
+                    },
+                    "isStart": true
+                },
+                "lvl13_r1": {
+                    "id": "lvl13_r1",
+                    "name": "【生化样本舱】S13-06",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl13_start",
+                        "forward": "lvl13_r2"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 6
+                    }
+                },
+                "lvl13_r2": {
+                    "id": "lvl13_r2",
+                    "name": "【通风十字口】S13-05",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl13_r1",
+                        "forward": "lvl13_r3"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 5
+                    }
+                },
+                "lvl13_r3": {
+                    "id": "lvl13_r3",
+                    "name": "【冷凝储液厅】S13-04",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl13_r2",
+                        "forward": "lvl13_r7",
+                        "right": "lvl13_r8"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 4
+                    }
+                },
+                "lvl13_r4": {
+                    "id": "lvl13_r4",
+                    "name": "【环形廊道】S13-17",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl13_start",
+                        "forward": "lvl13_r5",
+                        "right": "lvl13_r6"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 7
+                    }
+                },
+                "lvl13_r5": {
+                    "id": "lvl13_r5",
+                    "name": "【动力机房副厅】S13-16",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl13_r4",
+                        "right": "lvl13_r12",
+                        "forward": "lvl13_r14"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 6
+                    }
+                },
+                "lvl13_r6": {
+                    "id": "lvl13_r6",
+                    "name": "【主干换乘站】S13-27",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl13_r4",
+                        "right": "lvl13_r9"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 7
+                    }
+                },
+                "lvl13_r7": {
+                    "id": "lvl13_r7",
+                    "name": "【冷凝储液厅】S13-03",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl13_r3",
+                        "forward": "lvl13_r10",
+                        "right": "lvl13_r13"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 3
+                    }
+                },
+                "lvl13_r8": {
+                    "id": "lvl13_r8",
+                    "name": "【主干换乘站】S13-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl13_r14",
+                        "left": "lvl13_r3"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl13_r9": {
+                    "id": "lvl13_r9",
+                    "name": "【中继交接所】S13-37",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl13_r26",
+                        "left": "lvl13_r6"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 7
+                    }
+                },
+                "lvl13_r10": {
+                    "id": "lvl13_r10",
+                    "name": "【通风十字口】S13-02",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl13_r7",
+                        "forward": "lvl13_r17",
+                        "right": "lvl13_r11"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 2
+                    }
+                },
+                "lvl13_r11": {
+                    "id": "lvl13_r11",
+                    "name": "【动力机房副厅】S13-12",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl13_r10",
+                        "right": "lvl13_r16",
+                        "forward": "lvl13_r18"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 2
+                    }
+                },
+                "lvl13_r12": {
+                    "id": "lvl13_r12",
+                    "name": "【通风十字口】S13-26",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl13_r5",
+                        "right": "lvl13_r26",
+                        "forward": "lvl13_r15"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 6
+                    }
+                },
+                "lvl13_r13": {
+                    "id": "lvl13_r13",
+                    "name": "【量子总线枢纽】S13-13",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl13_r7",
+                        "right": "lvl13_r19"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    }
+                },
+                "lvl13_r14": {
+                    "id": "lvl13_r14",
+                    "name": "【流体循环厅】S13-15",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl13_r5",
+                        "right": "lvl13_r15",
+                        "forward": "lvl13_r8"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 5
+                    }
+                },
+                "lvl13_r15": {
+                    "id": "lvl13_r15",
+                    "name": "【主干换乘站】S13-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl13_r14",
+                        "forward": "lvl13_r21",
+                        "backward": "lvl13_r12"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl13_r16": {
+                    "id": "lvl13_r16",
+                    "name": "【光学晶体室】S13-22",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl13_r11",
+                        "forward": "lvl13_r24",
+                        "right": "lvl13_r22"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 2
+                    }
+                },
+                "lvl13_r17": {
+                    "id": "lvl13_r17",
+                    "name": "【声学屏蔽舱】S13-01",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl13_r10",
+                        "right": "lvl13_r18"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 1
+                    }
+                },
+                "lvl13_r18": {
+                    "id": "lvl13_r18",
+                    "name": "【脉冲分流室】S13-11",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl13_r17",
+                        "backward": "lvl13_r11",
+                        "right": "lvl13_r24"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                "lvl13_r19": {
+                    "id": "lvl13_r19",
+                    "name": "【脉冲分流室】S13-23",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl13_r20",
+                        "left": "lvl13_r13"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    }
+                },
+                "lvl13_r20": {
+                    "id": "lvl13_r20",
+                    "name": "【同位素库房】S13-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl13_r33",
+                        "left": "lvl13_r19",
+                        "right": "lvl13_r32"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl13_r21": {
+                    "id": "lvl13_r21",
+                    "name": "【环形廊道】S13-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl13_r15",
+                        "right": "lvl13_r33"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl13_r22": {
+                    "id": "lvl13_r22",
+                    "name": "【环形廊道】S13-32",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl13_r16",
+                        "right": "lvl13_r28",
+                        "forward": "lvl13_r25"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 2
+                    }
+                },
+                "lvl13_r23": {
+                    "id": "lvl13_r23",
+                    "name": "【重力维持站】S13-35",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl13_r26",
+                        "forward": "lvl13_r33",
+                        "right": "lvl13_r30"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    }
+                },
+                "lvl13_r24": {
+                    "id": "lvl13_r24",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl13_r16",
+                        "left": "lvl13_r18"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl13_r25": {
+                    "id": "lvl13_r25",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl13_r22",
+                        "right": "lvl13_r29"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl13_r26": {
+                    "id": "lvl13_r26",
+                    "name": "【折射观测哨】S13-36",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl13_r12",
+                        "right": "lvl13_r34",
+                        "forward": "lvl13_r23",
+                        "backward": "lvl13_r9"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 6
+                    }
+                },
+                "lvl13_r27": {
+                    "id": "lvl13_r27",
+                    "name": "【应急维生站】S13-47",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl13_r34"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 7
+                    }
+                },
+                "lvl13_r28": {
+                    "id": "lvl13_r28",
+                    "name": "【同位素库房】S13-42",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl13_r22",
+                        "right": "lvl13_exit"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 2
+                    }
+                },
+                "lvl13_r29": {
+                    "id": "lvl13_r29",
+                    "name": "【通风十字口】S13-41",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl13_r25"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 1
+                    }
+                },
+                "lvl13_r30": {
+                    "id": "lvl13_r30",
+                    "name": "【应急维生站】S13-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl13_r23",
+                        "right": "lvl13_r31"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl13_r31": {
+                    "id": "lvl13_r31",
+                    "name": "【量子总线枢纽】S13-55",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl13_r30"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 5
+                    }
+                },
+                "lvl13_r32": {
+                    "id": "lvl13_r32",
+                    "name": "【声学屏蔽舱】S13-43",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl13_r20"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    }
+                },
+                "lvl13_r33": {
+                    "id": "lvl13_r33",
+                    "name": "【流体循环厅】S13-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl13_r23",
+                        "forward": "lvl13_r20",
+                        "right": "lvl13_r35",
+                        "left": "lvl13_r21"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl13_r34": {
+                    "id": "lvl13_r34",
+                    "name": "【应急维生站】S13-46",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl13_r26",
+                        "backward": "lvl13_r27"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 6
+                    }
+                },
+                "lvl13_r35": {
+                    "id": "lvl13_r35",
+                    "name": "【生化样本舱】S13-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl13_r33",
+                        "right": "lvl13_r36"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl13_exit": {
+                    "id": "lvl13_exit",
+                    "name": "【奇点折跃门】拟人茧房逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "left": "lvl13_r28"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 13 脱离折跃门"
+                    },
+                    "isExit": true
+                },
+                "lvl13_r36": {
+                    "id": "lvl13_r36",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl13_r35"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 4
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l13_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    14
+                ],
+                "taskName": "任务一：成功撤离 (拟人茧房脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "拟人茧房探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 14,
+        "title": "第14关：异构核心 · 同构破缺",
+        "subtitle": "同构破缺 · 递归逻辑阵列",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 14：异构核心】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl14_start",
+            "nodes": {
+                "lvl14_start": {
+                    "id": "lvl14_start",
+                    "name": "【扇区入口】异构核心起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "forward": "lvl14_r1",
+                        "right": "lvl14_r5",
+                        "left": "lvl14_r2"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 7
+                    },
+                    "isStart": true
+                },
+                "lvl14_r1": {
+                    "id": "lvl14_r1",
+                    "name": "【折射观测哨】S14-36",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl14_start",
+                        "forward": "lvl14_r29"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 6
+                    }
+                },
+                "lvl14_r2": {
+                    "id": "lvl14_r2",
+                    "name": "【外围气闸】S14-27",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl14_start",
+                        "left": "lvl14_r6",
+                        "forward": "lvl14_r3"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 7
+                    }
+                },
+                "lvl14_r3": {
+                    "id": "lvl14_r3",
+                    "name": "【同位素库房】S14-26",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl14_r7",
+                        "backward": "lvl14_r2",
+                        "left": "lvl14_r4"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 6
+                    }
+                },
+                "lvl14_r4": {
+                    "id": "lvl14_r4",
+                    "name": "【动力机房副厅】S14-16",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl14_r8",
+                        "left": "lvl14_r16",
+                        "right": "lvl14_r3"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 6
+                    }
+                },
+                "lvl14_r5": {
+                    "id": "lvl14_r5",
+                    "name": "【外围气闸】S14-47",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl14_start",
+                        "forward": "lvl14_r10",
+                        "right": "lvl14_r9"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 7
+                    }
+                },
+                "lvl14_r6": {
+                    "id": "lvl14_r6",
+                    "name": "【主干换乘站】S14-17",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl14_r2"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 7
+                    }
+                },
+                "lvl14_r7": {
+                    "id": "lvl14_r7",
+                    "name": "【脉冲分流室】S14-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl14_r29",
+                        "left": "lvl14_r8",
+                        "backward": "lvl14_r3"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl14_r8": {
+                    "id": "lvl14_r8",
+                    "name": "【脉冲分流室】S14-15",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl14_r7",
+                        "forward": "lvl14_r11",
+                        "backward": "lvl14_r4",
+                        "left": "lvl14_r13"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 5
+                    }
+                },
+                "lvl14_r9": {
+                    "id": "lvl14_r9",
+                    "name": "【量子总线枢纽】S14-57",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl14_r5",
+                        "forward": "lvl14_r15",
+                        "right": "lvl14_r19"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 7
+                    }
+                },
+                "lvl14_r10": {
+                    "id": "lvl14_r10",
+                    "name": "【深潜隔离室】S14-46",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl14_r5",
+                        "right": "lvl14_r15",
+                        "forward": "lvl14_r17"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 6
+                    }
+                },
+                "lvl14_r11": {
+                    "id": "lvl14_r11",
+                    "name": "【同位素库房】S14-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl14_r8",
+                        "forward": "lvl14_r28",
+                        "left": "lvl14_r21"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl14_r12": {
+                    "id": "lvl14_r12",
+                    "name": "【流体循环厅】S14-07",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl14_r16"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 7
+                    }
+                },
+                "lvl14_r13": {
+                    "id": "lvl14_r13",
+                    "name": "【折射观测哨】S14-05",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl14_r16",
+                        "forward": "lvl14_r21",
+                        "right": "lvl14_r8"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 5
+                    }
+                },
+                "lvl14_r14": {
+                    "id": "lvl14_r14",
+                    "name": "【重力维持站】S14-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl14_r25"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl14_r15": {
+                    "id": "lvl14_r15",
+                    "name": "【同位素库房】S14-56",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl14_r9",
+                        "right": "lvl14_r18",
+                        "left": "lvl14_r10"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 6
+                    }
+                },
+                "lvl14_r16": {
+                    "id": "lvl14_r16",
+                    "name": "【同位素库房】S14-06",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl14_r4",
+                        "backward": "lvl14_r12",
+                        "forward": "lvl14_r13"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 6
+                    }
+                },
+                "lvl14_r17": {
+                    "id": "lvl14_r17",
+                    "name": "【脉冲分流室】S14-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl14_r29",
+                        "forward": "lvl14_r32",
+                        "right": "lvl14_r20",
+                        "backward": "lvl14_r10"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl14_r18": {
+                    "id": "lvl14_r18",
+                    "name": "【动力机房副厅】S14-66",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl14_r26",
+                        "left": "lvl14_r15"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 6
+                    }
+                },
+                "lvl14_r19": {
+                    "id": "lvl14_r19",
+                    "name": "【冷凝储液厅】S14-67",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl14_r9"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 7
+                    }
+                },
+                "lvl14_r20": {
+                    "id": "lvl14_r20",
+                    "name": "【量子总线枢纽】S14-55",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl14_r17",
+                        "right": "lvl14_r26",
+                        "forward": "lvl14_r23"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 5
+                    }
+                },
+                "lvl14_r21": {
+                    "id": "lvl14_r21",
+                    "name": "【量子总线枢纽】S14-04",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl14_r13",
+                        "right": "lvl14_r11"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 4
+                    }
+                },
+                "lvl14_r22": {
+                    "id": "lvl14_r22",
+                    "name": "【应急维生站】S14-03",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl14_r28"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 3
+                    }
+                },
+                "lvl14_exit": {
+                    "id": "lvl14_exit",
+                    "name": "【奇点折跃门】异构核心逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "right": "lvl14_r35"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 14 脱离折跃门"
+                    },
+                    "isExit": true
+                },
+                "lvl14_r23": {
+                    "id": "lvl14_r23",
+                    "name": "【光学晶体室】S14-54",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl14_r20",
+                        "forward": "lvl14_r37",
+                        "right": "lvl14_r27"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 4
+                    }
+                },
+                "lvl14_r24": {
+                    "id": "lvl14_r24",
+                    "name": "【生化样本舱】S14-23",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl14_r28"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    }
+                },
+                "lvl14_r25": {
+                    "id": "lvl14_r25",
+                    "name": "【动力机房副厅】S14-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl14_r29",
+                        "left": "lvl14_r14"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl14_r26": {
+                    "id": "lvl14_r26",
+                    "name": "【主干换乘站】S14-65",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl14_r20",
+                        "backward": "lvl14_r18"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 5
+                    }
+                },
+                "lvl14_r27": {
+                    "id": "lvl14_r27",
+                    "name": "【声学屏蔽舱】S14-64",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl14_r23",
+                        "forward": "lvl14_r38"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 4
+                    }
+                },
+                "lvl14_r28": {
+                    "id": "lvl14_r28",
+                    "name": "【中继交接所】S14-13",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl14_r11",
+                        "right": "lvl14_r24",
+                        "left": "lvl14_r22"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    }
+                },
+                "lvl14_r29": {
+                    "id": "lvl14_r29",
+                    "name": "【光学晶体室】S14-35",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl14_r1",
+                        "left": "lvl14_r7",
+                        "right": "lvl14_r17",
+                        "forward": "lvl14_r25"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    }
+                },
+                "lvl14_r30": {
+                    "id": "lvl14_r30",
+                    "name": "【同位素库房】S14-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl14_r34",
+                        "forward": "lvl14_r33"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl14_r31": {
+                    "id": "lvl14_r31",
+                    "name": "【通风十字口】S14-22",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl14_r33",
+                        "left": "lvl14_r35"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 2
+                    }
+                },
+                "lvl14_r32": {
+                    "id": "lvl14_r32",
+                    "name": "【折射观测哨】S14-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl14_r17"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl14_r33": {
+                    "id": "lvl14_r33",
+                    "name": "【生化样本舱】S14-32",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl14_r30",
+                        "left": "lvl14_r31",
+                        "forward": "lvl14_r36"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 2
+                    }
+                },
+                "lvl14_r34": {
+                    "id": "lvl14_r34",
+                    "name": "【减压过渡井】S14-43",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl14_r37",
+                        "left": "lvl14_r30",
+                        "forward": "lvl14_r40"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    }
+                },
+                "lvl14_r35": {
+                    "id": "lvl14_r35",
+                    "name": "【声学屏蔽舱】S14-12",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl14_r31",
+                        "left": "lvl14_exit"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 2
+                    }
+                },
+                "lvl14_r36": {
+                    "id": "lvl14_r36",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl14_r33",
+                        "left": "lvl14_r39"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl14_r37": {
+                    "id": "lvl14_r37",
+                    "name": "【声学屏蔽舱】S14-53",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl14_r23",
+                        "left": "lvl14_r34",
+                        "right": "lvl14_r38"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 3
+                    }
+                },
+                "lvl14_r38": {
+                    "id": "lvl14_r38",
+                    "name": "【声学屏蔽舱】S14-63",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl14_r27",
+                        "left": "lvl14_r37"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 3
+                    }
+                },
+                "lvl14_r39": {
+                    "id": "lvl14_r39",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "right": "lvl14_r36"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl14_r40": {
+                    "id": "lvl14_r40",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl14_r34"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l14_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    15
+                ],
+                "taskName": "任务一：成功撤离 (异构核心脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "异构核心探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 15,
+        "title": "第15关：折叠维度 · 卡拉比-丘流形",
+        "subtitle": "卡拉比-丘流形 · 高维投影室",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 15：折叠维度】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl15_start",
+            "nodes": {
+                "lvl15_start": {
+                    "id": "lvl15_start",
+                    "name": "【扇区入口】折叠维度起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "right": "lvl15_r1"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 7
+                    },
+                    "isStart": true
+                },
+                "lvl15_r1": {
+                    "id": "lvl15_r1",
+                    "name": "【深潜隔离室】S15-17",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl15_start",
+                        "forward": "lvl15_r2",
+                        "right": "lvl15_r4"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 7
+                    }
+                },
+                "lvl15_r2": {
+                    "id": "lvl15_r2",
+                    "name": "【生化样本舱】S15-16",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl15_r1",
+                        "left": "lvl15_r3",
+                        "right": "lvl15_r7"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 6
+                    }
+                },
+                "lvl15_r3": {
+                    "id": "lvl15_r3",
+                    "name": "【环形廊道】S15-06",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl15_r2",
+                        "forward": "lvl15_r6"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 6
+                    }
+                },
+                "lvl15_r4": {
+                    "id": "lvl15_r4",
+                    "name": "【流体循环厅】S15-27",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl15_r1",
+                        "right": "lvl15_r10"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 7
+                    }
+                },
+                "lvl15_r5": {
+                    "id": "lvl15_r5",
+                    "name": "【环形廊道】S15-15",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl15_r6",
+                        "forward": "lvl15_r9",
+                        "right": "lvl15_r8"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 5
+                    }
+                },
+                "lvl15_r6": {
+                    "id": "lvl15_r6",
+                    "name": "【流体循环厅】S15-05",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl15_r3",
+                        "right": "lvl15_r5"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 5
+                    }
+                },
+                "lvl15_r7": {
+                    "id": "lvl15_r7",
+                    "name": "【外围气闸】S15-26",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl15_r8",
+                        "left": "lvl15_r2"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 6
+                    }
+                },
+                "lvl15_r8": {
+                    "id": "lvl15_r8",
+                    "name": "【重力维持站】S15-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl15_r5",
+                        "forward": "lvl15_r17",
+                        "right": "lvl15_r18",
+                        "backward": "lvl15_r7"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl15_r9": {
+                    "id": "lvl15_r9",
+                    "name": "【重力维持站】S15-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl15_r5",
+                        "forward": "lvl15_r22",
+                        "left": "lvl15_r16",
+                        "right": "lvl15_r17"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl15_r10": {
+                    "id": "lvl15_r10",
+                    "name": "【动力机房副厅】S15-37",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl15_r14",
+                        "left": "lvl15_r4"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 7
+                    }
+                },
+                "lvl15_r11": {
+                    "id": "lvl15_r11",
+                    "name": "【生化样本舱】S15-36",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl15_r18"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 6
+                    }
+                },
+                "lvl15_r12": {
+                    "id": "lvl15_r12",
+                    "name": "【声学屏蔽舱】S15-46",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl15_r24",
+                        "backward": "lvl15_r14",
+                        "right": "lvl15_r13"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 6
+                    }
+                },
+                "lvl15_r13": {
+                    "id": "lvl15_r13",
+                    "name": "【流体循环厅】S15-56",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl15_r12",
+                        "right": "lvl15_r15"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 6
+                    }
+                },
+                "lvl15_r14": {
+                    "id": "lvl15_r14",
+                    "name": "【中继交接所】S15-47",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl15_r12",
+                        "left": "lvl15_r10",
+                        "right": "lvl15_r23"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 7
+                    }
+                },
+                "lvl15_r15": {
+                    "id": "lvl15_r15",
+                    "name": "【光学晶体室】S15-66",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl15_r13",
+                        "forward": "lvl15_r28",
+                        "backward": "lvl15_r19"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 6
+                    }
+                },
+                "lvl15_r16": {
+                    "id": "lvl15_r16",
+                    "name": "【外围气闸】S15-04",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl15_r9"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 4
+                    }
+                },
+                "lvl15_r17": {
+                    "id": "lvl15_r17",
+                    "name": "【脉冲分流室】S15-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl15_r8",
+                        "left": "lvl15_r9"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl15_r18": {
+                    "id": "lvl15_r18",
+                    "name": "【外围气闸】S15-35",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl15_r8",
+                        "right": "lvl15_r24",
+                        "backward": "lvl15_r11",
+                        "forward": "lvl15_r26"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    }
+                },
+                "lvl15_r19": {
+                    "id": "lvl15_r19",
+                    "name": "【外围气闸】S15-67",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl15_r15",
+                        "left": "lvl15_r23"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 7
+                    }
+                },
+                "lvl15_r20": {
+                    "id": "lvl15_r20",
+                    "name": "【通风十字口】S15-55",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl15_r31"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 5
+                    }
+                },
+                "lvl15_r21": {
+                    "id": "lvl15_r21",
+                    "name": "【应急维生站】S15-03",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl15_r27",
+                        "right": "lvl15_r22"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 3
+                    }
+                },
+                "lvl15_r22": {
+                    "id": "lvl15_r22",
+                    "name": "【通风十字口】S15-13",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl15_r9",
+                        "forward": "lvl15_r33",
+                        "left": "lvl15_r21"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    }
+                },
+                "lvl15_r23": {
+                    "id": "lvl15_r23",
+                    "name": "【外围气闸】S15-57",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl15_r19",
+                        "left": "lvl15_r14"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 7
+                    }
+                },
+                "lvl15_r24": {
+                    "id": "lvl15_r24",
+                    "name": "【通风十字口】S15-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl15_r18",
+                        "backward": "lvl15_r12",
+                        "forward": "lvl15_r25"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl15_r25": {
+                    "id": "lvl15_r25",
+                    "name": "【声学屏蔽舱】S15-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl15_r24",
+                        "right": "lvl15_r31",
+                        "forward": "lvl15_r35"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl15_r26": {
+                    "id": "lvl15_r26",
+                    "name": "【减压过渡井】S15-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl15_r18",
+                        "forward": "lvl15_r38"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl15_r27": {
+                    "id": "lvl15_r27",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "right": "lvl15_r33",
+                        "backward": "lvl15_r21",
+                        "forward": "lvl15_r29"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl15_r28": {
+                    "id": "lvl15_r28",
+                    "name": "【量子总线枢纽】S15-65",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl15_r15",
+                        "forward": "lvl15_r30"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 5
+                    }
+                },
+                "lvl15_r29": {
+                    "id": "lvl15_r29",
+                    "name": "【重力维持站】S15-01",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl15_r27"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 1
+                    }
+                },
+                "lvl15_r30": {
+                    "id": "lvl15_r30",
+                    "name": "【环形廊道】S15-64",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl15_r31",
+                        "forward": "lvl15_r36",
+                        "backward": "lvl15_r28"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 4
+                    }
+                },
+                "lvl15_r31": {
+                    "id": "lvl15_r31",
+                    "name": "【环形廊道】S15-54",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl15_r25",
+                        "backward": "lvl15_r20",
+                        "right": "lvl15_r30",
+                        "forward": "lvl15_r32"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 4
+                    }
+                },
+                "lvl15_r32": {
+                    "id": "lvl15_r32",
+                    "name": "【动力机房副厅】S15-53",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl15_r31",
+                        "right": "lvl15_r36"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 3
+                    }
+                },
+                "lvl15_r33": {
+                    "id": "lvl15_r33",
+                    "name": "【同位素库房】S15-12",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl15_r22",
+                        "forward": "lvl15_r34",
+                        "left": "lvl15_r27"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 2
+                    }
+                },
+                "lvl15_r34": {
+                    "id": "lvl15_r34",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl15_r33",
+                        "right": "lvl15_r37"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl15_r35": {
+                    "id": "lvl15_r35",
+                    "name": "【通风十字口】S15-43",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl15_r25"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    }
+                },
+                "lvl15_r36": {
+                    "id": "lvl15_r36",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl15_r30",
+                        "left": "lvl15_r32"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl15_r37": {
+                    "id": "lvl15_r37",
+                    "name": "【减压过渡井】S15-21",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl15_r34",
+                        "backward": "lvl15_exit"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 1
+                    }
+                },
+                "lvl15_r38": {
+                    "id": "lvl15_r38",
+                    "name": "【主干换乘站】S15-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl15_r26"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl15_exit": {
+                    "id": "lvl15_exit",
+                    "name": "【奇点折跃门】折叠维度逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "forward": "lvl15_r37"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 15 脱离折跃门"
+                    },
+                    "isExit": true
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l15_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    16
+                ],
+                "taskName": "任务一：成功撤离 (折叠维度脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "折叠维度探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 16,
+        "title": "第16关：因果律断 · 非定域纠缠",
+        "subtitle": "非定域纠缠 · 过去与未来交错",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 16：因果律断】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl16_start",
+            "nodes": {
+                "lvl16_start": {
+                    "id": "lvl16_start",
+                    "name": "【扇区入口】因果律断起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "forward": "lvl16_r3",
+                        "left": "lvl16_r4",
+                        "right": "lvl16_r1"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 7
+                    },
+                    "isStart": true
+                },
+                "lvl16_r1": {
+                    "id": "lvl16_r1",
+                    "name": "【冷凝储液厅】S16-47",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl16_start",
+                        "right": "lvl16_r17"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 7
+                    }
+                },
+                "lvl16_r2": {
+                    "id": "lvl16_r2",
+                    "name": "【中继交接所】S16-46",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl16_r5",
+                        "right": "lvl16_r8"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 6
+                    }
+                },
+                "lvl16_r3": {
+                    "id": "lvl16_r3",
+                    "name": "【能源配电副室】S16-36",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl16_start",
+                        "left": "lvl16_r11",
+                        "forward": "lvl16_r10"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 6
+                    }
+                },
+                "lvl16_r4": {
+                    "id": "lvl16_r4",
+                    "name": "【减压过渡井】S16-27",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl16_start",
+                        "left": "lvl16_r16"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 7
+                    }
+                },
+                "lvl16_r5": {
+                    "id": "lvl16_r5",
+                    "name": "【冷凝储液厅】S16-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl16_r6",
+                        "backward": "lvl16_r2"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl16_r6": {
+                    "id": "lvl16_r6",
+                    "name": "【深潜隔离室】S16-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl16_r7",
+                        "backward": "lvl16_r5",
+                        "right": "lvl16_r19"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl16_r7": {
+                    "id": "lvl16_r7",
+                    "name": "【生化样本舱】S16-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl16_r10",
+                        "forward": "lvl16_r18",
+                        "right": "lvl16_r6"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl16_r8": {
+                    "id": "lvl16_r8",
+                    "name": "【能源配电副室】S16-56",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl16_r17",
+                        "right": "lvl16_r15",
+                        "left": "lvl16_r2"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 6
+                    }
+                },
+                "lvl16_r9": {
+                    "id": "lvl16_r9",
+                    "name": "【通风十字口】S16-55",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl16_r19",
+                        "right": "lvl16_r22"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 5
+                    }
+                },
+                "lvl16_r10": {
+                    "id": "lvl16_r10",
+                    "name": "【外围气闸】S16-35",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl16_r3",
+                        "forward": "lvl16_r7"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    }
+                },
+                "lvl16_r11": {
+                    "id": "lvl16_r11",
+                    "name": "【外围气闸】S16-26",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl16_r3",
+                        "forward": "lvl16_r13",
+                        "left": "lvl16_r12"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 6
+                    }
+                },
+                "lvl16_r12": {
+                    "id": "lvl16_r12",
+                    "name": "【环形廊道】S16-16",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl16_r11",
+                        "left": "lvl16_r21",
+                        "forward": "lvl16_r14",
+                        "backward": "lvl16_r16"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 6
+                    }
+                },
+                "lvl16_r13": {
+                    "id": "lvl16_r13",
+                    "name": "【中继交接所】S16-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl16_r11",
+                        "left": "lvl16_r14",
+                        "forward": "lvl16_r23"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl16_r14": {
+                    "id": "lvl16_r14",
+                    "name": "【冷凝储液厅】S16-15",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl16_r13",
+                        "forward": "lvl16_r25",
+                        "left": "lvl16_r31",
+                        "backward": "lvl16_r12"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 5
+                    }
+                },
+                "lvl16_r15": {
+                    "id": "lvl16_r15",
+                    "name": "【冷凝储液厅】S16-66",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl16_r8",
+                        "forward": "lvl16_r22"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 6
+                    }
+                },
+                "lvl16_r16": {
+                    "id": "lvl16_r16",
+                    "name": "【动力机房副厅】S16-17",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl16_r4",
+                        "left": "lvl16_r27",
+                        "forward": "lvl16_r12"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 7
+                    }
+                },
+                "lvl16_r17": {
+                    "id": "lvl16_r17",
+                    "name": "【主干换乘站】S16-57",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl16_r1",
+                        "right": "lvl16_r20",
+                        "forward": "lvl16_r8"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 7
+                    }
+                },
+                "lvl16_r18": {
+                    "id": "lvl16_r18",
+                    "name": "【光学晶体室】S16-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl16_r7",
+                        "left": "lvl16_r36",
+                        "right": "lvl16_r34",
+                        "forward": "lvl16_r28"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl16_r19": {
+                    "id": "lvl16_r19",
+                    "name": "【流体循环厅】S16-54",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl16_r6",
+                        "backward": "lvl16_r9",
+                        "right": "lvl16_r24",
+                        "forward": "lvl16_r33"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 4
+                    }
+                },
+                "lvl16_r20": {
+                    "id": "lvl16_r20",
+                    "name": "【减压过渡井】S16-67",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl16_r17"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 7
+                    }
+                },
+                "lvl16_r21": {
+                    "id": "lvl16_r21",
+                    "name": "【量子总线枢纽】S16-06",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl16_r27",
+                        "right": "lvl16_r12"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 6
+                    }
+                },
+                "lvl16_r22": {
+                    "id": "lvl16_r22",
+                    "name": "【量子总线枢纽】S16-65",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl16_r24",
+                        "left": "lvl16_r9",
+                        "backward": "lvl16_r15"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 5
+                    }
+                },
+                "lvl16_r23": {
+                    "id": "lvl16_r23",
+                    "name": "【应急维生站】S16-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl16_r13",
+                        "left": "lvl16_r25"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl16_r24": {
+                    "id": "lvl16_r24",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl16_r19",
+                        "backward": "lvl16_r22"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 4
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl16_r25": {
+                    "id": "lvl16_r25",
+                    "name": "【同位素库房】S16-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl16_r14",
+                        "left": "lvl16_r26",
+                        "right": "lvl16_r23"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl16_r26": {
+                    "id": "lvl16_r26",
+                    "name": "【量子总线枢纽】S16-04",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl16_r25",
+                        "forward": "lvl16_r35"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 4
+                    }
+                },
+                "lvl16_r27": {
+                    "id": "lvl16_r27",
+                    "name": "【光学晶体室】S16-07",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl16_r16",
+                        "forward": "lvl16_r21"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 7
+                    }
+                },
+                "lvl16_r28": {
+                    "id": "lvl16_r28",
+                    "name": "【主干换乘站】S16-32",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl16_r18",
+                        "forward": "lvl16_r29"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 2
+                    }
+                },
+                "lvl16_exit": {
+                    "id": "lvl16_exit",
+                    "name": "【奇点折跃门】因果律断逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "left": "lvl16_r35"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 16 脱离折跃门"
+                    },
+                    "isExit": true
+                },
+                "lvl16_r29": {
+                    "id": "lvl16_r29",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl16_r28",
+                        "right": "lvl16_r32",
+                        "left": "lvl16_r30"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl16_r30": {
+                    "id": "lvl16_r30",
+                    "name": "【动力机房副厅】S16-21",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl16_r29"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 1
+                    }
+                },
+                "lvl16_r31": {
+                    "id": "lvl16_r31",
+                    "name": "【生化样本舱】S16-05",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl16_r14"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 5
+                    }
+                },
+                "lvl16_r32": {
+                    "id": "lvl16_r32",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl16_r29"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl16_r33": {
+                    "id": "lvl16_r33",
+                    "name": "【冷凝储液厅】S16-53",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl16_r19"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 3
+                    }
+                },
+                "lvl16_r34": {
+                    "id": "lvl16_r34",
+                    "name": "【冷凝储液厅】S16-43",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl16_r18",
+                        "forward": "lvl16_r37"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    }
+                },
+                "lvl16_r35": {
+                    "id": "lvl16_r35",
+                    "name": "【流体循环厅】S16-03",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl16_r26",
+                        "right": "lvl16_exit"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 3
+                    }
+                },
+                "lvl16_r36": {
+                    "id": "lvl16_r36",
+                    "name": "【光学晶体室】S16-23",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl16_r18"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    }
+                },
+                "lvl16_r37": {
+                    "id": "lvl16_r37",
+                    "name": "【量子总线枢纽】S16-42",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl16_r34"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 2
+                    }
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l16_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    17
+                ],
+                "taskName": "任务一：成功撤离 (因果律断脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "因果律断探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 17,
+        "title": "第17关：空洞节点 · 真空极化",
+        "subtitle": "真空极化 · 虚粒子湮灭区",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 17：空洞节点】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl17_start",
+            "nodes": {
+                "lvl17_start": {
+                    "id": "lvl17_start",
+                    "name": "【扇区入口】空洞节点起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "right": "lvl17_r2",
+                        "forward": "lvl17_r1"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 7
+                    },
+                    "isStart": true
+                },
+                "lvl17_r1": {
+                    "id": "lvl17_r1",
+                    "name": "【折射观测哨】S17-06",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl17_start",
+                        "forward": "lvl17_r5",
+                        "right": "lvl17_r3"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 6
+                    }
+                },
+                "lvl17_r2": {
+                    "id": "lvl17_r2",
+                    "name": "【冷凝储液厅】S17-17",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl17_start",
+                        "forward": "lvl17_r3",
+                        "right": "lvl17_r4"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 7
+                    }
+                },
+                "lvl17_r3": {
+                    "id": "lvl17_r3",
+                    "name": "【量子总线枢纽】S17-16",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl17_r2",
+                        "right": "lvl17_r8",
+                        "left": "lvl17_r1"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 6
+                    }
+                },
+                "lvl17_r4": {
+                    "id": "lvl17_r4",
+                    "name": "【能源配电副室】S17-27",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl17_r2",
+                        "right": "lvl17_r10"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 7
+                    }
+                },
+                "lvl17_r5": {
+                    "id": "lvl17_r5",
+                    "name": "【外围气闸】S17-05",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl17_r1",
+                        "right": "lvl17_r11",
+                        "forward": "lvl17_r6"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 5
+                    }
+                },
+                "lvl17_r6": {
+                    "id": "lvl17_r6",
+                    "name": "【外围气闸】S17-04",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl17_r5",
+                        "right": "lvl17_r9"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 4
+                    }
+                },
+                "lvl17_r7": {
+                    "id": "lvl17_r7",
+                    "name": "【主干换乘站】S17-03",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl17_r13"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 3
+                    }
+                },
+                "lvl17_r8": {
+                    "id": "lvl17_r8",
+                    "name": "【同位素库房】S17-26",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl17_r3",
+                        "right": "lvl17_r26"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 6
+                    }
+                },
+                "lvl17_r9": {
+                    "id": "lvl17_r9",
+                    "name": "【中继交接所】S17-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl17_r6",
+                        "backward": "lvl17_r11"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl17_r10": {
+                    "id": "lvl17_r10",
+                    "name": "【同位素库房】S17-37",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl17_r4",
+                        "forward": "lvl17_r26",
+                        "right": "lvl17_r14"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 7
+                    }
+                },
+                "lvl17_r11": {
+                    "id": "lvl17_r11",
+                    "name": "【深潜隔离室】S17-15",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl17_r5",
+                        "forward": "lvl17_r9"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 5
+                    }
+                },
+                "lvl17_r12": {
+                    "id": "lvl17_r12",
+                    "name": "【减压过渡井】S17-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl17_r16",
+                        "forward": "lvl17_r17",
+                        "right": "lvl17_r15"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl17_r13": {
+                    "id": "lvl17_r13",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "right": "lvl17_r17",
+                        "left": "lvl17_r7",
+                        "forward": "lvl17_r18"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl17_r14": {
+                    "id": "lvl17_r14",
+                    "name": "【生化样本舱】S17-47",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl17_r10"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 7
+                    }
+                },
+                "lvl17_r15": {
+                    "id": "lvl17_r15",
+                    "name": "【中继交接所】S17-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl17_r34",
+                        "right": "lvl17_r28",
+                        "forward": "lvl17_r20",
+                        "left": "lvl17_r12"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl17_r16": {
+                    "id": "lvl17_r16",
+                    "name": "【环形廊道】S17-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl17_r34",
+                        "forward": "lvl17_r12"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl17_r17": {
+                    "id": "lvl17_r17",
+                    "name": "【脉冲分流室】S17-23",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl17_r12",
+                        "left": "lvl17_r13"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    }
+                },
+                "lvl17_r18": {
+                    "id": "lvl17_r18",
+                    "name": "【动力机房副厅】S17-12",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl17_r24",
+                        "left": "lvl17_r31",
+                        "backward": "lvl17_r13"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 2
+                    }
+                },
+                "lvl17_r19": {
+                    "id": "lvl17_r19",
+                    "name": "【光学晶体室】S17-11",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl17_r25",
+                        "left": "lvl17_exit"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                "lvl17_r20": {
+                    "id": "lvl17_r20",
+                    "name": "【应急维生站】S17-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl17_r15",
+                        "forward": "lvl17_r21"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl17_r21": {
+                    "id": "lvl17_r21",
+                    "name": "【外围气闸】S17-32",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl17_r20",
+                        "forward": "lvl17_r29",
+                        "right": "lvl17_r33",
+                        "left": "lvl17_r24"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 2
+                    }
+                },
+                "lvl17_r22": {
+                    "id": "lvl17_r22",
+                    "name": "【同位素库房】S17-57",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl17_r30"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 7
+                    }
+                },
+                "lvl17_r23": {
+                    "id": "lvl17_r23",
+                    "name": "【脉冲分流室】S17-43",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl17_r28",
+                        "right": "lvl17_r35"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    }
+                },
+                "lvl17_r24": {
+                    "id": "lvl17_r24",
+                    "name": "【中继交接所】S17-22",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl17_r21",
+                        "left": "lvl17_r18",
+                        "forward": "lvl17_r25"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 2
+                    }
+                },
+                "lvl17_r25": {
+                    "id": "lvl17_r25",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "right": "lvl17_r29",
+                        "left": "lvl17_r19",
+                        "backward": "lvl17_r24"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl17_exit": {
+                    "id": "lvl17_exit",
+                    "name": "【奇点折跃门】空洞节点逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "right": "lvl17_r19"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 17 脱离折跃门"
+                    },
+                    "isExit": true
+                },
+                "lvl17_r26": {
+                    "id": "lvl17_r26",
+                    "name": "【重力维持站】S17-36",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl17_r10",
+                        "forward": "lvl17_r34",
+                        "right": "lvl17_r27",
+                        "left": "lvl17_r8"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 6
+                    }
+                },
+                "lvl17_r27": {
+                    "id": "lvl17_r27",
+                    "name": "【脉冲分流室】S17-46",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl17_r26",
+                        "right": "lvl17_r30",
+                        "forward": "lvl17_r38"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 6
+                    }
+                },
+                "lvl17_r28": {
+                    "id": "lvl17_r28",
+                    "name": "【折射观测哨】S17-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl17_r15",
+                        "right": "lvl17_r36",
+                        "forward": "lvl17_r23"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl17_r29": {
+                    "id": "lvl17_r29",
+                    "name": "【生化样本舱】S17-31",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl17_r21",
+                        "left": "lvl17_r25",
+                        "right": "lvl17_r32"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 1
+                    }
+                },
+                "lvl17_r30": {
+                    "id": "lvl17_r30",
+                    "name": "【量子总线枢纽】S17-56",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl17_r27",
+                        "backward": "lvl17_r22",
+                        "right": "lvl17_r37"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 6
+                    }
+                },
+                "lvl17_r31": {
+                    "id": "lvl17_r31",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "right": "lvl17_r18"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl17_r32": {
+                    "id": "lvl17_r32",
+                    "name": "【流体循环厅】S17-41",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl17_r29"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 1
+                    }
+                },
+                "lvl17_r33": {
+                    "id": "lvl17_r33",
+                    "name": "【能源配电副室】S17-42",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl17_r21"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 2
+                    }
+                },
+                "lvl17_r34": {
+                    "id": "lvl17_r34",
+                    "name": "【环形廊道】S17-35",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl17_r26",
+                        "right": "lvl17_r38",
+                        "forward": "lvl17_r15",
+                        "left": "lvl17_r16"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    }
+                },
+                "lvl17_r35": {
+                    "id": "lvl17_r35",
+                    "name": "【外围气闸】S17-53",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl17_r23"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 3
+                    }
+                },
+                "lvl17_r36": {
+                    "id": "lvl17_r36",
+                    "name": "【主干换乘站】S17-54",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl17_r28"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 4
+                    }
+                },
+                "lvl17_r37": {
+                    "id": "lvl17_r37",
+                    "name": "【脉冲分流室】S17-66",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl17_r30",
+                        "backward": "lvl17_r39"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 6
+                    }
+                },
+                "lvl17_r38": {
+                    "id": "lvl17_r38",
+                    "name": "【光学晶体室】S17-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl17_r34",
+                        "backward": "lvl17_r27"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl17_r39": {
+                    "id": "lvl17_r39",
+                    "name": "【重力维持站】S17-67",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl17_r37"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 7
+                    }
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l17_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    18
+                ],
+                "taskName": "任务一：成功撤离 (空洞节点脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "空洞节点探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 18,
+        "title": "第18关：反转信标 · 宇称不守恒",
+        "subtitle": "宇称不守恒 · 镜像倒转回廊",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 18：反转信标】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl18_start",
+            "nodes": {
+                "lvl18_start": {
+                    "id": "lvl18_start",
+                    "name": "【扇区入口】反转信标起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "forward": "lvl18_r3",
+                        "right": "lvl18_r1",
+                        "left": "lvl18_r2"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 7
+                    },
+                    "isStart": true
+                },
+                "lvl18_r1": {
+                    "id": "lvl18_r1",
+                    "name": "【量子总线枢纽】S18-47",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl18_start",
+                        "right": "lvl18_r8"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 7
+                    }
+                },
+                "lvl18_r2": {
+                    "id": "lvl18_r2",
+                    "name": "【减压过渡井】S18-27",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl18_start",
+                        "left": "lvl18_r6"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 7
+                    }
+                },
+                "lvl18_r3": {
+                    "id": "lvl18_r3",
+                    "name": "【声学屏蔽舱】S18-36",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl18_start",
+                        "left": "lvl18_r7",
+                        "right": "lvl18_r4",
+                        "forward": "lvl18_r5"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 6
+                    }
+                },
+                "lvl18_r4": {
+                    "id": "lvl18_r4",
+                    "name": "【通风十字口】S18-46",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl18_r3",
+                        "right": "lvl18_r9",
+                        "forward": "lvl18_r12"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 6
+                    }
+                },
+                "lvl18_r5": {
+                    "id": "lvl18_r5",
+                    "name": "【深潜隔离室】S18-35",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl18_r3",
+                        "left": "lvl18_r27"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    }
+                },
+                "lvl18_r6": {
+                    "id": "lvl18_r6",
+                    "name": "【环形廊道】S18-17",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl18_r2",
+                        "left": "lvl18_r11",
+                        "forward": "lvl18_r16"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 7
+                    }
+                },
+                "lvl18_r7": {
+                    "id": "lvl18_r7",
+                    "name": "【折射观测哨】S18-26",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl18_r3",
+                        "left": "lvl18_r16",
+                        "forward": "lvl18_r27"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 6
+                    }
+                },
+                "lvl18_r8": {
+                    "id": "lvl18_r8",
+                    "name": "【冷凝储液厅】S18-57",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl18_r10",
+                        "left": "lvl18_r1"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 7
+                    }
+                },
+                "lvl18_r9": {
+                    "id": "lvl18_r9",
+                    "name": "【折射观测哨】S18-56",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl18_r4",
+                        "forward": "lvl18_r17",
+                        "right": "lvl18_r14"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 6
+                    }
+                },
+                "lvl18_r10": {
+                    "id": "lvl18_r10",
+                    "name": "【通风十字口】S18-67",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl18_r14",
+                        "left": "lvl18_r8"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 7
+                    }
+                },
+                "lvl18_r11": {
+                    "id": "lvl18_r11",
+                    "name": "【量子总线枢纽】S18-07",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl18_r6",
+                        "forward": "lvl18_r20"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 7
+                    }
+                },
+                "lvl18_r12": {
+                    "id": "lvl18_r12",
+                    "name": "【深潜隔离室】S18-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl18_r4"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl18_r13": {
+                    "id": "lvl18_r13",
+                    "name": "【量子总线枢纽】S18-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl18_r23"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl18_r14": {
+                    "id": "lvl18_r14",
+                    "name": "【冷凝储液厅】S18-66",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl18_r18",
+                        "backward": "lvl18_r10",
+                        "left": "lvl18_r9"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 6
+                    }
+                },
+                "lvl18_r15": {
+                    "id": "lvl18_r15",
+                    "name": "【冷凝储液厅】S18-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl18_r22"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl18_r16": {
+                    "id": "lvl18_r16",
+                    "name": "【脉冲分流室】S18-16",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl18_r7",
+                        "backward": "lvl18_r6"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 6
+                    }
+                },
+                "lvl18_r17": {
+                    "id": "lvl18_r17",
+                    "name": "【主干换乘站】S18-55",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl18_r9",
+                        "forward": "lvl18_r23",
+                        "right": "lvl18_r18"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 5
+                    }
+                },
+                "lvl18_r18": {
+                    "id": "lvl18_r18",
+                    "name": "【深潜隔离室】S18-65",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl18_r24",
+                        "backward": "lvl18_r14",
+                        "left": "lvl18_r17"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 5
+                    }
+                },
+                "lvl18_r19": {
+                    "id": "lvl18_r19",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl18_r29",
+                        "forward": "lvl18_r21"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl18_r20": {
+                    "id": "lvl18_r20",
+                    "name": "【光学晶体室】S18-06",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl18_r11",
+                        "forward": "lvl18_r25"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 6
+                    }
+                },
+                "lvl18_r21": {
+                    "id": "lvl18_r21",
+                    "name": "【量子总线枢纽】S18-32",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl18_r36",
+                        "backward": "lvl18_r19"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 2
+                    }
+                },
+                "lvl18_r22": {
+                    "id": "lvl18_r22",
+                    "name": "【流体循环厅】S18-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl18_r27",
+                        "right": "lvl18_r15",
+                        "forward": "lvl18_r29",
+                        "left": "lvl18_r31"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl18_r23": {
+                    "id": "lvl18_r23",
+                    "name": "【生化样本舱】S18-54",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl18_r17",
+                        "right": "lvl18_r24",
+                        "forward": "lvl18_r30",
+                        "left": "lvl18_r13"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 4
+                    }
+                },
+                "lvl18_r24": {
+                    "id": "lvl18_r24",
+                    "name": "【减压过渡井】S18-64",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl18_r23",
+                        "forward": "lvl18_r26",
+                        "backward": "lvl18_r18"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 4
+                    }
+                },
+                "lvl18_r25": {
+                    "id": "lvl18_r25",
+                    "name": "【冷凝储液厅】S18-05",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl18_r20"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 5
+                    }
+                },
+                "lvl18_r26": {
+                    "id": "lvl18_r26",
+                    "name": "【动力机房副厅】S18-63",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl18_r24",
+                        "forward": "lvl18_r28"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 3
+                    }
+                },
+                "lvl18_r27": {
+                    "id": "lvl18_r27",
+                    "name": "【光学晶体室】S18-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl18_r5",
+                        "forward": "lvl18_r22",
+                        "backward": "lvl18_r7"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl18_r28": {
+                    "id": "lvl18_r28",
+                    "name": "【生化样本舱】S18-62",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl18_r26"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 2
+                    }
+                },
+                "lvl18_r29": {
+                    "id": "lvl18_r29",
+                    "name": "【流体循环厅】S18-23",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl18_r22",
+                        "forward": "lvl18_r33",
+                        "right": "lvl18_r19",
+                        "left": "lvl18_r32"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    }
+                },
+                "lvl18_r30": {
+                    "id": "lvl18_r30",
+                    "name": "【流体循环厅】S18-53",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl18_r23",
+                        "left": "lvl18_r35"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 3
+                    }
+                },
+                "lvl18_r31": {
+                    "id": "lvl18_r31",
+                    "name": "【同位素库房】S18-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl18_r22"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl18_r32": {
+                    "id": "lvl18_r32",
+                    "name": "【生化样本舱】S18-13",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl18_r29"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    }
+                },
+                "lvl18_r33": {
+                    "id": "lvl18_r33",
+                    "name": "【脉冲分流室】S18-22",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl18_r29",
+                        "left": "lvl18_r34"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 2
+                    }
+                },
+                "lvl18_r34": {
+                    "id": "lvl18_r34",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "right": "lvl18_r33",
+                        "left": "lvl18_exit"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl18_r35": {
+                    "id": "lvl18_r35",
+                    "name": "【同位素库房】S18-43",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl18_r30",
+                        "forward": "lvl18_r36"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    }
+                },
+                "lvl18_r36": {
+                    "id": "lvl18_r36",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl18_r35",
+                        "left": "lvl18_r21"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl18_exit": {
+                    "id": "lvl18_exit",
+                    "name": "【奇点折跃门】反转信标逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "right": "lvl18_r34"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 18 脱离折跃门"
+                    },
+                    "isExit": true
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l18_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    19
+                ],
+                "taskName": "任务一：成功撤离 (反转信标脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "反转信标探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 19,
+        "title": "第19关：终极拟态 · 意识同化沼泽",
+        "subtitle": "意识同化沼泽 · 蜂巢矩阵深处",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 19：终极拟态】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl19_start",
+            "nodes": {
+                "lvl19_start": {
+                    "id": "lvl19_start",
+                    "name": "【扇区入口】终极拟态起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "forward": "lvl19_r3",
+                        "left": "lvl19_r1",
+                        "right": "lvl19_r4"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 7
+                    },
+                    "isStart": true
+                },
+                "lvl19_r1": {
+                    "id": "lvl19_r1",
+                    "name": "【折射观测哨】S19-07",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl19_start",
+                        "forward": "lvl19_r2"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 7
+                    }
+                },
+                "lvl19_r2": {
+                    "id": "lvl19_r2",
+                    "name": "【同位素库房】S19-06",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl19_r1",
+                        "forward": "lvl19_r10",
+                        "right": "lvl19_r3"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 6
+                    }
+                },
+                "lvl19_r3": {
+                    "id": "lvl19_r3",
+                    "name": "【环形廊道】S19-16",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl19_start",
+                        "right": "lvl19_r5",
+                        "forward": "lvl19_r7",
+                        "left": "lvl19_r2"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 6
+                    }
+                },
+                "lvl19_r4": {
+                    "id": "lvl19_r4",
+                    "name": "【流体循环厅】S19-27",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl19_r5",
+                        "right": "lvl19_r9",
+                        "left": "lvl19_start"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 7
+                    }
+                },
+                "lvl19_r5": {
+                    "id": "lvl19_r5",
+                    "name": "【通风十字口】S19-26",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl19_r3",
+                        "backward": "lvl19_r4",
+                        "right": "lvl19_r16",
+                        "forward": "lvl19_r6"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 6
+                    }
+                },
+                "lvl19_r6": {
+                    "id": "lvl19_r6",
+                    "name": "【量子总线枢纽】S19-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl19_r5",
+                        "right": "lvl19_r15",
+                        "forward": "lvl19_r13"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl19_r7": {
+                    "id": "lvl19_r7",
+                    "name": "【动力机房副厅】S19-15",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl19_r3",
+                        "forward": "lvl19_r8",
+                        "left": "lvl19_r10"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 5
+                    }
+                },
+                "lvl19_r8": {
+                    "id": "lvl19_r8",
+                    "name": "【深潜隔离室】S19-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl19_r7"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl19_r9": {
+                    "id": "lvl19_r9",
+                    "name": "【应急维生站】S19-37",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl19_r4",
+                        "right": "lvl19_r25"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 7
+                    }
+                },
+                "lvl19_r10": {
+                    "id": "lvl19_r10",
+                    "name": "【重力维持站】S19-05",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl19_r2",
+                        "right": "lvl19_r7"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 5
+                    }
+                },
+                "lvl19_r11": {
+                    "id": "lvl19_r11",
+                    "name": "【环形廊道】S19-04",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl19_r12"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 4
+                    }
+                },
+                "lvl19_r12": {
+                    "id": "lvl19_r12",
+                    "name": "【能源配电副室】S19-03",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl19_r14",
+                        "forward": "lvl19_r23",
+                        "backward": "lvl19_r11"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 3
+                    }
+                },
+                "lvl19_r13": {
+                    "id": "lvl19_r13",
+                    "name": "【深潜隔离室】S19-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl19_r6",
+                        "forward": "lvl19_r17",
+                        "right": "lvl19_r21"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl19_r14": {
+                    "id": "lvl19_r14",
+                    "name": "【量子总线枢纽】S19-13",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl19_r17",
+                        "left": "lvl19_r12"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    }
+                },
+                "lvl19_r15": {
+                    "id": "lvl19_r15",
+                    "name": "【生化样本舱】S19-35",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl19_r6",
+                        "right": "lvl19_r19",
+                        "forward": "lvl19_r21"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    }
+                },
+                "lvl19_r16": {
+                    "id": "lvl19_r16",
+                    "name": "【深潜隔离室】S19-36",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl19_r5",
+                        "right": "lvl19_r18"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 6
+                    }
+                },
+                "lvl19_r17": {
+                    "id": "lvl19_r17",
+                    "name": "【外围气闸】S19-23",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl19_r28",
+                        "left": "lvl19_r14",
+                        "forward": "lvl19_r35",
+                        "backward": "lvl19_r13"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    }
+                },
+                "lvl19_r18": {
+                    "id": "lvl19_r18",
+                    "name": "【动力机房副厅】S19-46",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl19_r16",
+                        "right": "lvl19_r30"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 6
+                    }
+                },
+                "lvl19_r19": {
+                    "id": "lvl19_r19",
+                    "name": "【中继交接所】S19-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl19_r15",
+                        "right": "lvl19_r29",
+                        "forward": "lvl19_r20"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl19_r20": {
+                    "id": "lvl19_r20",
+                    "name": "【脉冲分流室】S19-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl19_r19",
+                        "forward": "lvl19_r26"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl19_r21": {
+                    "id": "lvl19_r21",
+                    "name": "【中继交接所】S19-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl19_r15",
+                        "forward": "lvl19_r28",
+                        "left": "lvl19_r13"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl19_r22": {
+                    "id": "lvl19_r22",
+                    "name": "【动力机房副厅】S19-54",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl19_r29"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 4
+                    }
+                },
+                "lvl19_r23": {
+                    "id": "lvl19_r23",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl19_r12",
+                        "right": "lvl19_r24"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl19_r24": {
+                    "id": "lvl19_r24",
+                    "name": "【应急维生站】S19-12",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl19_r35",
+                        "forward": "lvl19_r27",
+                        "left": "lvl19_r23"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 2
+                    }
+                },
+                "lvl19_r25": {
+                    "id": "lvl19_r25",
+                    "name": "【重力维持站】S19-47",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl19_r9",
+                        "right": "lvl19_r31"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 7
+                    }
+                },
+                "lvl19_r26": {
+                    "id": "lvl19_r26",
+                    "name": "【量子总线枢纽】S19-43",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl19_r28",
+                        "forward": "lvl19_r39",
+                        "right": "lvl19_r32",
+                        "backward": "lvl19_r20"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    }
+                },
+                "lvl19_r27": {
+                    "id": "lvl19_r27",
+                    "name": "【通风十字口】S19-11",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl19_r24",
+                        "left": "lvl19_r36"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                "lvl19_r28": {
+                    "id": "lvl19_r28",
+                    "name": "【能源配电副室】S19-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl19_r21",
+                        "left": "lvl19_r17",
+                        "right": "lvl19_r26",
+                        "forward": "lvl19_r33"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl19_r29": {
+                    "id": "lvl19_r29",
+                    "name": "【通风十字口】S19-55",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl19_r19",
+                        "forward": "lvl19_r22"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 5
+                    }
+                },
+                "lvl19_r30": {
+                    "id": "lvl19_r30",
+                    "name": "【外围气闸】S19-56",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl19_r18",
+                        "right": "lvl19_r38"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 6
+                    }
+                },
+                "lvl19_r31": {
+                    "id": "lvl19_r31",
+                    "name": "【主干换乘站】S19-57",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl19_r25",
+                        "right": "lvl19_r34"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 7
+                    }
+                },
+                "lvl19_r32": {
+                    "id": "lvl19_r32",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl19_r26",
+                        "forward": "lvl19_exit"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl19_r33": {
+                    "id": "lvl19_r33",
+                    "name": "【中继交接所】S19-32",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl19_r28",
+                        "forward": "lvl19_r40",
+                        "left": "lvl19_r35"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 2
+                    }
+                },
+                "lvl19_r34": {
+                    "id": "lvl19_r34",
+                    "name": "【量子总线枢纽】S19-67",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl19_r31"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 7
+                    }
+                },
+                "lvl19_r35": {
+                    "id": "lvl19_r35",
+                    "name": "【折射观测哨】S19-22",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl19_r17",
+                        "left": "lvl19_r24",
+                        "right": "lvl19_r33"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 2
+                    }
+                },
+                "lvl19_r36": {
+                    "id": "lvl19_r36",
+                    "name": "【深潜隔离室】S19-01",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl19_r27"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 1
+                    }
+                },
+                "lvl19_r37": {
+                    "id": "lvl19_r37",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "right": "lvl19_r40"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl19_r38": {
+                    "id": "lvl19_r38",
+                    "name": "【脉冲分流室】S19-66",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl19_r30"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 6
+                    }
+                },
+                "lvl19_r39": {
+                    "id": "lvl19_r39",
+                    "name": "【通风十字口】S19-42",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl19_r26"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 2
+                    }
+                },
+                "lvl19_r40": {
+                    "id": "lvl19_r40",
+                    "name": "【中继交接所】S19-31",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl19_r33",
+                        "left": "lvl19_r37"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 1
+                    }
+                },
+                "lvl19_exit": {
+                    "id": "lvl19_exit",
+                    "name": "【奇点折跃门】终极拟态逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "backward": "lvl19_r32"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 19 脱离折跃门"
+                    },
+                    "isExit": true
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l19_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    20
+                ],
+                "taskName": "任务一：成功撤离 (终极拟态脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "终极拟态探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 20,
+        "title": "第20关：意识海床 · 神经突触云端",
+        "subtitle": "神经突触云端 · 记忆废墟洋流",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 20：意识海床】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl20_start",
+            "nodes": {
+                "lvl20_start": {
+                    "id": "lvl20_start",
+                    "name": "【扇区入口】意识海床起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "left": "lvl20_r2",
+                        "right": "lvl20_r1"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 7
+                    },
+                    "isStart": true
+                },
+                "lvl20_r1": {
+                    "id": "lvl20_r1",
+                    "name": "【通风十字口】S20-47",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl20_start",
+                        "forward": "lvl20_r3",
+                        "right": "lvl20_r6"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 7
+                    }
+                },
+                "lvl20_r2": {
+                    "id": "lvl20_r2",
+                    "name": "【生化样本舱】S20-27",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl20_start"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 7
+                    }
+                },
+                "lvl20_r3": {
+                    "id": "lvl20_r3",
+                    "name": "【外围气闸】S20-46",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl20_r1",
+                        "left": "lvl20_r4",
+                        "forward": "lvl20_r9",
+                        "right": "lvl20_r5"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 6
+                    }
+                },
+                "lvl20_r4": {
+                    "id": "lvl20_r4",
+                    "name": "【重力维持站】S20-36",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl20_r3",
+                        "left": "lvl20_r11",
+                        "forward": "lvl20_r22"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 6
+                    }
+                },
+                "lvl20_r5": {
+                    "id": "lvl20_r5",
+                    "name": "【应急维生站】S20-56",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl20_r3",
+                        "right": "lvl20_r10"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 6
+                    }
+                },
+                "lvl20_r6": {
+                    "id": "lvl20_r6",
+                    "name": "【声学屏蔽舱】S20-57",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl20_r1",
+                        "right": "lvl20_r7"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 7
+                    }
+                },
+                "lvl20_r7": {
+                    "id": "lvl20_r7",
+                    "name": "【通风十字口】S20-67",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl20_r6"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 7
+                    }
+                },
+                "lvl20_r8": {
+                    "id": "lvl20_r8",
+                    "name": "【能源配电副室】S20-55",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl20_r9",
+                        "right": "lvl20_r13",
+                        "forward": "lvl20_r14"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 5
+                    }
+                },
+                "lvl20_r9": {
+                    "id": "lvl20_r9",
+                    "name": "【生化样本舱】S20-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl20_r3",
+                        "right": "lvl20_r8"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl20_r10": {
+                    "id": "lvl20_r10",
+                    "name": "【流体循环厅】S20-66",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl20_r5",
+                        "forward": "lvl20_r13"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 6
+                    }
+                },
+                "lvl20_r11": {
+                    "id": "lvl20_r11",
+                    "name": "【深潜隔离室】S20-26",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl20_r4",
+                        "left": "lvl20_r29",
+                        "forward": "lvl20_r19"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 6
+                    }
+                },
+                "lvl20_r12": {
+                    "id": "lvl20_r12",
+                    "name": "【流体循环厅】S20-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl20_r23",
+                        "right": "lvl20_r14"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl20_r13": {
+                    "id": "lvl20_r13",
+                    "name": "【应急维生站】S20-65",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl20_r8",
+                        "backward": "lvl20_r10"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 5
+                    }
+                },
+                "lvl20_r14": {
+                    "id": "lvl20_r14",
+                    "name": "【声学屏蔽舱】S20-54",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl20_r12",
+                        "right": "lvl20_r15",
+                        "backward": "lvl20_r8",
+                        "forward": "lvl20_r17"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 4
+                    }
+                },
+                "lvl20_r15": {
+                    "id": "lvl20_r15",
+                    "name": "【应急维生站】S20-64",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl20_r14",
+                        "forward": "lvl20_r20"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 4
+                    }
+                },
+                "lvl20_r16": {
+                    "id": "lvl20_r16",
+                    "name": "【通风十字口】S20-43",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl20_r32",
+                        "forward": "lvl20_r34",
+                        "right": "lvl20_r17"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    }
+                },
+                "lvl20_r17": {
+                    "id": "lvl20_r17",
+                    "name": "【脉冲分流室】S20-53",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl20_r20",
+                        "left": "lvl20_r16",
+                        "backward": "lvl20_r14"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 3
+                    }
+                },
+                "lvl20_r18": {
+                    "id": "lvl20_r18",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl20_r34",
+                        "right": "lvl20_r31",
+                        "forward": "lvl20_exit"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl20_r19": {
+                    "id": "lvl20_r19",
+                    "name": "【折射观测哨】S20-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl20_r11",
+                        "forward": "lvl20_r26",
+                        "left": "lvl20_r24"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl20_r20": {
+                    "id": "lvl20_r20",
+                    "name": "【通风十字口】S20-63",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl20_r15",
+                        "left": "lvl20_r17",
+                        "forward": "lvl20_r31"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 3
+                    }
+                },
+                "lvl20_r21": {
+                    "id": "lvl20_r21",
+                    "name": "【流体循环厅】S20-17",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl20_r29"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 7
+                    }
+                },
+                "lvl20_r22": {
+                    "id": "lvl20_r22",
+                    "name": "【生化样本舱】S20-35",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl20_r23",
+                        "backward": "lvl20_r4"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    }
+                },
+                "lvl20_r23": {
+                    "id": "lvl20_r23",
+                    "name": "【生化样本舱】S20-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl20_r26",
+                        "forward": "lvl20_r32",
+                        "right": "lvl20_r12",
+                        "backward": "lvl20_r22"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl20_r24": {
+                    "id": "lvl20_r24",
+                    "name": "【动力机房副厅】S20-15",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl20_r19",
+                        "forward": "lvl20_r25"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 5
+                    }
+                },
+                "lvl20_r25": {
+                    "id": "lvl20_r25",
+                    "name": "【减压过渡井】S20-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl20_r24",
+                        "right": "lvl20_r26"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl20_r26": {
+                    "id": "lvl20_r26",
+                    "name": "【主干换乘站】S20-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl20_r19",
+                        "right": "lvl20_r23",
+                        "forward": "lvl20_r28",
+                        "left": "lvl20_r25"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl20_r27": {
+                    "id": "lvl20_r27",
+                    "name": "【脉冲分流室】S20-07",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl20_r30"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 7
+                    }
+                },
+                "lvl20_r28": {
+                    "id": "lvl20_r28",
+                    "name": "【折射观测哨】S20-23",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl20_r26",
+                        "left": "lvl20_r36"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    }
+                },
+                "lvl20_r29": {
+                    "id": "lvl20_r29",
+                    "name": "【动力机房副厅】S20-16",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl20_r11",
+                        "left": "lvl20_r30",
+                        "backward": "lvl20_r21"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 6
+                    }
+                },
+                "lvl20_r30": {
+                    "id": "lvl20_r30",
+                    "name": "【减压过渡井】S20-06",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl20_r29",
+                        "backward": "lvl20_r27"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 6
+                    }
+                },
+                "lvl20_r31": {
+                    "id": "lvl20_r31",
+                    "name": "【同位素库房】S20-62",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl20_r18",
+                        "forward": "lvl20_r33",
+                        "backward": "lvl20_r20"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 2
+                    }
+                },
+                "lvl20_r32": {
+                    "id": "lvl20_r32",
+                    "name": "【同位素库房】S20-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl20_r23",
+                        "right": "lvl20_r16",
+                        "forward": "lvl20_r35"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl20_r33": {
+                    "id": "lvl20_r33",
+                    "name": "【环形廊道】S20-61",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl20_r31"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 1
+                    }
+                },
+                "lvl20_r34": {
+                    "id": "lvl20_r34",
+                    "name": "【冷凝储液厅】S20-42",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl20_r16",
+                        "right": "lvl20_r18",
+                        "forward": "lvl20_r37"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 2
+                    }
+                },
+                "lvl20_r35": {
+                    "id": "lvl20_r35",
+                    "name": "【深潜隔离室】S20-32",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl20_r32"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 2
+                    }
+                },
+                "lvl20_r36": {
+                    "id": "lvl20_r36",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "right": "lvl20_r28"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl20_r37": {
+                    "id": "lvl20_r37",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl20_r34",
+                        "left": "lvl20_r38"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl20_r38": {
+                    "id": "lvl20_r38",
+                    "name": "【声学屏蔽舱】S20-31",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl20_r37"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 1
+                    }
+                },
+                "lvl20_exit": {
+                    "id": "lvl20_exit",
+                    "name": "【奇点折跃门】意识海床逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "backward": "lvl20_r18"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 20 脱离折跃门"
+                    },
+                    "isExit": true
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l20_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    21
+                ],
+                "taskName": "任务一：成功撤离 (意识海床脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "意识海床探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 21,
+        "title": "第21关：镜像死局 · 对称破缺迷津",
+        "subtitle": "对称破缺迷津 · 全息干涉壁",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 21：镜像死局】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl21_start",
+            "nodes": {
+                "lvl21_start": {
+                    "id": "lvl21_start",
+                    "name": "【扇区入口】镜像死局起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "forward": "lvl21_r1",
+                        "right": "lvl21_r9"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 8
+                    },
+                    "isStart": true
+                },
+                "lvl21_r1": {
+                    "id": "lvl21_r1",
+                    "name": "【减压过渡井】S21-17",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl21_start",
+                        "left": "lvl21_r8",
+                        "forward": "lvl21_r2",
+                        "right": "lvl21_r7"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 7
+                    }
+                },
+                "lvl21_r2": {
+                    "id": "lvl21_r2",
+                    "name": "【环形廊道】S21-16",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl21_r1",
+                        "forward": "lvl21_r3"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 6
+                    }
+                },
+                "lvl21_r3": {
+                    "id": "lvl21_r3",
+                    "name": "【环形廊道】S21-15",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl21_r2",
+                        "forward": "lvl21_r14",
+                        "right": "lvl21_r5",
+                        "left": "lvl21_r12"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 5
+                    }
+                },
+                "lvl21_r4": {
+                    "id": "lvl21_r4",
+                    "name": "【脉冲分流室】S21-26",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl21_r7",
+                        "right": "lvl21_r6"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 6
+                    }
+                },
+                "lvl21_r5": {
+                    "id": "lvl21_r5",
+                    "name": "【环形廊道】S21-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl21_r13",
+                        "right": "lvl21_r28",
+                        "left": "lvl21_r3"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl21_r6": {
+                    "id": "lvl21_r6",
+                    "name": "【减压过渡井】S21-36",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_r4"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 6
+                    }
+                },
+                "lvl21_r7": {
+                    "id": "lvl21_r7",
+                    "name": "【流体循环厅】S21-27",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_r1",
+                        "forward": "lvl21_r4",
+                        "right": "lvl21_r10",
+                        "backward": "lvl21_r9"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 7
+                    }
+                },
+                "lvl21_r8": {
+                    "id": "lvl21_r8",
+                    "name": "【脉冲分流室】S21-07",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl21_r1",
+                        "backward": "lvl21_r15",
+                        "forward": "lvl21_r22"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 7
+                    }
+                },
+                "lvl21_r9": {
+                    "id": "lvl21_r9",
+                    "name": "【脉冲分流室】S21-28",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_start",
+                        "right": "lvl21_r11",
+                        "forward": "lvl21_r7"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 8
+                    }
+                },
+                "lvl21_r10": {
+                    "id": "lvl21_r10",
+                    "name": "【光学晶体室】S21-37",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_r7",
+                        "right": "lvl21_r17"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 7
+                    }
+                },
+                "lvl21_r11": {
+                    "id": "lvl21_r11",
+                    "name": "【光学晶体室】S21-38",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_r9"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 8
+                    }
+                },
+                "lvl21_r12": {
+                    "id": "lvl21_r12",
+                    "name": "【动力机房副厅】S21-05",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl21_r22",
+                        "right": "lvl21_r3"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 5
+                    }
+                },
+                "lvl21_r13": {
+                    "id": "lvl21_r13",
+                    "name": "【深潜隔离室】S21-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_r14",
+                        "backward": "lvl21_r5"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl21_r14": {
+                    "id": "lvl21_r14",
+                    "name": "【通风十字口】S21-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl21_r3",
+                        "right": "lvl21_r13",
+                        "forward": "lvl21_r18",
+                        "left": "lvl21_r33"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl21_r15": {
+                    "id": "lvl21_r15",
+                    "name": "【同位素库房】S21-08",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl21_r8"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 8
+                    }
+                },
+                "lvl21_r16": {
+                    "id": "lvl21_r16",
+                    "name": "【生化样本舱】S21-48",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl21_r17",
+                        "right": "lvl21_r24"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 8
+                    }
+                },
+                "lvl21_r17": {
+                    "id": "lvl21_r17",
+                    "name": "【动力机房副厅】S21-47",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl21_r19",
+                        "backward": "lvl21_r16",
+                        "right": "lvl21_r43",
+                        "left": "lvl21_r10"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 7
+                    }
+                },
+                "lvl21_r18": {
+                    "id": "lvl21_r18",
+                    "name": "【脉冲分流室】S21-13",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl21_r14",
+                        "right": "lvl21_r20",
+                        "left": "lvl21_r29",
+                        "forward": "lvl21_r26"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    }
+                },
+                "lvl21_r19": {
+                    "id": "lvl21_r19",
+                    "name": "【深潜隔离室】S21-46",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl21_r31",
+                        "right": "lvl21_r21",
+                        "backward": "lvl21_r17"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 6
+                    }
+                },
+                "lvl21_r20": {
+                    "id": "lvl21_r20",
+                    "name": "【脉冲分流室】S21-23",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_r18",
+                        "right": "lvl21_r27",
+                        "forward": "lvl21_r23"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    }
+                },
+                "lvl21_r21": {
+                    "id": "lvl21_r21",
+                    "name": "【动力机房副厅】S21-56",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_r19",
+                        "right": "lvl21_r48",
+                        "backward": "lvl21_r43"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 6
+                    }
+                },
+                "lvl21_r22": {
+                    "id": "lvl21_r22",
+                    "name": "【外围气闸】S21-06",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl21_r8",
+                        "forward": "lvl21_r12"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 6
+                    }
+                },
+                "lvl21_r23": {
+                    "id": "lvl21_r23",
+                    "name": "【深潜隔离室】S21-22",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl21_r20",
+                        "left": "lvl21_r26",
+                        "right": "lvl21_r32"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 2
+                    }
+                },
+                "lvl21_r24": {
+                    "id": "lvl21_r24",
+                    "name": "【流体循环厅】S21-58",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_r16"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 8
+                    }
+                },
+                "lvl21_r25": {
+                    "id": "lvl21_r25",
+                    "name": "【主干换乘站】S21-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl21_r28",
+                        "right": "lvl21_r39",
+                        "forward": "lvl21_r27"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl21_r26": {
+                    "id": "lvl21_r26",
+                    "name": "【动力机房副厅】S21-12",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl21_r23",
+                        "forward": "lvl21_r36",
+                        "left": "lvl21_r45",
+                        "backward": "lvl21_r18"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 2
+                    }
+                },
+                "lvl21_r27": {
+                    "id": "lvl21_r27",
+                    "name": "【折射观测哨】S21-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_r20",
+                        "backward": "lvl21_r25",
+                        "right": "lvl21_r30"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl21_r28": {
+                    "id": "lvl21_r28",
+                    "name": "【同位素库房】S21-35",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_r5",
+                        "forward": "lvl21_r25"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    }
+                },
+                "lvl21_r29": {
+                    "id": "lvl21_r29",
+                    "name": "【重力维持站】S21-03",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl21_r18"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 3
+                    }
+                },
+                "lvl21_r30": {
+                    "id": "lvl21_r30",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl21_r39",
+                        "forward": "lvl21_r44",
+                        "right": "lvl21_r47",
+                        "left": "lvl21_r27"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl21_r31": {
+                    "id": "lvl21_r31",
+                    "name": "【声学屏蔽舱】S21-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl21_r39",
+                        "backward": "lvl21_r19",
+                        "right": "lvl21_r35"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl21_r32": {
+                    "id": "lvl21_r32",
+                    "name": "【重力维持站】S21-32",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_r23",
+                        "forward": "lvl21_r40"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 2
+                    }
+                },
+                "lvl21_r33": {
+                    "id": "lvl21_r33",
+                    "name": "【通风十字口】S21-04",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl21_r14"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 4
+                    }
+                },
+                "lvl21_r34": {
+                    "id": "lvl21_r34",
+                    "name": "【能源配电副室】S21-21",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_r36"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 1
+                    }
+                },
+                "lvl21_r35": {
+                    "id": "lvl21_r35",
+                    "name": "【深潜隔离室】S21-55",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl21_r37",
+                        "right": "lvl21_r38",
+                        "left": "lvl21_r31"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 5
+                    }
+                },
+                "lvl21_r36": {
+                    "id": "lvl21_r36",
+                    "name": "【外围气闸】S21-11",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl21_r26",
+                        "right": "lvl21_r34"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                "lvl21_r37": {
+                    "id": "lvl21_r37",
+                    "name": "【环形廊道】S21-54",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl21_r47",
+                        "backward": "lvl21_r35"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 4
+                    }
+                },
+                "lvl21_r38": {
+                    "id": "lvl21_r38",
+                    "name": "【声学屏蔽舱】S21-65",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_r35"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 5
+                    }
+                },
+                "lvl21_r39": {
+                    "id": "lvl21_r39",
+                    "name": "【应急维生站】S21-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_r25",
+                        "backward": "lvl21_r31",
+                        "forward": "lvl21_r30"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl21_r40": {
+                    "id": "lvl21_r40",
+                    "name": "【生化样本舱】S21-31",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl21_r32",
+                        "right": "lvl21_r42"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 1
+                    }
+                },
+                "lvl21_r41": {
+                    "id": "lvl21_r41",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "forward": "lvl21_r46",
+                        "right": "lvl21_r49"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 8
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl21_r42": {
+                    "id": "lvl21_r42",
+                    "name": "【声学屏蔽舱】S21-41",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_r40",
+                        "right": "lvl21_exit"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 1
+                    }
+                },
+                "lvl21_r43": {
+                    "id": "lvl21_r43",
+                    "name": "【环形廊道】S21-57",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_r17",
+                        "forward": "lvl21_r21"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 7
+                    }
+                },
+                "lvl21_r44": {
+                    "id": "lvl21_r44",
+                    "name": "【声学屏蔽舱】S21-42",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl21_r30"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 2
+                    }
+                },
+                "lvl21_r45": {
+                    "id": "lvl21_r45",
+                    "name": "【脉冲分流室】S21-02",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl21_r26"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 2
+                    }
+                },
+                "lvl21_r46": {
+                    "id": "lvl21_r46",
+                    "name": "【同位素库房】S21-67",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl21_r48",
+                        "backward": "lvl21_r41",
+                        "right": "lvl21_r50"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 7
+                    }
+                },
+                "lvl21_r47": {
+                    "id": "lvl21_r47",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl21_r30",
+                        "backward": "lvl21_r37",
+                        "right": "lvl21_r51"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl21_exit": {
+                    "id": "lvl21_exit",
+                    "name": "【奇点折跃门】镜像死局逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "left": "lvl21_r42"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 21 脱离折跃门"
+                    },
+                    "isExit": true
+                },
+                "lvl21_r48": {
+                    "id": "lvl21_r48",
+                    "name": "【声学屏蔽舱】S21-66",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_r21",
+                        "backward": "lvl21_r46"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 6
+                    }
+                },
+                "lvl21_r49": {
+                    "id": "lvl21_r49",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl21_r41",
+                        "forward": "lvl21_r50"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 8
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl21_r50": {
+                    "id": "lvl21_r50",
+                    "name": "【同位素库房】S21-77",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_r46",
+                        "backward": "lvl21_r49"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 7
+                    }
+                },
+                "lvl21_r51": {
+                    "id": "lvl21_r51",
+                    "name": "【外围气闸】S21-63",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl21_r47"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 3
+                    }
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l21_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    22
+                ],
+                "taskName": "任务一：成功撤离 (镜像死局脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "镜像死局探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 22,
+        "title": "第22关：光锥视界 · 类光测地线",
+        "subtitle": "类光测地线 · 事件视界外缘",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 22：光锥视界】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl22_start",
+            "nodes": {
+                "lvl22_start": {
+                    "id": "lvl22_start",
+                    "name": "【扇区入口】光锥视界起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "right": "lvl22_r6",
+                        "left": "lvl22_r1"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 8
+                    },
+                    "isStart": true
+                },
+                "lvl22_r1": {
+                    "id": "lvl22_r1",
+                    "name": "【重力维持站】S22-38",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl22_start",
+                        "left": "lvl22_r7",
+                        "forward": "lvl22_r4"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 8
+                    }
+                },
+                "lvl22_r2": {
+                    "id": "lvl22_r2",
+                    "name": "【外围气闸】S22-47",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl22_r5",
+                        "forward": "lvl22_r3"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 7
+                    }
+                },
+                "lvl22_r3": {
+                    "id": "lvl22_r3",
+                    "name": "【生化样本舱】S22-46",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r2",
+                        "forward": "lvl22_r10",
+                        "right": "lvl22_r9"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 6
+                    }
+                },
+                "lvl22_r4": {
+                    "id": "lvl22_r4",
+                    "name": "【应急维生站】S22-37",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r1",
+                        "forward": "lvl22_r8",
+                        "left": "lvl22_r12"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 7
+                    }
+                },
+                "lvl22_r5": {
+                    "id": "lvl22_r5",
+                    "name": "【深潜隔离室】S22-57",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r6",
+                        "right": "lvl22_r13",
+                        "left": "lvl22_r2",
+                        "forward": "lvl22_r9"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 7
+                    }
+                },
+                "lvl22_r6": {
+                    "id": "lvl22_r6",
+                    "name": "【同位素库房】S22-58",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl22_start",
+                        "forward": "lvl22_r5",
+                        "right": "lvl22_r20"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 8
+                    }
+                },
+                "lvl22_r7": {
+                    "id": "lvl22_r7",
+                    "name": "【减压过渡井】S22-28",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl22_r1",
+                        "forward": "lvl22_r12",
+                        "left": "lvl22_r15"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 8
+                    }
+                },
+                "lvl22_r8": {
+                    "id": "lvl22_r8",
+                    "name": "【环形廊道】S22-36",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r4",
+                        "left": "lvl22_r16"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 6
+                    }
+                },
+                "lvl22_r9": {
+                    "id": "lvl22_r9",
+                    "name": "【环形廊道】S22-56",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r5",
+                        "left": "lvl22_r3"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 6
+                    }
+                },
+                "lvl22_r10": {
+                    "id": "lvl22_r10",
+                    "name": "【冷凝储液厅】S22-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r3",
+                        "forward": "lvl22_r11",
+                        "left": "lvl22_r14"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl22_r11": {
+                    "id": "lvl22_r11",
+                    "name": "【声学屏蔽舱】S22-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r10",
+                        "forward": "lvl22_r19",
+                        "right": "lvl22_r17"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl22_r12": {
+                    "id": "lvl22_r12",
+                    "name": "【重力维持站】S22-27",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r7",
+                        "left": "lvl22_r24",
+                        "forward": "lvl22_r16",
+                        "right": "lvl22_r4"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 7
+                    }
+                },
+                "lvl22_r13": {
+                    "id": "lvl22_r13",
+                    "name": "【应急维生站】S22-67",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl22_r5",
+                        "forward": "lvl22_r18",
+                        "backward": "lvl22_r20",
+                        "right": "lvl22_r32"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 7
+                    }
+                },
+                "lvl22_r14": {
+                    "id": "lvl22_r14",
+                    "name": "【同位素库房】S22-35",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl22_r10",
+                        "forward": "lvl22_r30"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    }
+                },
+                "lvl22_r15": {
+                    "id": "lvl22_r15",
+                    "name": "【主干换乘站】S22-18",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl22_r7",
+                        "left": "lvl22_r27"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 8
+                    }
+                },
+                "lvl22_r16": {
+                    "id": "lvl22_r16",
+                    "name": "【流体循环厅】S22-26",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r12",
+                        "forward": "lvl22_r31",
+                        "right": "lvl22_r8"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 6
+                    }
+                },
+                "lvl22_r17": {
+                    "id": "lvl22_r17",
+                    "name": "【折射观测哨】S22-54",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl22_r11",
+                        "right": "lvl22_r41",
+                        "forward": "lvl22_r35"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 4
+                    }
+                },
+                "lvl22_r18": {
+                    "id": "lvl22_r18",
+                    "name": "【脉冲分流室】S22-66",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r13",
+                        "forward": "lvl22_r38"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 6
+                    }
+                },
+                "lvl22_r19": {
+                    "id": "lvl22_r19",
+                    "name": "【动力机房副厅】S22-43",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r11",
+                        "left": "lvl22_r49",
+                        "forward": "lvl22_r21",
+                        "right": "lvl22_r35"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    }
+                },
+                "lvl22_r20": {
+                    "id": "lvl22_r20",
+                    "name": "【同位素库房】S22-68",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl22_r13",
+                        "left": "lvl22_r6"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 8
+                    }
+                },
+                "lvl22_r21": {
+                    "id": "lvl22_r21",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl22_r19",
+                        "forward": "lvl22_r33"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl22_r22": {
+                    "id": "lvl22_r22",
+                    "name": "【重力维持站】S22-78",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl22_r32"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 8
+                    }
+                },
+                "lvl22_r23": {
+                    "id": "lvl22_r23",
+                    "name": "【减压过渡井】S22-55",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl22_r38"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 5
+                    }
+                },
+                "lvl22_r24": {
+                    "id": "lvl22_r24",
+                    "name": "【量子总线枢纽】S22-17",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl22_r12",
+                        "left": "lvl22_r25",
+                        "forward": "lvl22_r26"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 7
+                    }
+                },
+                "lvl22_r25": {
+                    "id": "lvl22_r25",
+                    "name": "【重力维持站】S22-07",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl22_r24",
+                        "forward": "lvl22_r28"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 7
+                    }
+                },
+                "lvl22_r26": {
+                    "id": "lvl22_r26",
+                    "name": "【光学晶体室】S22-16",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r24",
+                        "forward": "lvl22_r43"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 6
+                    }
+                },
+                "lvl22_r27": {
+                    "id": "lvl22_r27",
+                    "name": "【光学晶体室】S22-08",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl22_r15"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 8
+                    }
+                },
+                "lvl22_r28": {
+                    "id": "lvl22_r28",
+                    "name": "【能源配电副室】S22-06",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r25"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 6
+                    }
+                },
+                "lvl22_r29": {
+                    "id": "lvl22_r29",
+                    "name": "【中继交接所】S22-05",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl22_r43"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 5
+                    }
+                },
+                "lvl22_r30": {
+                    "id": "lvl22_r30",
+                    "name": "【生化样本舱】S22-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r14",
+                        "left": "lvl22_r37"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl22_r31": {
+                    "id": "lvl22_r31",
+                    "name": "【外围气闸】S22-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r16"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl22_r32": {
+                    "id": "lvl22_r32",
+                    "name": "【动力机房副厅】S22-77",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl22_r13",
+                        "forward": "lvl22_r34",
+                        "backward": "lvl22_r22"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 7
+                    }
+                },
+                "lvl22_r33": {
+                    "id": "lvl22_r33",
+                    "name": "【应急维生站】S22-41",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r21",
+                        "right": "lvl22_r42"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 1
+                    }
+                },
+                "lvl22_r34": {
+                    "id": "lvl22_r34",
+                    "name": "【脉冲分流室】S22-76",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r32",
+                        "forward": "lvl22_r36"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 6
+                    }
+                },
+                "lvl22_r35": {
+                    "id": "lvl22_r35",
+                    "name": "【深潜隔离室】S22-53",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl22_r47",
+                        "forward": "lvl22_r40",
+                        "backward": "lvl22_r17",
+                        "left": "lvl22_r19"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 3
+                    }
+                },
+                "lvl22_r36": {
+                    "id": "lvl22_r36",
+                    "name": "【中继交接所】S22-75",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl22_r38",
+                        "backward": "lvl22_r34"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 5
+                    }
+                },
+                "lvl22_r37": {
+                    "id": "lvl22_r37",
+                    "name": "【中继交接所】S22-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl22_r30",
+                        "left": "lvl22_r45"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl22_r38": {
+                    "id": "lvl22_r38",
+                    "name": "【生化样本舱】S22-65",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r18",
+                        "forward": "lvl22_r41",
+                        "left": "lvl22_r23",
+                        "right": "lvl22_r36"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 5
+                    }
+                },
+                "lvl22_r39": {
+                    "id": "lvl22_r39",
+                    "name": "【主干换乘站】S22-32",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r49",
+                        "forward": "lvl22_r44",
+                        "left": "lvl22_r46"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 2
+                    }
+                },
+                "lvl22_r40": {
+                    "id": "lvl22_r40",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl22_r35",
+                        "right": "lvl22_r53"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl22_r41": {
+                    "id": "lvl22_r41",
+                    "name": "【动力机房副厅】S22-64",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r38",
+                        "forward": "lvl22_r47",
+                        "left": "lvl22_r17",
+                        "right": "lvl22_r51"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 4
+                    }
+                },
+                "lvl22_r42": {
+                    "id": "lvl22_r42",
+                    "name": "【外围气闸】S22-51",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl22_r33"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 1
+                    }
+                },
+                "lvl22_r43": {
+                    "id": "lvl22_r43",
+                    "name": "【动力机房副厅】S22-15",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r26",
+                        "left": "lvl22_r29"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 5
+                    }
+                },
+                "lvl22_r44": {
+                    "id": "lvl22_r44",
+                    "name": "【折射观测哨】S22-31",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r39"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 1
+                    }
+                },
+                "lvl22_r45": {
+                    "id": "lvl22_r45",
+                    "name": "【主干换乘站】S22-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl22_r37"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl22_r46": {
+                    "id": "lvl22_r46",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "right": "lvl22_r39",
+                        "left": "lvl22_r50",
+                        "forward": "lvl22_r48"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl22_r47": {
+                    "id": "lvl22_r47",
+                    "name": "【重力维持站】S22-63",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r41",
+                        "left": "lvl22_r35",
+                        "right": "lvl22_r52",
+                        "forward": "lvl22_r53"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 3
+                    }
+                },
+                "lvl22_r48": {
+                    "id": "lvl22_r48",
+                    "name": "【脉冲分流室】S22-21",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl22_r46",
+                        "left": "lvl22_exit"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 1
+                    }
+                },
+                "lvl22_r49": {
+                    "id": "lvl22_r49",
+                    "name": "【同位素库房】S22-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl22_r19",
+                        "forward": "lvl22_r39"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl22_exit": {
+                    "id": "lvl22_exit",
+                    "name": "【奇点折跃门】光锥视界逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "right": "lvl22_r48"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 22 脱离折跃门"
+                    },
+                    "isExit": true
+                },
+                "lvl22_r50": {
+                    "id": "lvl22_r50",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "right": "lvl22_r46"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl22_r51": {
+                    "id": "lvl22_r51",
+                    "name": "【光学晶体室】S22-74",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl22_r52",
+                        "left": "lvl22_r41"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 4
+                    }
+                },
+                "lvl22_r52": {
+                    "id": "lvl22_r52",
+                    "name": "【通风十字口】S22-73",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl22_r47",
+                        "backward": "lvl22_r51"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 3
+                    }
+                },
+                "lvl22_r53": {
+                    "id": "lvl22_r53",
+                    "name": "【能源配电副室】S22-62",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl22_r40",
+                        "backward": "lvl22_r47"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 2
+                    }
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l22_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    23
+                ],
+                "taskName": "任务一：成功撤离 (光锥视界脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "光锥视界探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 23,
+        "title": "第23关：高维裂解 · 膜宇宙碰撞",
+        "subtitle": "膜宇宙碰撞 · 膜震荡波纹",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 23：高维裂解】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl23_start",
+            "nodes": {
+                "lvl23_start": {
+                    "id": "lvl23_start",
+                    "name": "【扇区入口】高维裂解起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "left": "lvl23_r6",
+                        "forward": "lvl23_r1",
+                        "right": "lvl23_r3"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 8
+                    },
+                    "isStart": true
+                },
+                "lvl23_r1": {
+                    "id": "lvl23_r1",
+                    "name": "【同位素库房】S23-17",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_start",
+                        "left": "lvl23_r22",
+                        "right": "lvl23_r2",
+                        "forward": "lvl23_r10"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 7
+                    }
+                },
+                "lvl23_r2": {
+                    "id": "lvl23_r2",
+                    "name": "【应急维生站】S23-27",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl23_r1",
+                        "forward": "lvl23_r8",
+                        "right": "lvl23_r5"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 7
+                    }
+                },
+                "lvl23_r3": {
+                    "id": "lvl23_r3",
+                    "name": "【脉冲分流室】S23-28",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl23_start",
+                        "right": "lvl23_r4"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 8
+                    }
+                },
+                "lvl23_r4": {
+                    "id": "lvl23_r4",
+                    "name": "【重力维持站】S23-38",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl23_r3",
+                        "right": "lvl23_r7"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 8
+                    }
+                },
+                "lvl23_r5": {
+                    "id": "lvl23_r5",
+                    "name": "【应急维生站】S23-37",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl23_r13",
+                        "right": "lvl23_r20",
+                        "left": "lvl23_r2"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 7
+                    }
+                },
+                "lvl23_r6": {
+                    "id": "lvl23_r6",
+                    "name": "【主干换乘站】S23-08",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl23_start"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 8
+                    }
+                },
+                "lvl23_r7": {
+                    "id": "lvl23_r7",
+                    "name": "【折射观测哨】S23-48",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl23_r4",
+                        "forward": "lvl23_r20",
+                        "right": "lvl23_r11"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 8
+                    }
+                },
+                "lvl23_r8": {
+                    "id": "lvl23_r8",
+                    "name": "【动力机房副厅】S23-26",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r2",
+                        "right": "lvl23_r13",
+                        "forward": "lvl23_r9"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 6
+                    }
+                },
+                "lvl23_r9": {
+                    "id": "lvl23_r9",
+                    "name": "【声学屏蔽舱】S23-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r8",
+                        "forward": "lvl23_r31"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl23_r10": {
+                    "id": "lvl23_r10",
+                    "name": "【环形廊道】S23-16",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r1",
+                        "forward": "lvl23_r14",
+                        "left": "lvl23_r18"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 6
+                    }
+                },
+                "lvl23_r11": {
+                    "id": "lvl23_r11",
+                    "name": "【声学屏蔽舱】S23-58",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl23_r15",
+                        "left": "lvl23_r7"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 8
+                    }
+                },
+                "lvl23_r12": {
+                    "id": "lvl23_r12",
+                    "name": "【脉冲分流室】S23-35",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r13",
+                        "forward": "lvl23_r26"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    }
+                },
+                "lvl23_r13": {
+                    "id": "lvl23_r13",
+                    "name": "【折射观测哨】S23-36",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl23_r8",
+                        "backward": "lvl23_r5",
+                        "right": "lvl23_r30",
+                        "forward": "lvl23_r12"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 6
+                    }
+                },
+                "lvl23_r14": {
+                    "id": "lvl23_r14",
+                    "name": "【量子总线枢纽】S23-15",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r10"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 5
+                    }
+                },
+                "lvl23_r15": {
+                    "id": "lvl23_r15",
+                    "name": "【中继交接所】S23-68",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl23_r24",
+                        "right": "lvl23_r16",
+                        "left": "lvl23_r11"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 8
+                    }
+                },
+                "lvl23_r16": {
+                    "id": "lvl23_r16",
+                    "name": "【应急维生站】S23-78",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl23_r15",
+                        "forward": "lvl23_r28"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 8
+                    }
+                },
+                "lvl23_r17": {
+                    "id": "lvl23_r17",
+                    "name": "【声学屏蔽舱】S23-57",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl23_r20",
+                        "right": "lvl23_r24"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 7
+                    }
+                },
+                "lvl23_r18": {
+                    "id": "lvl23_r18",
+                    "name": "【流体循环厅】S23-06",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r22",
+                        "forward": "lvl23_r21",
+                        "right": "lvl23_r10"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 6
+                    }
+                },
+                "lvl23_r19": {
+                    "id": "lvl23_r19",
+                    "name": "【深潜隔离室】S23-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl23_r23",
+                        "right": "lvl23_r31",
+                        "forward": "lvl23_r33"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl23_r20": {
+                    "id": "lvl23_r20",
+                    "name": "【应急维生站】S23-47",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl23_r5",
+                        "right": "lvl23_r17",
+                        "backward": "lvl23_r7"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 7
+                    }
+                },
+                "lvl23_r21": {
+                    "id": "lvl23_r21",
+                    "name": "【外围气闸】S23-05",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r18",
+                        "forward": "lvl23_r23"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 5
+                    }
+                },
+                "lvl23_r22": {
+                    "id": "lvl23_r22",
+                    "name": "【量子总线枢纽】S23-07",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl23_r1",
+                        "forward": "lvl23_r18"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 7
+                    }
+                },
+                "lvl23_r23": {
+                    "id": "lvl23_r23",
+                    "name": "【通风十字口】S23-04",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r21",
+                        "forward": "lvl23_r43",
+                        "right": "lvl23_r19"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 4
+                    }
+                },
+                "lvl23_r24": {
+                    "id": "lvl23_r24",
+                    "name": "【环形廊道】S23-67",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl23_r27",
+                        "backward": "lvl23_r15",
+                        "left": "lvl23_r17"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 7
+                    }
+                },
+                "lvl23_r25": {
+                    "id": "lvl23_r25",
+                    "name": "【主干换乘站】S23-56",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl23_r30",
+                        "right": "lvl23_r27"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 6
+                    }
+                },
+                "lvl23_r26": {
+                    "id": "lvl23_r26",
+                    "name": "【环形廊道】S23-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r12",
+                        "left": "lvl23_r31"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl23_r27": {
+                    "id": "lvl23_r27",
+                    "name": "【通风十字口】S23-66",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl23_r25",
+                        "backward": "lvl23_r24"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 6
+                    }
+                },
+                "lvl23_r28": {
+                    "id": "lvl23_r28",
+                    "name": "【量子总线枢纽】S23-77",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r16"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 7
+                    }
+                },
+                "lvl23_r29": {
+                    "id": "lvl23_r29",
+                    "name": "【应急维生站】S23-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r30",
+                        "right": "lvl23_r36",
+                        "forward": "lvl23_r44"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl23_r30": {
+                    "id": "lvl23_r30",
+                    "name": "【折射观测哨】S23-46",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl23_r13",
+                        "forward": "lvl23_r29",
+                        "right": "lvl23_r25"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 6
+                    }
+                },
+                "lvl23_r31": {
+                    "id": "lvl23_r31",
+                    "name": "【折射观测哨】S23-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r9",
+                        "forward": "lvl23_r35",
+                        "left": "lvl23_r19",
+                        "right": "lvl23_r26"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl23_r32": {
+                    "id": "lvl23_r32",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "forward": "lvl23_r34"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 6
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl23_r33": {
+                    "id": "lvl23_r33",
+                    "name": "【流体循环厅】S23-13",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl23_r35",
+                        "forward": "lvl23_r47",
+                        "backward": "lvl23_r19",
+                        "left": "lvl23_r43"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    }
+                },
+                "lvl23_r34": {
+                    "id": "lvl23_r34",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl23_r37",
+                        "backward": "lvl23_r32",
+                        "forward": "lvl23_r41"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 5
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl23_r35": {
+                    "id": "lvl23_r35",
+                    "name": "【声学屏蔽舱】S23-23",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r31",
+                        "left": "lvl23_r33",
+                        "right": "lvl23_r39",
+                        "forward": "lvl23_r45"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    }
+                },
+                "lvl23_r36": {
+                    "id": "lvl23_r36",
+                    "name": "【深潜隔离室】S23-55",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl23_r29",
+                        "right": "lvl23_r37"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 5
+                    }
+                },
+                "lvl23_r37": {
+                    "id": "lvl23_r37",
+                    "name": "【冷凝储液厅】S23-65",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl23_r36",
+                        "right": "lvl23_r34"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 5
+                    }
+                },
+                "lvl23_r38": {
+                    "id": "lvl23_r38",
+                    "name": "【流体循环厅】S23-64",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl23_r42"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 4
+                    }
+                },
+                "lvl23_r39": {
+                    "id": "lvl23_r39",
+                    "name": "【主干换乘站】S23-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl23_r35"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl23_r40": {
+                    "id": "lvl23_r40",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl23_r44",
+                        "forward": "lvl23_r46"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 4
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl23_r41": {
+                    "id": "lvl23_r41",
+                    "name": "【应急维生站】S23-74",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r34",
+                        "forward": "lvl23_exit"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 4
+                    }
+                },
+                "lvl23_r42": {
+                    "id": "lvl23_r42",
+                    "name": "【中继交接所】S23-63",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl23_r46",
+                        "backward": "lvl23_r38"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 3
+                    }
+                },
+                "lvl23_r43": {
+                    "id": "lvl23_r43",
+                    "name": "【光学晶体室】S23-03",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r23",
+                        "forward": "lvl23_r48",
+                        "right": "lvl23_r33"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 3
+                    }
+                },
+                "lvl23_r44": {
+                    "id": "lvl23_r44",
+                    "name": "【同位素库房】S23-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r29",
+                        "right": "lvl23_r40",
+                        "forward": "lvl23_r49"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl23_r45": {
+                    "id": "lvl23_r45",
+                    "name": "【脉冲分流室】S23-22",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r35"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 2
+                    }
+                },
+                "lvl23_r46": {
+                    "id": "lvl23_r46",
+                    "name": "【光学晶体室】S23-53",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r40",
+                        "left": "lvl23_r49",
+                        "right": "lvl23_r42"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 3
+                    }
+                },
+                "lvl23_r47": {
+                    "id": "lvl23_r47",
+                    "name": "【能源配电副室】S23-12",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r33"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 2
+                    }
+                },
+                "lvl23_r48": {
+                    "id": "lvl23_r48",
+                    "name": "【中继交接所】S23-02",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r43",
+                        "forward": "lvl23_r50"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 2
+                    }
+                },
+                "lvl23_exit": {
+                    "id": "lvl23_exit",
+                    "name": "【奇点折跃门】高维裂解逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "backward": "lvl23_r41"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 23 脱离折跃门"
+                    },
+                    "isExit": true
+                },
+                "lvl23_r49": {
+                    "id": "lvl23_r49",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "right": "lvl23_r46",
+                        "backward": "lvl23_r44"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl23_r50": {
+                    "id": "lvl23_r50",
+                    "name": "【外围气闸】S23-01",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl23_r48"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 1
+                    }
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l23_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    24
+                ],
+                "taskName": "任务一：成功撤离 (高维裂解脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "高维裂解探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 24,
+        "title": "第24关：原初黑洞 · 微型奇点蒸发",
+        "subtitle": "微型奇点蒸发 · 霍金辐射风暴",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 24：原初黑洞】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl24_start",
+            "nodes": {
+                "lvl24_start": {
+                    "id": "lvl24_start",
+                    "name": "【扇区入口】原初黑洞起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "right": "lvl24_r3",
+                        "forward": "lvl24_r1"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 8
+                    },
+                    "isStart": true
+                },
+                "lvl24_r1": {
+                    "id": "lvl24_r1",
+                    "name": "【光学晶体室】S24-47",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_start",
+                        "left": "lvl24_r7"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 7
+                    }
+                },
+                "lvl24_r2": {
+                    "id": "lvl24_r2",
+                    "name": "【环形廊道】S24-46",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl24_r12",
+                        "forward": "lvl24_r8"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 6
+                    }
+                },
+                "lvl24_r3": {
+                    "id": "lvl24_r3",
+                    "name": "【冷凝储液厅】S24-58",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl24_start",
+                        "forward": "lvl24_r5",
+                        "right": "lvl24_r4"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 8
+                    }
+                },
+                "lvl24_r4": {
+                    "id": "lvl24_r4",
+                    "name": "【声学屏蔽舱】S24-68",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl24_r3",
+                        "forward": "lvl24_r6"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 8
+                    }
+                },
+                "lvl24_r5": {
+                    "id": "lvl24_r5",
+                    "name": "【声学屏蔽舱】S24-57",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r3",
+                        "right": "lvl24_r6",
+                        "forward": "lvl24_r11"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 7
+                    }
+                },
+                "lvl24_r6": {
+                    "id": "lvl24_r6",
+                    "name": "【能源配电副室】S24-67",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl24_r5",
+                        "forward": "lvl24_r14",
+                        "right": "lvl24_r9",
+                        "backward": "lvl24_r4"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 7
+                    }
+                },
+                "lvl24_r7": {
+                    "id": "lvl24_r7",
+                    "name": "【通风十字口】S24-37",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl24_r1",
+                        "forward": "lvl24_r12",
+                        "backward": "lvl24_r18"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 7
+                    }
+                },
+                "lvl24_r8": {
+                    "id": "lvl24_r8",
+                    "name": "【同位素库房】S24-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r2",
+                        "left": "lvl24_r23",
+                        "forward": "lvl24_r13",
+                        "right": "lvl24_r10"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl24_r9": {
+                    "id": "lvl24_r9",
+                    "name": "【脉冲分流室】S24-77",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl24_r6",
+                        "backward": "lvl24_r27"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 7
+                    }
+                },
+                "lvl24_r10": {
+                    "id": "lvl24_r10",
+                    "name": "【流体循环厅】S24-55",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r11",
+                        "right": "lvl24_r15",
+                        "forward": "lvl24_r16",
+                        "left": "lvl24_r8"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 5
+                    }
+                },
+                "lvl24_r11": {
+                    "id": "lvl24_r11",
+                    "name": "【生化样本舱】S24-56",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl24_r14",
+                        "forward": "lvl24_r10",
+                        "backward": "lvl24_r5"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 6
+                    }
+                },
+                "lvl24_r12": {
+                    "id": "lvl24_r12",
+                    "name": "【应急维生站】S24-36",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r7",
+                        "left": "lvl24_r31",
+                        "right": "lvl24_r2"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 6
+                    }
+                },
+                "lvl24_r13": {
+                    "id": "lvl24_r13",
+                    "name": "【生化样本舱】S24-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r8",
+                        "forward": "lvl24_r19"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl24_r14": {
+                    "id": "lvl24_r14",
+                    "name": "【折射观测哨】S24-66",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r6",
+                        "left": "lvl24_r11",
+                        "right": "lvl24_r22",
+                        "forward": "lvl24_r15"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 6
+                    }
+                },
+                "lvl24_r15": {
+                    "id": "lvl24_r15",
+                    "name": "【应急维生站】S24-65",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl24_r10",
+                        "right": "lvl24_r36",
+                        "forward": "lvl24_r38",
+                        "backward": "lvl24_r14"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 5
+                    }
+                },
+                "lvl24_r16": {
+                    "id": "lvl24_r16",
+                    "name": "【中继交接所】S24-54",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r10"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 4
+                    }
+                },
+                "lvl24_r17": {
+                    "id": "lvl24_r17",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "right": "lvl24_r26",
+                        "forward": "lvl24_r24"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 3
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl24_r18": {
+                    "id": "lvl24_r18",
+                    "name": "【冷凝储液厅】S24-38",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl24_r7",
+                        "left": "lvl24_r32"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 8
+                    }
+                },
+                "lvl24_r19": {
+                    "id": "lvl24_r19",
+                    "name": "【脉冲分流室】S24-43",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r13",
+                        "forward": "lvl24_r29",
+                        "left": "lvl24_r28"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    }
+                },
+                "lvl24_r20": {
+                    "id": "lvl24_r20",
+                    "name": "【量子总线枢纽】S24-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r23",
+                        "left": "lvl24_r39",
+                        "forward": "lvl24_r28"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl24_r21": {
+                    "id": "lvl24_r21",
+                    "name": "【脉冲分流室】S24-27",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl24_r31",
+                        "left": "lvl24_r41",
+                        "backward": "lvl24_r32"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 7
+                    }
+                },
+                "lvl24_r22": {
+                    "id": "lvl24_r22",
+                    "name": "【通风十字口】S24-76",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl24_r14"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 6
+                    }
+                },
+                "lvl24_r23": {
+                    "id": "lvl24_r23",
+                    "name": "【应急维生站】S24-35",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl24_r8",
+                        "forward": "lvl24_r20",
+                        "left": "lvl24_r25"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    }
+                },
+                "lvl24_r24": {
+                    "id": "lvl24_r24",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl24_r17",
+                        "right": "lvl24_r35"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl24_r25": {
+                    "id": "lvl24_r25",
+                    "name": "【应急维生站】S24-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl24_r23",
+                        "forward": "lvl24_r39"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl24_r26": {
+                    "id": "lvl24_r26",
+                    "name": "【同位素库房】S24-63",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r38",
+                        "forward": "lvl24_r35",
+                        "left": "lvl24_r17"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 3
+                    }
+                },
+                "lvl24_r27": {
+                    "id": "lvl24_r27",
+                    "name": "【应急维生站】S24-78",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl24_r9"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 8
+                    }
+                },
+                "lvl24_r28": {
+                    "id": "lvl24_r28",
+                    "name": "【量子总线枢纽】S24-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r20",
+                        "forward": "lvl24_r34",
+                        "right": "lvl24_r19"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl24_r29": {
+                    "id": "lvl24_r29",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl24_r34",
+                        "forward": "lvl24_r42",
+                        "backward": "lvl24_r19"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl24_r30": {
+                    "id": "lvl24_r30",
+                    "name": "【深潜隔离室】S24-15",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r43",
+                        "forward": "lvl24_r44"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 5
+                    }
+                },
+                "lvl24_r31": {
+                    "id": "lvl24_r31",
+                    "name": "【减压过渡井】S24-26",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl24_r12",
+                        "left": "lvl24_r43",
+                        "backward": "lvl24_r21"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 6
+                    }
+                },
+                "lvl24_r32": {
+                    "id": "lvl24_r32",
+                    "name": "【动力机房副厅】S24-28",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl24_r18",
+                        "left": "lvl24_r33",
+                        "forward": "lvl24_r21"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 8
+                    }
+                },
+                "lvl24_r33": {
+                    "id": "lvl24_r33",
+                    "name": "【生化样本舱】S24-18",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl24_r32",
+                        "left": "lvl24_r53"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 8
+                    }
+                },
+                "lvl24_r34": {
+                    "id": "lvl24_r34",
+                    "name": "【生化样本舱】S24-32",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r28",
+                        "right": "lvl24_r29"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 2
+                    }
+                },
+                "lvl24_r35": {
+                    "id": "lvl24_r35",
+                    "name": "【环形廊道】S24-62",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r26",
+                        "forward": "lvl24_r37",
+                        "left": "lvl24_r24"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 2
+                    }
+                },
+                "lvl24_r36": {
+                    "id": "lvl24_r36",
+                    "name": "【环形廊道】S24-75",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl24_r15"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 5
+                    }
+                },
+                "lvl24_r37": {
+                    "id": "lvl24_r37",
+                    "name": "【声学屏蔽舱】S24-61",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r35",
+                        "left": "lvl24_exit",
+                        "right": "lvl24_r54"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 1
+                    }
+                },
+                "lvl24_r38": {
+                    "id": "lvl24_r38",
+                    "name": "【应急维生站】S24-64",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r15",
+                        "forward": "lvl24_r26",
+                        "right": "lvl24_r40"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 4
+                    }
+                },
+                "lvl24_exit": {
+                    "id": "lvl24_exit",
+                    "name": "【奇点折跃门】原初黑洞逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "right": "lvl24_r37"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 24 脱离折跃门"
+                    },
+                    "isExit": true
+                },
+                "lvl24_r39": {
+                    "id": "lvl24_r39",
+                    "name": "【能源配电副室】S24-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl24_r20",
+                        "left": "lvl24_r44",
+                        "backward": "lvl24_r25"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl24_r40": {
+                    "id": "lvl24_r40",
+                    "name": "【外围气闸】S24-74",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl24_r38",
+                        "forward": "lvl24_r50"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 4
+                    }
+                },
+                "lvl24_r41": {
+                    "id": "lvl24_r41",
+                    "name": "【通风十字口】S24-17",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl24_r21",
+                        "left": "lvl24_r49"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 7
+                    }
+                },
+                "lvl24_r42": {
+                    "id": "lvl24_r42",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl24_r29"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl24_r43": {
+                    "id": "lvl24_r43",
+                    "name": "【冷凝储液厅】S24-16",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl24_r31",
+                        "left": "lvl24_r51",
+                        "forward": "lvl24_r30"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 6
+                    }
+                },
+                "lvl24_r44": {
+                    "id": "lvl24_r44",
+                    "name": "【应急维生站】S24-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r30",
+                        "forward": "lvl24_r47",
+                        "right": "lvl24_r39"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl24_r45": {
+                    "id": "lvl24_r45",
+                    "name": "【脉冲分流室】S24-72",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r50",
+                        "forward": "lvl24_r54"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 2
+                    }
+                },
+                "lvl24_r46": {
+                    "id": "lvl24_r46",
+                    "name": "【通风十字口】S24-05",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r51",
+                        "forward": "lvl24_r48"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 5
+                    }
+                },
+                "lvl24_r47": {
+                    "id": "lvl24_r47",
+                    "name": "【同位素库房】S24-13",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r44",
+                        "left": "lvl24_r52"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    }
+                },
+                "lvl24_r48": {
+                    "id": "lvl24_r48",
+                    "name": "【折射观测哨】S24-04",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r46"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 4
+                    }
+                },
+                "lvl24_r49": {
+                    "id": "lvl24_r49",
+                    "name": "【通风十字口】S24-07",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl24_r41"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 7
+                    }
+                },
+                "lvl24_r50": {
+                    "id": "lvl24_r50",
+                    "name": "【主干换乘站】S24-73",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl24_r40",
+                        "forward": "lvl24_r45"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 3
+                    }
+                },
+                "lvl24_r51": {
+                    "id": "lvl24_r51",
+                    "name": "【量子总线枢纽】S24-06",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl24_r43",
+                        "forward": "lvl24_r46"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 6
+                    }
+                },
+                "lvl24_r52": {
+                    "id": "lvl24_r52",
+                    "name": "【流体循环厅】S24-03",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl24_r47"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 3
+                    }
+                },
+                "lvl24_r53": {
+                    "id": "lvl24_r53",
+                    "name": "【外围气闸】S24-08",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl24_r33"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 8
+                    }
+                },
+                "lvl24_r54": {
+                    "id": "lvl24_r54",
+                    "name": "【重力维持站】S24-71",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl24_r37",
+                        "backward": "lvl24_r45"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 1
+                    }
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l24_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [
+                    25
+                ],
+                "taskName": "任务一：成功撤离 (原初黑洞脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "原初黑洞探明",
+                "toast": "扇区拓扑解析完毕，开放后续扇区！"
+            }
+        ]
+    },
+    {
+        "levelId": 25,
+        "title": "第25关：终焉回响 · 莫比乌斯终环",
+        "subtitle": "莫比乌斯终环 · 奇点永恒归位",
+        "blackScreenText": [
+            "……折跃气流在视网膜上留下灼痛的光晕。",
+            "这里是【扇区 25：终焉回响】，环境读数正在剧烈波动。",
+            "更广阔、更复杂的走廊拓扑在深处展开，搜寻通道，抵达终点大门。",
+            "——触摸屏幕，开始行动。"
+        ],
+        "initialStamina": 100,
+        "initialTeam": [],
+        "protagonistRolePool": [
+            "seer",
+            "guard",
+            "witch"
+        ],
+        "defaultProtagonistRole": "seer",
+        "wolfCountRange": [
+            1,
+            3
+        ],
+        "candidateNPCs": [
+            {
+                "id": "kaze",
+                "assignedRole": null
+            },
+            {
+                "id": "shaokexin",
+                "assignedRole": null
+            },
+            {
+                "id": "mode",
+                "assignedRole": null
+            }
+        ],
+        "mapImageUrl": null,
+        "map": {
+            "startNodeId": "lvl25_start",
+            "nodes": {
+                "lvl25_start": {
+                    "id": "lvl25_start",
+                    "name": "【扇区入口】终焉回响起点闸口",
+                    "desc": "气闸在身后关闭并锁定。微弱的应急灯指引着前路，你必须寻找出路。",
+                    "connections": {
+                        "forward": "lvl25_r2"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 8
+                    },
+                    "isStart": true
+                },
+                "lvl25_r1": {
+                    "id": "lvl25_r1",
+                    "name": "【量子总线枢纽】S25-18",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl25_r9",
+                        "right": "lvl25_r6"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 8
+                    }
+                },
+                "lvl25_r2": {
+                    "id": "lvl25_r2",
+                    "name": "【冷凝储液厅】S25-07",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl25_start",
+                        "forward": "lvl25_r3",
+                        "right": "lvl25_r9"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 7
+                    }
+                },
+                "lvl25_r3": {
+                    "id": "lvl25_r3",
+                    "name": "【脉冲分流室】S25-06",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl25_r2",
+                        "right": "lvl25_r4",
+                        "forward": "lvl25_r5"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 6
+                    }
+                },
+                "lvl25_r4": {
+                    "id": "lvl25_r4",
+                    "name": "【外围气闸】S25-16",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r3",
+                        "forward": "lvl25_r8"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 6
+                    }
+                },
+                "lvl25_r5": {
+                    "id": "lvl25_r5",
+                    "name": "【折射观测哨】S25-05",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl25_r3"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 5
+                    }
+                },
+                "lvl25_r6": {
+                    "id": "lvl25_r6",
+                    "name": "【深潜隔离室】S25-28",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r1"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 8
+                    }
+                },
+                "lvl25_r7": {
+                    "id": "lvl25_r7",
+                    "name": "【能源配电副室】S25-38",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl25_r12",
+                        "right": "lvl25_r13"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 8
+                    }
+                },
+                "lvl25_r8": {
+                    "id": "lvl25_r8",
+                    "name": "【流体循环厅】S25-15",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl25_r4",
+                        "forward": "lvl25_r14",
+                        "right": "lvl25_r20"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 5
+                    }
+                },
+                "lvl25_r9": {
+                    "id": "lvl25_r9",
+                    "name": "【主干换乘站】S25-17",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r2",
+                        "right": "lvl25_r10",
+                        "backward": "lvl25_r1"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 7
+                    }
+                },
+                "lvl25_r10": {
+                    "id": "lvl25_r10",
+                    "name": "【脉冲分流室】S25-27",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r9",
+                        "right": "lvl25_r12",
+                        "forward": "lvl25_r11"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 7
+                    }
+                },
+                "lvl25_r11": {
+                    "id": "lvl25_r11",
+                    "name": "【主干换乘站】S25-26",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl25_r20",
+                        "right": "lvl25_r26",
+                        "backward": "lvl25_r10"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 6
+                    }
+                },
+                "lvl25_r12": {
+                    "id": "lvl25_r12",
+                    "name": "【通风十字口】S25-37",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r10",
+                        "backward": "lvl25_r7",
+                        "right": "lvl25_r23"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 7
+                    }
+                },
+                "lvl25_r13": {
+                    "id": "lvl25_r13",
+                    "name": "【冷凝储液厅】S25-48",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r7",
+                        "right": "lvl25_r17"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 8
+                    }
+                },
+                "lvl25_r14": {
+                    "id": "lvl25_r14",
+                    "name": "【动力机房副厅】S25-14",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl25_r8",
+                        "left": "lvl25_r15",
+                        "right": "lvl25_r16"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 4
+                    }
+                },
+                "lvl25_r15": {
+                    "id": "lvl25_r15",
+                    "name": "【冷凝储液厅】S25-04",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "right": "lvl25_r14",
+                        "forward": "lvl25_r25"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 4
+                    }
+                },
+                "lvl25_r16": {
+                    "id": "lvl25_r16",
+                    "name": "【冷凝储液厅】S25-24",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl25_r20",
+                        "left": "lvl25_r14"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 4
+                    }
+                },
+                "lvl25_r17": {
+                    "id": "lvl25_r17",
+                    "name": "【流体循环厅】S25-58",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r13",
+                        "forward": "lvl25_r18",
+                        "right": "lvl25_r21"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 8
+                    }
+                },
+                "lvl25_r18": {
+                    "id": "lvl25_r18",
+                    "name": "【主干换乘站】S25-57",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl25_r17",
+                        "right": "lvl25_r46"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 7
+                    }
+                },
+                "lvl25_r19": {
+                    "id": "lvl25_r19",
+                    "name": "【冷凝储液厅】S25-23",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r28",
+                        "forward": "lvl25_r34",
+                        "right": "lvl25_r24"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 3
+                    }
+                },
+                "lvl25_r20": {
+                    "id": "lvl25_r20",
+                    "name": "【主干换乘站】S25-25",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r8",
+                        "right": "lvl25_r27",
+                        "backward": "lvl25_r11",
+                        "forward": "lvl25_r16"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 5
+                    }
+                },
+                "lvl25_r21": {
+                    "id": "lvl25_r21",
+                    "name": "【应急维生站】S25-68",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r17",
+                        "right": "lvl25_r44"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 8
+                    }
+                },
+                "lvl25_r22": {
+                    "id": "lvl25_r22",
+                    "name": "【外围气闸】S25-34",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl25_r27",
+                        "forward": "lvl25_r24"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 4
+                    }
+                },
+                "lvl25_r23": {
+                    "id": "lvl25_r23",
+                    "name": "【流体循环厅】S25-47",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r12"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 7
+                    }
+                },
+                "lvl25_r24": {
+                    "id": "lvl25_r24",
+                    "name": "【动力机房副厅】S25-33",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl25_r22",
+                        "forward": "lvl25_r38",
+                        "right": "lvl25_r33",
+                        "left": "lvl25_r19"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 3
+                    }
+                },
+                "lvl25_r25": {
+                    "id": "lvl25_r25",
+                    "name": "【冷凝储液厅】S25-03",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl25_r15",
+                        "right": "lvl25_r28",
+                        "forward": "lvl25_r30"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 3
+                    }
+                },
+                "lvl25_r26": {
+                    "id": "lvl25_r26",
+                    "name": "【折射观测哨】S25-36",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl25_r27",
+                        "right": "lvl25_r29",
+                        "left": "lvl25_r11"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 6
+                    }
+                },
+                "lvl25_r27": {
+                    "id": "lvl25_r27",
+                    "name": "【深潜隔离室】S25-35",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r20",
+                        "backward": "lvl25_r26",
+                        "forward": "lvl25_r22",
+                        "right": "lvl25_r35"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 5
+                    }
+                },
+                "lvl25_r28": {
+                    "id": "lvl25_r28",
+                    "name": "【外围气闸】S25-13",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r25",
+                        "forward": "lvl25_r37",
+                        "right": "lvl25_r19"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 3
+                    }
+                },
+                "lvl25_r29": {
+                    "id": "lvl25_r29",
+                    "name": "【能源配电副室】S25-46",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r26",
+                        "right": "lvl25_r31"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 6
+                    }
+                },
+                "lvl25_r30": {
+                    "id": "lvl25_r30",
+                    "name": "【流体循环厅】S25-02",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl25_r25",
+                        "forward": "lvl25_r42",
+                        "right": "lvl25_r37"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 2
+                    }
+                },
+                "lvl25_r31": {
+                    "id": "lvl25_r31",
+                    "name": "【中继交接所】S25-56",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r29"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 6
+                    }
+                },
+                "lvl25_r32": {
+                    "id": "lvl25_r32",
+                    "name": "【量子总线枢纽】S25-44",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl25_r35"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 4
+                    }
+                },
+                "lvl25_r33": {
+                    "id": "lvl25_r33",
+                    "name": "【冷凝储液厅】S25-43",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r24",
+                        "right": "lvl25_r50"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 3
+                    }
+                },
+                "lvl25_r34": {
+                    "id": "lvl25_r34",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl25_r19",
+                        "forward": "lvl25_r39",
+                        "right": "lvl25_r38"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl25_r35": {
+                    "id": "lvl25_r35",
+                    "name": "【流体循环厅】S25-45",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r27",
+                        "right": "lvl25_r36",
+                        "forward": "lvl25_r32"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 5
+                    }
+                },
+                "lvl25_r36": {
+                    "id": "lvl25_r36",
+                    "name": "【同位素库房】S25-55",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r35",
+                        "right": "lvl25_r41"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 5
+                    }
+                },
+                "lvl25_r37": {
+                    "id": "lvl25_r37",
+                    "name": "【冷凝储液厅】S25-12",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl25_r28",
+                        "left": "lvl25_r30"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 2
+                    }
+                },
+                "lvl25_r38": {
+                    "id": "lvl25_r38",
+                    "name": "【折射观测哨】S25-32",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl25_r24",
+                        "right": "lvl25_r43",
+                        "left": "lvl25_r34",
+                        "forward": "lvl25_r47"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 2
+                    }
+                },
+                "lvl25_r39": {
+                    "id": "lvl25_r39",
+                    "name": "【生化样本舱】S25-21",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl25_r34",
+                        "right": "lvl25_r47",
+                        "left": "lvl25_r40"
+                    },
+                    "coord": {
+                        "x": 2,
+                        "y": 1
+                    }
+                },
+                "lvl25_r40": {
+                    "id": "lvl25_r40",
+                    "name": "【通风十字口】S25-11",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r42",
+                        "right": "lvl25_r39"
+                    },
+                    "coord": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                "lvl25_r41": {
+                    "id": "lvl25_r41",
+                    "name": "【中继交接所】S25-65",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r36",
+                        "forward": "lvl25_r49",
+                        "backward": "lvl25_r45"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 5
+                    }
+                },
+                "lvl25_r42": {
+                    "id": "lvl25_r42",
+                    "name": "【冷凝储液厅】S25-01",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl25_r30",
+                        "right": "lvl25_r40"
+                    },
+                    "coord": {
+                        "x": 0,
+                        "y": 1
+                    }
+                },
+                "lvl25_r43": {
+                    "id": "lvl25_r43",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl25_r38",
+                        "right": "lvl25_r52"
+                    },
+                    "coord": {
+                        "x": 4,
+                        "y": 2
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl25_r44": {
+                    "id": "lvl25_r44",
+                    "name": "【能源配电副室】S25-78",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r21",
+                        "forward": "lvl25_r48"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 8
+                    }
+                },
+                "lvl25_r45": {
+                    "id": "lvl25_r45",
+                    "name": "【外围气闸】S25-66",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "forward": "lvl25_r41"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 6
+                    }
+                },
+                "lvl25_r46": {
+                    "id": "lvl25_r46",
+                    "name": "【减压过渡井】S25-67",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r18",
+                        "right": "lvl25_r48"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 7
+                    }
+                },
+                "lvl25_r47": {
+                    "id": "lvl25_r47",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "left": "lvl25_r39",
+                        "backward": "lvl25_r38"
+                    },
+                    "coord": {
+                        "x": 3,
+                        "y": 1
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl25_r48": {
+                    "id": "lvl25_r48",
+                    "name": "【应急维生站】S25-77",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r46",
+                        "forward": "lvl25_r51",
+                        "backward": "lvl25_r44"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 7
+                    }
+                },
+                "lvl25_r49": {
+                    "id": "lvl25_r49",
+                    "name": "【外围气闸】S25-64",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "backward": "lvl25_r41"
+                    },
+                    "coord": {
+                        "x": 6,
+                        "y": 4
+                    }
+                },
+                "lvl25_r50": {
+                    "id": "lvl25_r50",
+                    "name": "【同位素库房】S25-53",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r33",
+                        "forward": "lvl25_r52"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 3
+                    }
+                },
+                "lvl25_r51": {
+                    "id": "lvl25_r51",
+                    "name": "【应急补给】战备储蓄柜",
+                    "desc": "未破损的密封物资箱里存放着合成口粮与浓缩电解质补给！",
+                    "connections": {
+                        "backward": "lvl25_r48",
+                        "forward": "lvl25_exit"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 6
+                    },
+                    "event": {
+                        "type": "food",
+                        "name": "战备高能营养剂"
+                    }
+                },
+                "lvl25_exit": {
+                    "id": "lvl25_exit",
+                    "name": "【奇点折跃门】终焉回响逃生大门 (终点)",
+                    "desc": "前方的空间发生着强烈的引力扭曲。折跃引擎已就绪，踏入即可完成脱离！",
+                    "connections": {
+                        "backward": "lvl25_r51"
+                    },
+                    "coord": {
+                        "x": 7,
+                        "y": 5
+                    },
+                    "event": {
+                        "type": "exit",
+                        "name": "扇区 25 脱离折跃门"
+                    },
+                    "isExit": true
+                },
+                "lvl25_r52": {
+                    "id": "lvl25_r52",
+                    "name": "【光学晶体室】S25-52",
+                    "desc": "合金墙壁上凝结着白霜，空气循环系统低沉运转。",
+                    "connections": {
+                        "left": "lvl25_r43",
+                        "backward": "lvl25_r50"
+                    },
+                    "coord": {
+                        "x": 5,
+                        "y": 2
+                    }
+                }
+            }
+        },
+        "unlockRules": [
+            {
+                "id": "l25_basic_clear",
+                "condition": {
+                    "type": "clear_any"
+                },
+                "unlockLevelIds": [],
+                "taskName": "任务一：成功撤离 (终焉回响脱出)",
+                "taskObjective": "突破复杂的深层回廊，抵达终点折跃气门",
+                "title": "终焉回响探明",
+                "toast": "全扇区因果链彻底贯通！"
+            }
+        ]
+    }
+];
+
+
+    // =========================================================================
+    // 模块: levels.js
+    // =========================================================================
+/**
+ * 第一关关卡与手绘地图配置表 (Level 1 Configuration)
+ * 严格按照手绘草图拓扑结构配置各个房间、通道、昏迷NPC、食物点与终点
+ */
+
+
+
+const BaseLevels = [
+    {
+        levelId: 1,
+        title: "第一关：残破遗迹 · 迷宫重聚",
+        subtitle: "根据手绘草图结构构建 · 寻找失散同伴",
+
+        // q1 黑屏中间白字（契合基地爆炸与同伴失散的世界观）
+        blackScreenText: [
+            "……基地爆炸的剧烈冲击波仿佛还在耳膜深处轰鸣。",
+            "浓烟散去，冰冷的金属地面将你冻醒，你发现自己孤身遗落在这片陌生的封闭区域。",
+            "你的记忆有些模糊，但你知道失散的同伴们正昏迷在错综复杂的舱室各处。",
+            "更可怕的是，异样的高熵感染信号在附近闪烁——有潜伏的伪人混入了我们之中。",
+            "探明走廊，救醒同伴，保持理智裁决，最终抵达北侧的【终点脱出大门】。",
+            "——触摸屏幕，开始行动。"
+        ],
+
+        // 初始属性
+        initialStamina: 100,
+        initialTeam: [], // 默认队伍只有主角一人，其余队员在地图上搜寻救援
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer", // 主角默认担任：魔镜（预言家）
+
+        // 伪人数量配置：支持设置为【随机范围 [min, max]】或【固定数值】
+        // 例如设置 [1, 3]：开局将在 1~3 名伪人之间随机生成，充满推理未知性！
+        wolfCountRange: [1, 3],
+        candidateNPCs: [
+            { id: "kaze", assignedRole: null },       // NPC1: 卡泽 (男，蓝框)
+            { id: "shaokexin", assignedRole: null },  // NPC2: 邵可欣 (女，粉框)
+            { id: "mode", assignedRole: null }        // NPC3: 莫德 (男，紫框，文件夹 mode)
+        ],
+
+        // 手绘原稿参考图
+        mapImageUrl: "assets/level1_sketch.jpg",
+
+        // 地图拓扑网络 (100% 对应手绘图上的 11 个方块节点)
+        map: {
+            startNodeId: "room_start",
+            nodes: {
+                // 1. 起点 (手绘图上的“起点...”)
+                "room_start": {
+                    id: "room_start",
+                    name: "【起点】苏醒密封厅",
+                    desc: "你从剧烈的震荡中醒来，周围是变形的金属支架。空气中充满烧焦的味道。",
+                    connections: {
+                        left: "room_corridor_w1", // 向左去往西走廊 (通向NPC1)
+                        right: "room_corner_se",  // 向右去往右下拐角 (通向NPC2)
+                        forward: "room_hub_n1"    // 向上去往北枢纽
+                    },
+                    event: null,
+                    // 平面图渲染坐标 (列 col: 0~4, 行 row: 0~4)
+                    coord: { x: 3, y: 3 }
+                },
+
+                // 2. 右侧下拐角
+                "room_corner_se": {
+                    id: "room_corner_se",
+                    name: "【东下拐角】管线通道",
+                    desc: "粗大的冷却管线在头顶发出嗡鸣，地面有些积水，通往东侧舱室。",
+                    connections: {
+                        left: "room_start",
+                        forward: "room_npc2"
+                    },
+                    event: null,
+                    coord: { x: 4, y: 3 }
+                },
+
+                // 3. NPC 2 房间 (手绘图上的“NPC2.” - 发现邵可欣)
+                "room_npc2": {
+                    id: "room_npc2",
+                    name: "【东侧备勤室】医护角落",
+                    desc: "这里似乎曾是一处临时急救点，一名系着救援缎带的少女正昏迷在桌旁。",
+                    connections: {
+                        backward: "room_corner_se",
+                        left: "room_hub_n1"
+                    },
+                    event: {
+                        type: "npc",
+                        npcId: "shaokexin"
+                    },
+                    coord: { x: 4, y: 2 }
+                },
+
+                // 4. 起点北侧枢纽
+                "room_hub_n1": {
+                    id: "room_hub_n1",
+                    name: "【中区枢纽】分流控制室",
+                    desc: "正前方是紧闭的物资库防爆闸门，右侧通道与东侧急救点相通。",
+                    connections: {
+                        backward: "room_start",
+                        right: "room_npc2",
+                        forward: "room_storage_ne"
+                    },
+                    event: null,
+                    coord: { x: 3, y: 2 }
+                },
+
+                // 5. 东北尽头储藏室 (食物给养)
+                "room_storage_ne": {
+                    id: "room_storage_ne",
+                    name: "【东北储藏室】应急给养站",
+                    desc: "货架上存放着完好无损的自热战备口粮与纯净水储罐！",
+                    connections: {
+                        backward: "room_hub_n1"
+                    },
+                    event: {
+                        type: "food",
+                        name: "自热高能战备餐"
+                    },
+                    coord: { x: 3, y: 1 }
+                },
+
+                // 6. 西侧走廊 (从起点向左走)
+                "room_corridor_w1": {
+                    id: "room_corridor_w1",
+                    name: "【西侧走廊】狭长甬道",
+                    desc: "灯光昏暗闪烁，墙壁上有明显的划痕与爆炸熏黑痕迹，继续向西可通向西区整备室。",
+                    connections: {
+                        right: "room_start",
+                        left: "room_npc1"
+                    },
+                    event: null,
+                    coord: { x: 2, y: 3 }
+                },
+
+                // 7. NPC 1 房间 (手绘图上的“NPC1.” - 发现卡泽)
+                "room_npc1": {
+                    id: "room_npc1",
+                    name: "【西区整备间】动力操作台",
+                    desc: "一名穿着战术外衣的青年男子瘫靠在控制柜边，冷峻的脸庞上沾染着灰尘。",
+                    connections: {
+                        right: "room_corridor_w1",
+                        left: "room_west_end",
+                        forward: "room_junction_nw"
+                    },
+                    event: {
+                        type: "npc",
+                        npcId: "kaze"
+                    },
+                    coord: { x: 1, y: 3 }
+                },
+
+                // 8. 西侧尽头机房 (食物给养)
+                "room_west_end": {
+                    id: "room_west_end",
+                    name: "【西端休歇舱】配电副室",
+                    desc: "角落里的储物柜中藏着未受损的能量棒与电解质水饮料！",
+                    connections: {
+                        right: "room_npc1"
+                    },
+                    event: {
+                        type: "food",
+                        name: "浓缩能量棒物资箱"
+                    },
+                    coord: { x: 0, y: 3 }
+                },
+
+                // 9. 西北岔路枢纽 (从NPC1向上走)
+                "room_junction_nw": {
+                    id: "room_junction_nw",
+                    name: "【西北岔路】通风十字口",
+                    desc: "通道在此向左通往隔离室，向右折向上层出口通道，冷风从北面灌入。",
+                    connections: {
+                        backward: "room_npc1",
+                        left: "room_npc3",
+                        right: "room_path_e"
+                    },
+                    event: null,
+                    coord: { x: 1, y: 2 }
+                },
+
+                // 10. NPC 3 房间 (手绘图上的“NPC3” - 发现莫尔德)
+                "room_npc3": {
+                    id: "room_npc3",
+                    name: "【西北隔离舱】安全避难室",
+                    desc: "厚重的隔音门虚掩着，里面倒着一名身材高大、身着防爆背心的男人。",
+                    connections: {
+                        right: "room_junction_nw"
+                    },
+                    event: {
+                        type: "npc",
+                        npcId: "mode"
+                    },
+                    coord: { x: 0, y: 2 }
+                },
+
+                // 11. 北向联络回廊 (从西北岔路向右走)
+                "room_path_e": {
+                    id: "room_path_e",
+                    name: "【北向连接道】中继过渡间",
+                    desc: "脚下的合金格栅发出空洞的回响，前方通向东北侧拐弯口。",
+                    connections: {
+                        left: "room_junction_nw",
+                        forward: "room_corner_ne"
+                    },
+                    event: null,
+                    coord: { x: 2, y: 2 }
+                },
+
+                // 12. 东北折返点 (手绘图右上方拐角)
+                "room_corner_ne": {
+                    id: "room_corner_ne",
+                    name: "【东北拐角哨所】跃迁前厅",
+                    desc: "这里的应急指示灯亮起显眼的绿色，左侧就是通向地表的终点气密门！",
+                    connections: {
+                        backward: "room_path_e",
+                        left: "room_exit"
+                    },
+                    event: null,
+                    coord: { x: 2, y: 1 }
+                },
+
+                // 13. 终点 (手绘图上标有箭头的“终点”)
+                "room_exit": {
+                    id: "room_exit",
+                    name: "【脱离大门】主跃迁逃生舱 (终点)",
+                    desc: "主控台绿灯恒定，折跃引擎待命中！只要启动操作杆即可彻底脱离废墟！",
+                    connections: {
+                        right: "room_corner_ne"
+                    },
+                    event: {
+                        type: "exit",
+                        name: "主折跃逃生大门"
+                    },
+                    isExit: true,
+                    coord: { x: 1, y: 1 }
+                }
+            }
+        },
+
+        // 关卡非线性解锁规则配置列表 (由通关撤离队伍状况决定解锁哪些后续扇区)
+        unlockRules: [
+            {
+                id: "l1_basic_clear",
+                condition: { type: "clear_any" },
+                unlockLevelIds: [2],
+                taskName: "任务一：成功撤离 (坍缩逃逸)",
+                taskObjective: "突破重叠回廊，开启终点折跃气闸完成脱离",
+                title: "常规路线探明",
+                toast: "已探明深层通路，开放【扇区 02：深层重叠】！"
+            },
+            {
+                id: "l1_shaokexin_escort",
+                condition: { 
+                    type: "require_npcs", 
+                    npcIds: ["shaokexin"] 
+                },
+                unlockLevelIds: [14],
+                taskName: "任务二：带离邵可欣撤离 (共鸣引渡)",
+                taskObjective: "搜寻救醒邵可欣，携行穿越终点事件视界共同脱出",
+                title: "邵可欣的信标共鸣",
+                toast: "成功护送【邵可欣】脱离！其记忆共鸣激活隐藏信标，额外开放【扇区 14：异构核心】！"
+            }
+        ]
+    },
+    {
+        levelId: 2,
+        title: "第二关：深层重叠 · 镜面回廊",
+        subtitle: "高维拓扑裂解 · 搜寻深层失散同伴",
+
+        // q1 黑屏中间白字（契合循环重构与更深层迷宫的世界观）
+        blackScreenText: [
+            "……气闸闭合的沉闷重响再次灌入耳道，但重力感却全然错位。",
+            "眼前的合金走廊更加深邃、更加庞大，无数发光的管线如同垂死的神经网络在穹顶蔓延。",
+            "通讯仪中传出断断续续的电流杂音，三个微弱的同伴生命信标再度分散在这片更广袤的结构深处。",
+            "不可思议的是，你隐约感觉眼前发生的一切，你似乎早已在某个未曾抵达的未来‘经历’过……",
+            "潜伏的伪装体并未远去，他们的呼吸声在更暗的角落隐匿。救出同伴，踏向深处的奇点核心。",
+            "——触摸屏幕，踏入第二重回响。"
+        ],
+
+        // 初始属性
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量配置
+        wolfCountRange: [1, 3],
+        candidateNPCs: [
+            { id: "kaze", assignedRole: null },       // NPC1: 卡泽 (男，蓝框)
+            { id: "shaokexin", assignedRole: null },  // NPC2: 邵可欣 (女，粉框)
+            { id: "mode", assignedRole: null }        // NPC3: 莫德 (男，紫框)
+        ],
+
+        mapImageUrl: null, // 第二关完全基于高精实时战术蓝图呈现
+
+        // 地图拓扑网络 (16个节点，5列x4行，比第一关13个节点稍大一点点，完全随机生成后固化)
+        map: {
+            startNodeId: "room2_start",
+            nodes: {
+                // Row 4: 南侧下层
+                "room2_start": {
+                    id: "room2_start",
+                    name: "【深潜起点】次级减压闸",
+                    desc: "你站在湿冷的减压舱正中，身后的气阀已经被彻底锁死，前方是向深处延伸的导引光缆。",
+                    connections: {
+                        right: "room2_corridor_s1",
+                        forward: "room2_hub_s"
+                    },
+                    event: null,
+                    coord: { x: 1, y: 4 }
+                },
+                "room2_corridor_s1": {
+                    id: "room2_corridor_s1",
+                    name: "【南侧走廊】重力偏转廊",
+                    desc: "脚下的重力场轻微起伏，右侧隔离舱门半开着，似乎传来了人类微弱的气息。",
+                    connections: {
+                        left: "room2_start",
+                        right: "room2_npc_a"
+                    },
+                    event: null,
+                    coord: { x: 2, y: 4 }
+                },
+                "room2_npc_a": {
+                    id: "room2_npc_a",
+                    name: "【生化隔离区】样本保全舱",
+                    desc: "防爆玻璃碎裂一地，穿着防爆战术背心的高大男人正昏迷在坍塌的立柱边。",
+                    connections: {
+                        left: "room2_corridor_s1",
+                        forward: "room2_lab_east"
+                    },
+                    event: {
+                        type: "npc",
+                        npcId: "mode" // 莫德
+                    },
+                    coord: { x: 3, y: 4 }
+                },
+
+                // Row 3: 中下回廊
+                "room2_food_w": {
+                    id: "room2_food_w",
+                    name: "【西翼补给点】水培增殖站",
+                    desc: "无土栽培槽中依然生长着合成作物，储物箱里整齐码放着应急战备口粮！",
+                    connections: {
+                        right: "room2_hub_s"
+                    },
+                    event: {
+                        type: "food",
+                        name: "高维脱水战备口粮"
+                    },
+                    coord: { x: 0, y: 3 }
+                },
+                "room2_hub_s": {
+                    id: "room2_hub_s",
+                    name: "【下层分流口】主环路十字口",
+                    desc: "这里是四通八达的换乘枢纽，地面的冷凝管道向各个方向延伸分支。",
+                    connections: {
+                        backward: "room2_start",
+                        left: "room2_food_w",
+                        right: "room2_central_hall",
+                        forward: "room2_shaft_w"
+                    },
+                    event: null,
+                    coord: { x: 1, y: 3 }
+                },
+                "room2_central_hall": {
+                    id: "room2_central_hall",
+                    name: "【中央主殿】坍缩观测环厅",
+                    desc: "穹顶上巨大的环形投影正在播放静止的星图，左通分流口，右连东部管廊，北向前通高维天桥。",
+                    connections: {
+                        left: "room2_hub_s",
+                        right: "room2_lab_east",
+                        forward: "room2_core_bridge"
+                    },
+                    event: null,
+                    coord: { x: 2, y: 3 }
+                },
+                "room2_lab_east": {
+                    id: "room2_lab_east",
+                    name: "【东部连廊】等离子管道",
+                    desc: "紫色的辉光在粗壮的绝缘管道中奔流，空气中充满电离后的刺鼻气味。",
+                    connections: {
+                        backward: "room2_npc_a",
+                        left: "room2_central_hall",
+                        right: "room2_npc_b",
+                        forward: "room2_east_junction"
+                    },
+                    event: null,
+                    coord: { x: 3, y: 3 }
+                },
+                "room2_npc_b": {
+                    id: "room2_npc_b",
+                    name: "【深空天线室】折射观测哨",
+                    desc: "巨大的反射天线基座下，一名系着救援丝带的少女正抱着通讯终端陷入重度昏迷。",
+                    connections: {
+                        left: "room2_lab_east",
+                        forward: "room2_east_turret"
+                    },
+                    event: {
+                        type: "npc",
+                        npcId: "shaokexin" // 邵可欣
+                    },
+                    coord: { x: 4, y: 3 }
+                },
+
+                // Row 2: 中上回廊
+                "room2_food_nw": {
+                    id: "room2_food_nw",
+                    name: "【西北储物舱】冷凝胶囊库",
+                    desc: "角落里的低温储物柜尚未断电，里面存放着高纯度电解质能量合剂！",
+                    connections: {
+                        right: "room2_shaft_w"
+                    },
+                    event: {
+                        type: "food",
+                        name: "高能抗逆电解质合剂"
+                    },
+                    coord: { x: 0, y: 2 }
+                },
+                "room2_shaft_w": {
+                    id: "room2_shaft_w",
+                    name: "【西区竖井】磁吸升降通道",
+                    desc: "竖直向上的升降导轨一眼望不到顶，冷风从上方算力机房阵列呼啸倒灌。",
+                    connections: {
+                        backward: "room2_hub_s",
+                        left: "room2_food_nw",
+                        right: "room2_core_bridge",
+                        forward: "room2_npc_c"
+                    },
+                    event: null,
+                    coord: { x: 1, y: 2 }
+                },
+                "room2_core_bridge": {
+                    id: "room2_core_bridge",
+                    name: "【核心连桥】高维共振天桥",
+                    desc: "悬空在深渊之上的钢构天桥，下方翻滚着幽蓝色的能量迷雾，正前方通向前哨厅。",
+                    connections: {
+                        backward: "room2_central_hall",
+                        left: "room2_shaft_w",
+                        right: "room2_east_junction",
+                        forward: "room2_pre_exit"
+                    },
+                    event: null,
+                    coord: { x: 2, y: 2 }
+                },
+                "room2_east_junction": {
+                    id: "room2_east_junction",
+                    name: "【东侧分歧口】中微子屏蔽室",
+                    desc: "铅灰色的吸波墙壁阻隔了几乎所有电磁信号，东边通往外壁悬廊。",
+                    connections: {
+                        backward: "room2_lab_east",
+                        left: "room2_core_bridge",
+                        right: "room2_east_turret"
+                    },
+                    event: null,
+                    coord: { x: 3, y: 2 }
+                },
+                "room2_east_turret": {
+                    id: "room2_east_turret",
+                    name: "【外壁巡视台】虚空了望悬廊",
+                    desc: "防辐射舷窗外是一片扭曲成圆环的奇异星光，静止得仿佛一幅画卷。",
+                    connections: {
+                        backward: "room2_npc_b",
+                        left: "room2_east_junction"
+                    },
+                    event: null,
+                    coord: { x: 4, y: 2 }
+                },
+
+                // Row 1: 北侧顶层终点区
+                "room2_npc_c": {
+                    id: "room2_npc_c",
+                    name: "【量子矩阵室】算力机房副厅",
+                    desc: "庞大的服务器阵列发出低沉的运算嗡鸣，冷峻的青年军官正倒在主控键盘前，失去了意识。",
+                    connections: {
+                        backward: "room2_shaft_w",
+                        right: "room2_pre_exit"
+                    },
+                    event: {
+                        type: "npc",
+                        npcId: "kaze" // 卡泽
+                    },
+                    coord: { x: 1, y: 1 }
+                },
+                "room2_pre_exit": {
+                    id: "room2_pre_exit",
+                    name: "【前置缓冲厅】临界光压前哨",
+                    desc: "绿色的应急指示灯疯狂频闪，右侧就是那扇散发着扭曲力场的终点奇点大门！",
+                    connections: {
+                        backward: "room2_core_bridge",
+                        left: "room2_npc_c",
+                        right: "room2_exit"
+                    },
+                    event: null,
+                    coord: { x: 2, y: 1 }
+                },
+                "room2_exit": {
+                    id: "room2_exit",
+                    name: "【奇点之门】超弦共振核心 (终点)",
+                    desc: "门框周围的空间发生着肉眼可见的光学折叠。无论门后是什么，踏入即是最终的坍缩。",
+                    connections: {
+                        left: "room2_pre_exit"
+                    },
+                    event: {
+                        type: "exit",
+                        name: "奇点折叠共振大门"
+                    },
+                    isExit: true,
+                    coord: { x: 3, y: 1 }
+                }
+            }
+        },
+
+        // 第二关解锁规则列表
+        unlockRules: [
+            {
+                id: "l2_basic_clear",
+                condition: { type: "clear_any" },
+                unlockLevelIds: [3],
+                taskName: "任务一：成功撤离 (镜面穿透)",
+                taskObjective: "突破镜面折射回廊，抵达终点奇点之门并脱出",
+                title: "突破镜面",
+                toast: "成功突破镜面回廊，开放【扇区 03：湮灭奇点】！"
+            },
+            {
+                id: "l2_all_mimics_escort",
+                condition: { type: "require_all_mimics" },
+                unlockLevelIds: [5],
+                taskName: "任务二：引渡全员伪人撤离 (深渊诱捕)",
+                taskObjective: "同化或引领，携行场上全部潜伏拟态伪装体一同脱出",
+                title: "深渊引渡者",
+                toast: "全员伪人被引渡带出！深层异动引发共鸣，额外开放【扇区 05：拟态深渊】！"
+            }
+        ]
+    }
+];
+
+const ExclusiveBranchLevels = [
+    {
+        levelId: 101,
+        isExclusiveBranch: true,
+        exclusiveCharId: "kaze",
+        title: "扇区 EX-K：孤狼战术突破",
+        subtitle: "卡泽主导视角 · 单兵诱敌潜入回廊",
+        blackScreenText: [
+            "……在第07巡逻区撕裂的烟尘中，卡泽握紧了手中的脉冲震荡匕首。",
+            "“队长，由我来断后引开主机房聚集的高熵集群，你们立刻前往主闸门。”",
+            "“别用那种眼神看着我。我向你保证过，只要我还没倒下，防线就不会崩溃。”",
+            "“潜行穿透重构区，摧毁伪装体的信息中枢信标。”",
+            "——触摸屏幕，执行孤狼突破。"
+        ],
+        initialStamina: 100,
+        initialTeam: ["kaze"],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "guard",
+        wolfCountRange: [1, 2],
+        candidateNPCs: [
+            { id: "shaokexin", assignedRole: null },
+            { id: "mode", assignedRole: null }
+        ],
+        map: {
+            startNodeId: "ex_k_start",
+            nodes: {
+                "ex_k_start": {
+                    id: "ex_k_start",
+                    name: "【前哨突破口】冷凝减压井",
+                    desc: "卡泽端起微型战术冲锋枪在前方引路，四周回荡着机械齿轮的啮合低鸣。",
+                    connections: { right: "ex_k_corridor_1", forward: "ex_k_hub" },
+                    coord: { x: 0, y: 3 },
+                    isStart: true
+                },
+                "ex_k_corridor_1": {
+                    id: "ex_k_corridor_1",
+                    name: "【潜行暗道】光缆维护狭廊",
+                    desc: "微弱的指示灯以固定频率闪烁，两侧堆满了被暴力拆卸的监控探头。",
+                    connections: { left: "ex_k_start", forward: "ex_k_sub_station" },
+                    coord: { x: 1, y: 3 }
+                },
+                "ex_k_sub_station": {
+                    id: "ex_k_sub_station",
+                    name: "【次级整备台】战地补给点",
+                    desc: "角落的锁柜被卡泽用军用匕首撬开，里面留存着高纯度军用肾上腺凝胶与干粮！",
+                    connections: { backward: "ex_k_corridor_1", left: "ex_k_hub" },
+                    event: { type: "food", name: "战地高能补给包" },
+                    coord: { x: 1, y: 2 }
+                },
+                "ex_k_hub": {
+                    id: "ex_k_hub",
+                    name: "【高熵分流室】主网络交换机房",
+                    desc: "空气中弥漫着刺鼻的负熵气味，主控台的红光疯狂警示——伪装体的神经信标就在上方！",
+                    connections: { backward: "ex_k_start", right: "ex_k_sub_station", forward: "ex_k_exit" },
+                    coord: { x: 0, y: 2 }
+                },
+                "ex_k_exit": {
+                    id: "ex_k_exit",
+                    name: "【信息信标核心】奇点共鸣天线 (终点)",
+                    desc: "高维全息屏正在强制向外广播同化脉冲！只要拉下紧急断路开关，就能截断伪装体网络！",
+                    connections: { backward: "ex_k_hub" },
+                    event: { type: "exit", name: "信标断路闸门" },
+                    isExit: true,
+                    coord: { x: 0, y: 1 }
+                }
+            }
+        },
+        unlockRules: [
+            {
+                id: "ex_k_clear",
+                condition: { type: "clear_any" },
+                unlockLevelIds: [],
+                taskName: "任务一：突破主机房截断信标",
+                taskObjective: "与卡泽并肩作战，突破感染重灾区并破坏广播信标",
+                title: "孤狼战术达成",
+                toast: "成功完成卡泽专属突破分支！获得了卡泽的深层因果共鸣印记！"
+            }
+        ]
+    },
+    {
+        levelId: 102,
+        isExclusiveBranch: true,
+        exclusiveCharId: "shaokexin",
+        title: "扇区 EX-S：邵可欣的记忆回溯",
+        subtitle: "邵可欣回忆视角 · 爆炸前夕的实验室真相",
+        blackScreenText: [
+            "……冰冷的冷凝水滴落在手臂上的粉色缎带上，唤醒了沉眠的记忆深处。",
+            "“队长……原来在基地爆炸前十五分钟，实验室的主控台就已经被同化了……”",
+            "“妹妹留给我的缎带在发烫……我想起来了，最初的零号感染体在哪里！”",
+            "“必须赶在时钟再次倒流前，取回复苏核心的原始测序晶片。”",
+            "——触摸屏幕，踏入记忆深潜。"
+        ],
+        initialStamina: 100,
+        initialTeam: ["shaokexin"],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+        wolfCountRange: [1, 2],
+        candidateNPCs: [
+            { id: "kaze", assignedRole: null },
+            { id: "mode", assignedRole: null }
+        ],
+        map: {
+            startNodeId: "ex_s_start",
+            nodes: {
+                "ex_s_start": {
+                    id: "ex_s_start",
+                    name: "【回忆起点】生化观测走廊",
+                    desc: "周围的景物泛着半透明的蓝色波光，邵可欣紧紧抓着你的衣袖，指引着当年的路径。",
+                    connections: { right: "ex_s_lab", forward: "ex_s_office" },
+                    coord: { x: 1, y: 3 },
+                    isStart: true
+                },
+                "ex_s_lab": {
+                    id: "ex_s_lab",
+                    name: "【冷冻样本库】胚胎培养回廊",
+                    desc: "密封玻璃罐内残留着微弱的荧光，邵可欣从实验台抽屉里找到了未过期的抗应激葡萄糖！",
+                    connections: { left: "ex_s_start", forward: "ex_s_junction" },
+                    event: { type: "food", name: "科研医用高能葡萄糖" },
+                    coord: { x: 2, y: 3 }
+                },
+                "ex_s_office": {
+                    id: "ex_s_office",
+                    name: "【主任备勤间】档案分析室",
+                    desc: "散落的文件上画着黑色的闭合环路图示，墙上的时钟指针正以诡异的速度倒转。",
+                    connections: { backward: "ex_s_start", right: "ex_s_junction" },
+                    coord: { x: 1, y: 2 }
+                },
+                "ex_s_junction": {
+                    id: "ex_s_junction",
+                    name: "【气闸过渡桥】零号隔离舱外",
+                    desc: "通向深层实验室的最后一道门被生物胶质封死，红色的警报灯如心跳般搏动。",
+                    connections: { backward: "ex_s_lab", left: "ex_s_office", forward: "ex_s_exit" },
+                    coord: { x: 2, y: 2 }
+                },
+                "ex_s_exit": {
+                    id: "ex_s_exit",
+                    name: "【测序核心】原始因果黑匣 (终点)",
+                    desc: "操作台正中静静悬浮着一枚紫色棱镜晶片——这就是第一批拟态伪装体诞生的最初记录！",
+                    connections: { backward: "ex_s_junction" },
+                    event: { type: "exit", name: "黑匣折跃读取气阀" },
+                    isExit: true,
+                    coord: { x: 2, y: 1 }
+                }
+            }
+        },
+        unlockRules: [
+            {
+                id: "ex_s_clear",
+                condition: { type: "clear_any" },
+                unlockLevelIds: [],
+                taskName: "任务一：取回零号生物黑匣",
+                taskObjective: "护送邵可欣穿越记忆迷宫，回收导致基地毁灭的最初源头晶片",
+                title: "记忆回溯达成",
+                toast: "成功完成邵可欣专属记忆分支！获得了邵可欣的深度羁绊共鸣！"
+            }
+        ]
+    },
+    {
+        levelId: 103,
+        isExclusiveBranch: true,
+        exclusiveCharId: "mode",
+        title: "扇区 EX-M：莫德的铁壁守望",
+        subtitle: "莫德防守视角 · 中枢配电总厅死守战",
+        blackScreenText: [
+            "……动力炉发生剧烈震荡，警报红光将莫德坚毅的面庞映得通红。",
+            "“L.P.H，收起你那套冷静的理论。今天老子站在这里，一只伪人都别想从这条走廊过去！”",
+            "“手电筒开到最大功率！检查防爆手雷栓！守住配电总闸，直到折跃引擎充能完毕！”",
+            "“——触摸屏幕，死守阵地。”"
+        ],
+        initialStamina: 100,
+        initialTeam: ["mode"],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "witch",
+        wolfCountRange: [1, 2],
+        candidateNPCs: [
+            { id: "kaze", assignedRole: null },
+            { id: "shaokexin", assignedRole: null }
+        ],
+        map: {
+            startNodeId: "ex_m_start",
+            nodes: {
+                "ex_m_start": {
+                    id: "ex_m_start",
+                    name: "【重装防线】应急沙袋阻击点",
+                    desc: "莫德的身躯如同一座钢铁堡垒，防爆盾重重砸在地面，后方是全队的生还希望。",
+                    connections: { forward: "ex_m_corridor", right: "ex_m_arsenal" },
+                    coord: { x: 1, y: 3 },
+                    isStart: true
+                },
+                "ex_m_arsenal": {
+                    id: "ex_m_arsenal",
+                    name: "【弹药配给站】战备军械储藏库",
+                    desc: "防爆铁柜被彻底掀开，里面码放着大口径脉冲子弹与自热军用野战干粮！",
+                    connections: { left: "ex_m_start", forward: "ex_m_power" },
+                    event: { type: "food", name: "军用高热量干粮" },
+                    coord: { x: 2, y: 3 }
+                },
+                "ex_m_corridor": {
+                    id: "ex_m_corridor",
+                    name: "【重火力阻击廊】狭窄扼喉道",
+                    desc: "墙壁布满交火留下的焦黑弹孔，通道狭窄得只能容一人通行，易守难攻。",
+                    connections: { backward: "ex_m_start", right: "ex_m_power" },
+                    coord: { x: 1, y: 2 }
+                },
+                "ex_m_power": {
+                    id: "ex_m_power",
+                    name: "【配电控制室】总动力变压厅",
+                    desc: "巨大的变压器发出轰鸣，莫德拉下一排备用电网开关，高压电弧照亮了四周暗影。",
+                    connections: { left: "ex_m_corridor", backward: "ex_m_arsenal", forward: "ex_m_exit" },
+                    coord: { x: 2, y: 2 }
+                },
+                "ex_m_exit": {
+                    id: "ex_m_exit",
+                    name: "【超弦引擎室】动力充能核心 (终点)",
+                    desc: "绿色指示灯全部点亮！折跃引擎充能完毕，主屏障已彻底闭锁，大门正式开启！",
+                    connections: { backward: "ex_m_power" },
+                    event: { type: "exit", name: "终极折跃推进阀门" },
+                    isExit: true,
+                    coord: { x: 2, y: 1 }
+                }
+            }
+        },
+        unlockRules: [
+            {
+                id: "ex_m_clear",
+                condition: { type: "clear_any" },
+                unlockLevelIds: [],
+                taskName: "任务一：坚守中枢完成引擎充能",
+                taskObjective: "协助莫德稳固防线，守卫动力控制中心并启动超弦引擎",
+                title: "铁壁守望达成",
+                toast: "成功完成莫德专属铁壁分支！获得了莫德的铁血生死誓约！"
+            }
+        ]
+    }
+];
+
+const LevelRegistry = [
+    ...BaseLevels,
+    ...(typeof GeneratedLevels !== "undefined" ? GeneratedLevels : []),
+    ...ExclusiveBranchLevels
+];
+
+
+
+    // =========================================================================
+    // 模块: dialogueUI.js
+    // =========================================================================
+/**
+ * 视觉小说对话与立绘控制器 (Visual Novel Dialogue UI)
+ * 严格按照用户需求：
+ * 1. 占满屏幕正中底下的视觉小说对话框
+ * 2. 对话框左上角人名标牌
+ * 3. 每一个 NPC 与玩家专属的边框发光色与主题色
+ * 4. 表情差分系统：NPC右上角立绘根据当前句子表情（angry, doubt, smile等）实时动态变脸！
+ * 5. 点击推进下一句、打字机跳过机制与完成回调
+ */
+
+
+
+
+// 全局立绘容错轮询处理器 (当优先候选文件不存在时，无缝尝试下一个格式/别名直至保底)
+if (typeof window !== "undefined") {
+    window.handlePortraitError = function(img) {
+        if (!img) return;
+        try {
+            let raw = img.getAttribute("data-candidates");
+            if (raw) {
+                if (typeof raw === "string" && raw.includes("&quot;")) {
+                    raw = raw.replace(/&quot;/g, '"');
+                }
+                const candidates = (typeof raw === "string") ? JSON.parse(raw) : raw;
+                let idx = parseInt(img.getAttribute("data-index") || "0", 10) + 1;
+                if (Array.isArray(candidates) && idx < candidates.length) {
+                    img.setAttribute("data-index", String(idx));
+                    img.src = candidates[idx];
+                    return;
+                }
+            }
+        } catch (e) {
+            console.warn("[Portrait] 尝试候选立绘失败:", e);
+        }
+        const fallback = img.getAttribute("data-fallback");
+        if (fallback && img.src !== fallback) {
+            img.src = fallback;
+        }
+    };
+}
+
+class DialogueUI {
+    constructor() {
+        this.boxElement = document.getElementById("vn-dialogue-box");
+        this.nameElement = document.getElementById("vn-speaker-name");
+        this.textElement = document.getElementById("vn-dialogue-text");
+        this.portraitElement = document.getElementById("vn-speaker-portrait");
+        this.cornerAvatarElement = document.getElementById("vn-dialogue-corner-avatar");
+        this.advanceIndicator = document.getElementById("vn-advance-cursor");
+
+        this.currentQueue = [];
+        this.currentIndex = 0;
+        this.onCompleteCallback = null;
+
+        this.isTyping = false;
+        this.typingTimer = null;
+        this.fullTextOfCurrentLine = "";
+
+        this.bindEvents();
+    }
+
+    bindEvents() {
+        if (this.boxElement) {
+            this.boxElement.addEventListener("click", () => {
+                this.handleClick();
+            });
+        }
+    }
+
+    /**
+     * 播放一段或多段对话
+     * @param {Array<{speaker: Object, text: string}>} dialogueLines 
+     * @param {Function} onComplete 播放完毕后的回调
+     */
+    playSequence(dialogueLines, onComplete = null) {
+        if (!dialogueLines || dialogueLines.length === 0) {
+            if (onComplete) onComplete();
+            return;
+        }
+
+        this.currentQueue = dialogueLines;
+        this.currentIndex = 0;
+        this.onCompleteCallback = onComplete;
+        this.showBox();
+        this.renderCurrentLine();
+    }
+
+    /**
+     * 快捷播放单条对话
+     */
+    say(speaker, text, onComplete = null) {
+        this.playSequence([{ speaker, text }], onComplete);
+    }
+
+    showBox() {
+        if (this.boxElement) {
+            this.boxElement.classList.remove("vn-hidden");
+        }
+    }
+
+    hideBox() {
+        if (this.boxElement) {
+            this.boxElement.classList.add("vn-hidden");
+        }
+        if (this.portraitElement) {
+            this.portraitElement.classList.add("portrait-hidden");
+        }
+        if (this.cornerAvatarElement) {
+            this.cornerAvatarElement.classList.add("portrait-hidden");
+        }
+    }
+
+    renderCurrentLine() {
+        if (this.currentIndex >= this.currentQueue.length) {
+            this.finishSequence();
+            return;
+        }
+
+        const item = this.currentQueue[this.currentIndex];
+        const speaker = item.speaker || { name: "系统", themeColor: "#38bdf8" };
+
+        // 解析当前文本与绑定的表情 (支持直接传 item.expression 或 文本内包含 [生气] 等标签，无指示时默认用 clam)
+        let parsed = { text: "", expression: "clam" };
+        if (item.expression) {
+            parsed.text = item.text || "";
+            parsed.expression = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.normalizeExpression)
+                ? CharacterRegistry.normalizeExpression(item.expression)
+                : item.expression;
+        } else if (typeof CharacterRegistry !== "undefined" && CharacterRegistry.parseDialogueLine) {
+            parsed = CharacterRegistry.parseDialogueLine(item.text !== undefined ? item.text : item);
+        } else {
+            parsed.text = item.text || "";
+            parsed.expression = "clam";
+        }
+
+        this.fullTextOfCurrentLine = parsed.text;
+
+        // 1. 设置说话人姓名与主题色 (死亡时呈现告警红色)
+        this.nameElement.textContent = (parsed.expression === "dead") ? `${speaker.name} [已遇害]` : speaker.name;
+        this.applySpeakerTheme(speaker, parsed.expression);
+
+        // 2. 渲染立绘 (主角不展示，NPC在对话框右上角展示对应表情立绘，遇害时展示 dead 立绘)
+        this.renderPortrait(speaker, parsed.expression);
+
+        // 3. 广播发出警报时播放专属警报音效 (警告.wav)
+        const isAlarmLine = (
+            (speaker.name && /警报|警告|警示|ALERT/i.test(speaker.name)) ||
+            (this.isBroadcastOrSystem(speaker) && /⚠️|警报|警告/i.test(this.fullTextOfCurrentLine))
+        );
+        if (isAlarmLine && typeof Sound !== "undefined" && Sound.playAlarmSound) {
+            Sound.playAlarmSound();
+        }
+
+        // 4. 开始打字机动画
+        this.startTypewriter(this.fullTextOfCurrentLine);
+    }
+
+    applySpeakerTheme(speaker, expression = "clam") {
+        const isDead = (expression === "dead");
+        const themeColor = isDead ? "#ef4444" : (speaker.themeColor || "#38bdf8");
+        const boxBorderColor = isDead ? "rgba(239, 68, 68, 0.9)" : (speaker.boxBorderColor || `rgba(56, 189, 248, 0.85)`);
+        const boxBgGlow = isDead ? "rgba(239, 68, 68, 0.25)" : (speaker.boxBgGlow || `rgba(56, 189, 248, 0.15)`);
+
+        // 动态修改对话框和名字牌的专属主题风格
+        this.nameElement.style.color = themeColor;
+        this.nameElement.style.borderColor = themeColor;
+        this.nameElement.style.boxShadow = `0 0 12px ${themeColor}40`;
+
+        this.boxElement.style.borderColor = boxBorderColor;
+        this.boxElement.style.boxShadow = `0 -8px 24px ${boxBgGlow}, inset 0 0 20px ${boxBgGlow}`;
+    }
+
+    isBroadcastOrSystem(speaker) {
+        if (!speaker) return true;
+        if (speaker.isProtagonist || speaker.isBroadcast || speaker.isSystem) return true;
+        if (speaker.id === "lph" || speaker.id === "system" || speaker.id === "broadcast") return true;
+        const name = speaker.name || "";
+        return /广播|系统|终端|通信|审决|全员/i.test(name);
+    }
+
+    renderPortrait(speaker, expression = "clam") {
+        // 主角说话时不展示立绘；系统广播、警报广播、终端通知等一律严禁展示立绘
+        if (this.isBroadcastOrSystem(speaker)) {
+            if (this.cornerAvatarElement) {
+                this.cornerAvatarElement.classList.add("portrait-hidden");
+                this.cornerAvatarElement.innerHTML = "";
+            }
+            if (this.portraitElement) {
+                this.portraitElement.classList.add("portrait-hidden");
+            }
+            return;
+        }
+
+        // NPC 说话时：立绘展示在对话框右上角！根据当前表情显示对应立绘 (遇害时展示 dead 照片)
+        if (this.cornerAvatarElement) {
+            this.cornerAvatarElement.classList.remove("portrait-hidden");
+
+            const color = speaker.themeColor || "#38bdf8";
+            const exp = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.normalizeExpression)
+                ? CharacterRegistry.normalizeExpression(expression)
+                : (expression || "clam");
+            
+            // 获取候选立绘队列
+            const candidates = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getCharacterImageCandidates)
+                ? CharacterRegistry.getCharacterImageCandidates(speaker, exp)
+                : [(speaker.expressions && speaker.expressions[exp]) || speaker.avatarUrl || ""];
+
+            // 备用差分SVG
+            const fallbackSvg = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getAvatarSvg)
+                ? CharacterRegistry.getAvatarSvg(speaker, exp)
+                : (speaker.fallbackSvg || "");
+
+            // 表情中文名标签展示
+            const expCnMap = {
+                clam: "平静",
+                calm: "平静",
+                normal: "正常",
+                happy: "开心",
+                smile: "开心",
+                sad: "悲伤",
+                angry: "生气",
+                doubt: "疑惑",
+                shock: "震惊",
+                dead: "已遇害"
+            };
+            const isDead = (exp === "dead");
+            const borderColor = isDead ? "#ef4444" : color;
+            const shadowGlow = isDead
+                ? "0 0 24px rgba(239, 68, 68, 0.95), inset 0 0 16px rgba(239, 68, 68, 0.6)"
+                : `0 0 16px ${color}80, inset 0 0 12px ${color}40`;
+            const tagBg = isDead ? "#dc2626" : color;
+            const expLabel = isDead ? "已遇害 💀" : (expCnMap[exp] || exp);
+
+            const primaryUrl = candidates[0] || fallbackSvg;
+            const candidatesAttr = JSON.stringify(candidates).replace(/"/g, '&quot;');
+
+            const imgHtml = `
+                <img src="${primaryUrl}"
+                     data-candidates="${candidatesAttr}"
+                     data-index="0"
+                     data-fallback="${fallbackSvg}"
+                     alt="${speaker.name} - ${expLabel}"
+                     class="corner-portrait-img ${isDead ? 'dead-portrait-img' : ''}"
+                     onerror="window.handlePortraitError && window.handlePortraitError(this)">
+            `;
+
+            this.cornerAvatarElement.innerHTML = `
+                <div class="corner-avatar-frame ${isDead ? 'avatar-frame-dead' : ''}" style="border-color:${borderColor}; box-shadow:${shadowGlow};">
+                    ${imgHtml}
+                    <div class="corner-avatar-tag" style="background:${tagBg};">${speaker.name} · ${expLabel}</div>
+                </div>
+            `;
+        }
+    }
+
+    startTypewriter(text) {
+        if (this.typingTimer) {
+            clearInterval(this.typingTimer);
+        }
+
+        this.isTyping = true;
+        this.textElement.textContent = "";
+        if (this.advanceIndicator) {
+            this.advanceIndicator.classList.add("indicator-hidden");
+        }
+
+        let charIdx = 0;
+        const speed = 24; // 毫秒/字
+
+        this.typingTimer = setInterval(() => {
+            if (charIdx < text.length) {
+                this.textElement.textContent += text.charAt(charIdx);
+                charIdx++;
+            } else {
+                this.finishTyping();
+            }
+        }, speed);
+    }
+
+    finishTyping() {
+        if (this.typingTimer) {
+            clearInterval(this.typingTimer);
+            this.typingTimer = null;
+        }
+        this.isTyping = false;
+        this.textElement.textContent = this.fullTextOfCurrentLine;
+        if (this.advanceIndicator) {
+            this.advanceIndicator.classList.remove("indicator-hidden");
+        }
+    }
+
+    handleClick() {
+        // 如果正在打字，点击立即显示整句
+        if (this.isTyping) {
+            this.finishTyping();
+            return;
+        }
+
+        // 如果已经打完，点击前进至下一句
+        this.currentIndex++;
+        this.renderCurrentLine();
+    }
+
+    finishSequence() {
+        this.currentQueue = [];
+        this.currentIndex = 0;
+        this.hideBox();
+        if (this.advanceIndicator) {
+            this.advanceIndicator.classList.add("indicator-hidden");
+        }
+        if (this.onCompleteCallback) {
+            const cb = this.onCompleteCallback;
+            this.onCompleteCallback = null;
+            cb();
+        }
+    }
+}
+
+
+    // =========================================================================
+    // 模块: saveSystem.js
+    // =========================================================================
+/**
+ * 存档与读档管理系统 (Save / Load System)
+ * 具备沙箱安全防护与无痕模式/iframe内存降级保护，完美适配虎扑AI工坊等平台环境
+ */
+
+class SaveSystem {
+    constructor(saveKey = "DOPPELGANGER_ROGUE_SAVE_V1", unlockedKey = "DOPPELGANGER_UNLOCKED_LEVELS_V1", personaKey = "DOPPELGANGER_PERSONA_SECRETS_V1") {
+        this.saveKey = saveKey;
+        this.unlockedKey = unlockedKey;
+        this.personaKey = personaKey;
+        this.memoryStore = {};
+        this.isLocalStorageAvailable = this.checkLocalStorage();
+    }
+
+    checkLocalStorage() {
+        try {
+            const testKey = "__storage_test__";
+            window.localStorage.setItem(testKey, testKey);
+            window.localStorage.removeItem(testKey);
+            return true;
+        } catch (e) {
+            console.warn("[SaveSystem] LocalStorage 不可用 (可能处于安全沙箱或无痕模式)，自动切换为内存安全存储。");
+            return false;
+        }
+    }
+
+    hasSave() {
+        if (this.isLocalStorageAvailable) {
+            try {
+                return !!window.localStorage.getItem(this.saveKey);
+            } catch (e) {
+                return !!this.memoryStore[this.saveKey];
+            }
+        }
+        return !!this.memoryStore[this.saveKey];
+    }
+
+    saveGame(gameState) {
+        try {
+            const serialized = JSON.stringify(gameState);
+            this.memoryStore[this.saveKey] = serialized;
+            if (this.isLocalStorageAvailable) {
+                window.localStorage.setItem(this.saveKey, serialized);
+            }
+            return true;
+        } catch (e) {
+            console.error("[SaveSystem] 存档失败:", e);
+            return false;
+        }
+    }
+
+    loadGame() {
+        try {
+            let data = null;
+            if (this.isLocalStorageAvailable) {
+                data = window.localStorage.getItem(this.saveKey);
+            }
+            if (!data) {
+                data = this.memoryStore[this.saveKey];
+            }
+            if (!data) return null;
+            return JSON.parse(data);
+        } catch (e) {
+            console.error("[SaveSystem] 读档失败:", e);
+            return null;
+        }
+    }
+
+    clearSave() {
+        try {
+            delete this.memoryStore[this.saveKey];
+            if (this.isLocalStorageAvailable) {
+                window.localStorage.removeItem(this.saveKey);
+            }
+        } catch (e) {
+            console.error("[SaveSystem] 清理存档失败:", e);
+        }
+    }
+
+    // =========================================================================
+    // 关卡解锁持久化管理 (默认初始仅开放第 1 关)
+    // =========================================================================
+    getUnlockedLevels() {
+        try {
+            let raw = null;
+            if (this.isLocalStorageAvailable) {
+                raw = window.localStorage.getItem(this.unlockedKey);
+            }
+            if (!raw) {
+                raw = this.memoryStore[this.unlockedKey];
+            }
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    const validIds = parsed.map(n => Number(n)).filter(n => !isNaN(n) && n > 0);
+                    if (!validIds.includes(1)) validIds.unshift(1);
+                    return Array.from(new Set(validIds)).sort((a, b) => a - b);
+                }
+            }
+        } catch (e) {
+            console.error("[SaveSystem] 获取已解锁关卡失败:", e);
+        }
+        return [1]; // 默认初始仅开放第 1 关
+    }
+
+    isLevelUnlocked(levelId) {
+        const list = this.getUnlockedLevels();
+        return list.includes(Number(levelId));
+    }
+
+    unlockLevels(levelIds = []) {
+        if (!Array.isArray(levelIds) || levelIds.length === 0) {
+            return [];
+        }
+        const currentList = this.getUnlockedLevels();
+        const currentSet = new Set(currentList);
+        const newlyUnlocked = [];
+
+        levelIds.forEach(id => {
+            const numId = Number(id);
+            if (!isNaN(numId) && numId > 0 && !currentSet.has(numId)) {
+                currentSet.add(numId);
+                newlyUnlocked.push(numId);
+            }
+        });
+
+        if (newlyUnlocked.length > 0) {
+            const updatedList = Array.from(currentSet).sort((a, b) => a - b);
+            const serialized = JSON.stringify(updatedList);
+            this.memoryStore[this.unlockedKey] = serialized;
+            if (this.isLocalStorageAvailable) {
+                try {
+                    window.localStorage.setItem(this.unlockedKey, serialized);
+                } catch (e) {
+                    console.error("[SaveSystem] 存储解锁关卡失败:", e);
+                }
+            }
+            console.log(`[SaveSystem] 新增解锁关卡: [${newlyUnlocked.join(", ")}]，当前开放列表: [${updatedList.join(", ")}]`);
+        }
+
+        return newlyUnlocked;
+    }
+
+    resetUnlockedLevels() {
+        const defaultList = [1];
+        const serialized = JSON.stringify(defaultList);
+        this.memoryStore[this.unlockedKey] = serialized;
+        if (this.isLocalStorageAvailable) {
+            try {
+                window.localStorage.setItem(this.unlockedKey, serialized);
+            } catch (e) {
+                console.error("[SaveSystem] 重置关卡解锁失败:", e);
+            }
+        }
+        return defaultList;
+    }
+
+    // =========================================================================
+    // 人物特征 / 秘密图鉴 (Persona Log) 持久化管理
+    // =========================================================================
+    getPersonaSecretsMap() {
+        try {
+            let raw = null;
+            if (this.isLocalStorageAvailable) {
+                raw = window.localStorage.getItem(this.personaKey);
+            }
+            if (!raw) {
+                raw = this.memoryStore[this.personaKey];
+            }
+            if (raw) {
+                return JSON.parse(raw) || {};
+            }
+        } catch (e) {
+            console.error("[SaveSystem] 获取图鉴档案失败:", e);
+        }
+        return {};
+    }
+
+    getUnlockedSecrets(charId) {
+        const map = this.getPersonaSecretsMap();
+        return Array.isArray(map[charId]) ? map[charId] : [];
+    }
+
+    isPersonaSecretUnlocked(charId, secretId) {
+        const list = this.getUnlockedSecrets(charId);
+        return list.includes(secretId);
+    }
+
+    unlockPersonaSecret(charId, secretId) {
+        if (!charId || !secretId) return false;
+        const map = this.getPersonaSecretsMap();
+        if (!Array.isArray(map[charId])) {
+            map[charId] = [];
+        }
+        if (map[charId].includes(secretId)) {
+            return false; // 已经解锁过
+        }
+        map[charId].push(secretId);
+
+        const serialized = JSON.stringify(map);
+        this.memoryStore[this.personaKey] = serialized;
+        if (this.isLocalStorageAvailable) {
+            try {
+                window.localStorage.setItem(this.personaKey, serialized);
+            } catch (e) {
+                console.error("[SaveSystem] 存储图鉴档案失败:", e);
+            }
+        }
+        console.log(`[SaveSystem] ✨ 成功解构新档案: 角色 [${charId}] - 秘密 [${secretId}]`);
+        return true;
+    }
+
+    isCharacterPassiveUnlocked(charId) {
+        const list = this.getUnlockedSecrets(charId);
+        return list.length >= 4; // 达成全部 4 项解构
+    }
+
+    resetPersonaSecrets() {
+        this.memoryStore[this.personaKey] = "{}";
+        if (this.isLocalStorageAvailable) {
+            try {
+                window.localStorage.removeItem(this.personaKey);
+            } catch (e) {
+                console.error("[SaveSystem] 重置图鉴档案失败:", e);
+            }
+        }
+        return {};
+    }
+}
+
+
+    // =========================================================================
+    // 模块: mapRenderer.js
+    // =========================================================================
+function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+class MapRenderer {
+    constructor(canvasElement) {
+        this.canvas = canvasElement;
+        this.ctx = canvasElement ? canvasElement.getContext("2d") : null;
+        this.animating = false;
+        this.animationFrameId = null;
+        this.skipAnimation = null;
+    }
+
+    getLayout() {
+        let minX = 0, maxX = 4, minY = 1, maxY = 3;
+        if (this.currentLevelMap && this.currentLevelMap.nodes) {
+            const coords = Object.values(this.currentLevelMap.nodes).map(n => n.coord || { x: 0, y: 1 });
+            if (coords.length > 0) {
+                minX = Math.min(...coords.map(c => c.x));
+                maxX = Math.max(...coords.map(c => c.x));
+                minY = Math.min(...coords.map(c => c.y));
+                maxY = Math.max(...coords.map(c => c.y));
+            }
+        }
+
+        const cols = Math.max(maxX - minX + 1, 1);
+        const rows = Math.max(maxY - minY + 1, 1);
+
+        // 第一关兼容
+        if (cols <= 5 && rows <= 3 && maxX <= 4 && maxY <= 3) {
+            return {
+                originX: 90,
+                originY: 80,
+                cellW: 120,
+                cellH: 95,
+                boxSize: 58,
+                width: 680,
+                height: 460,
+                minX: 0,
+                minY: 1
+            };
+        }
+
+        // 第二关兼容
+        if (cols <= 5 && rows <= 4 && maxY === 4 && minX === 0) {
+            return {
+                originX: 95,
+                originY: 52,
+                cellW: 118,
+                cellH: 90,
+                boxSize: 52,
+                width: 680,
+                height: 460,
+                minX: 0,
+                minY: 1
+            };
+        }
+
+        // 梯级 1~4 自适应计算 (720x480)
+        const width = 720;
+        const height = 480;
+        const paddingX = 55;
+        const paddingY = 48;
+        const availW = width - paddingX * 2;
+        const availH = height - paddingY * 2;
+
+        const cellW = cols > 1 ? Math.floor(availW / (cols - 1)) : availW;
+        const cellH = rows > 1 ? Math.floor(availH / (rows - 1)) : availH;
+
+        let boxSize = Math.floor(Math.min(cellW, cellH) * 0.72);
+        if (boxSize > 52) boxSize = 52;
+        if (boxSize < 28) boxSize = 28;
+
+        const totalGridW = (cols - 1) * cellW;
+        const totalGridH = (rows - 1) * cellH;
+
+        const originX = Math.round((width - totalGridW) / 2);
+        const originY = Math.round((height - totalGridH) / 2);
+
+        return {
+            originX,
+            originY,
+            cellW,
+            cellH,
+            boxSize,
+            width,
+            height,
+            minX,
+            minY
+        };
+    }
+
+    getNodeCenter(node) {
+        if (!node) return { x: 90, y: 80 };
+        const layout = this.getLayout();
+        const coord = node.coord || { x: 0, y: 1 };
+        const minX = layout.minX !== undefined ? layout.minX : 0;
+        const minY = layout.minY !== undefined ? layout.minY : 1;
+        return {
+            x: layout.originX + (coord.x - minX) * layout.cellW,
+            y: layout.originY + (coord.y - minY) * layout.cellH
+        };
+    }
+
+    /**
+     * 获取 Canvas 坐标对应的房间节点（用于点击/悬浮快速往返）
+     */
+    getNodeAtPosition(canvasX, canvasY, levelMap) {
+        if (!levelMap || !levelMap.nodes) return null;
+        const layout = this.getLayout();
+        const boxSize = layout.boxSize;
+        const half = boxSize / 2 + Math.max(Math.floor(boxSize * 0.15), 5);
+
+        for (const node of Object.values(levelMap.nodes)) {
+            const p = this.getNodeCenter(node);
+            if (Math.abs(canvasX - p.x) <= half && Math.abs(canvasY - p.y) <= half) {
+                return node;
+            }
+        }
+        return null;
+    }
+
+    render(levelMap, currentNodeId, visitedNodes, teamMembers, animatedMarker = null, arrivalPulse = 0, options = {}) {
+        if (!this.ctx || !levelMap || !levelMap.nodes) return;
+        this.currentLevelMap = levelMap;
+
+        const ctx = this.ctx;
+        const layout = this.getLayout();
+        const width = this.canvas.width = layout.width;
+        const height = this.canvas.height = layout.height;
+
+        // 清空背景 (深邃科技黑蓝)
+        ctx.fillStyle = "#060913";
+        ctx.fillRect(0, 0, width, height);
+
+        // 绘制微弱背景网格
+        ctx.strokeStyle = "rgba(56, 189, 248, 0.05)";
+        ctx.lineWidth = 1;
+        const gridSize = 25;
+        for (let x = 0; x < width; x += gridSize) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+        }
+        for (let y = 0; y < height; y += gridSize) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+        }
+
+        // 1. 计算视野迷雾：已探明房间 + 其直接相邻一格的房间
+        const visitedSet = new Set(visitedNodes || []);
+        if (currentNodeId) visitedSet.add(currentNodeId);
+
+        // 动效中支持起点与终点预热
+        if (animatedMarker) {
+            if (animatedMarker.fromId) visitedSet.add(animatedMarker.fromId);
+            if (animatedMarker.progress >= 0.7 && animatedMarker.toId) {
+                visitedSet.add(animatedMarker.toId);
+            }
+        }
+
+        const revealedSet = new Set(visitedSet);
+        visitedSet.forEach(nodeId => {
+            const node = levelMap.nodes[nodeId];
+            if (node && node.connections) {
+                Object.values(node.connections).forEach(targetId => {
+                    if (levelMap.nodes[targetId]) {
+                        revealedSet.add(targetId);
+                    }
+                });
+            }
+        });
+        if (animatedMarker && animatedMarker.toId) {
+            revealedSet.add(animatedMarker.toId);
+        }
+
+        const boxSize = layout.boxSize;
+        const nodes = levelMap.nodes;
+
+        // 2. 绘制双线通道 (Double-line Corridors)
+        const drawnEdges = new Set();
+
+        Object.values(nodes).forEach(node => {
+            if (!revealedSet.has(node.id)) return;
+
+            const p1 = this.getNodeCenter(node);
+            const conns = node.connections || {};
+
+            Object.entries(conns).forEach(([dir, targetId]) => {
+                if (!revealedSet.has(targetId)) return;
+
+                if (!visitedSet.has(node.id) && !visitedSet.has(targetId)) return;
+
+                const edgeKey = [node.id, targetId].sort().join("<->");
+                if (drawnEdges.has(edgeKey)) return;
+                drawnEdges.add(edgeKey);
+
+                const targetNode = nodes[targetId];
+                if (!targetNode) return;
+
+                const p2 = this.getNodeCenter(targetNode);
+
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
+                const len = Math.hypot(dx, dy);
+                if (len === 0) return;
+
+                const nx = -dy / len;
+                const ny = dx / len;
+                const gap = 5; // 双线间距的一半
+
+                const bothVisited = visitedSet.has(node.id) && visitedSet.has(targetId);
+
+                // 正在平移动画通行的走廊，施加动态高亮光晕
+                const isTraversingEdge = animatedMarker && (
+                    (animatedMarker.fromId === node.id && animatedMarker.toId === targetId) ||
+                    (animatedMarker.fromId === targetId && animatedMarker.toId === node.id)
+                );
+
+                if (isTraversingEdge) {
+                    ctx.strokeStyle = "#38bdf8";
+                    ctx.lineWidth = 3;
+                    ctx.shadowColor = "#38bdf8";
+                    ctx.shadowBlur = 12;
+                    ctx.setLineDash([]);
+                } else if (bothVisited) {
+                    ctx.strokeStyle = "rgba(56, 189, 248, 0.65)";
+                    ctx.lineWidth = 2;
+                    ctx.shadowBlur = 0;
+                    ctx.setLineDash([]);
+                } else {
+                    ctx.strokeStyle = "rgba(56, 189, 248, 0.3)";
+                    ctx.lineWidth = 2;
+                    ctx.shadowBlur = 0;
+                    ctx.setLineDash([4, 4]);
+                }
+
+                // 第一条平行线
+                ctx.beginPath();
+                ctx.moveTo(p1.x + nx * gap, p1.y + ny * gap);
+                ctx.lineTo(p2.x + nx * gap, p2.y + ny * gap);
+                ctx.stroke();
+
+                // 第二条平行线
+                ctx.beginPath();
+                ctx.moveTo(p1.x - nx * gap, p1.y - ny * gap);
+                ctx.lineTo(p2.x - nx * gap, p2.y - ny * gap);
+                ctx.stroke();
+
+                ctx.setLineDash([]);
+                ctx.shadowBlur = 0;
+            });
+        });
+
+        // 2.0 若处于多节点路径快速往返中，绘制全局预备光轨
+        if (animatedMarker && animatedMarker.path && animatedMarker.path.length > 1) {
+            ctx.save();
+            ctx.strokeStyle = "rgba(74, 222, 128, 0.4)";
+            ctx.lineWidth = 3;
+            ctx.setLineDash([5, 4]);
+            ctx.beginPath();
+            const startFirst = this.getNodeCenter(nodes[animatedMarker.path[0]]);
+            ctx.moveTo(startFirst.x, startFirst.y);
+            for (let i = 1; i < animatedMarker.path.length; i++) {
+                const pt = this.getNodeCenter(nodes[animatedMarker.path[i]]);
+                ctx.lineTo(pt.x, pt.y);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+
+        // 2.1 平移动画进行中：绘制行进激光尾迹
+        if (animatedMarker && animatedMarker.progress > 0 && animatedMarker.fromId) {
+            const startP = this.getNodeCenter(nodes[animatedMarker.fromId]);
+            ctx.save();
+            ctx.strokeStyle = "rgba(56, 189, 248, 0.9)";
+            ctx.lineWidth = 3.5;
+            ctx.shadowColor = "#38bdf8";
+            ctx.shadowBlur = 14;
+            ctx.beginPath();
+            ctx.moveTo(startP.x, startP.y);
+            ctx.lineTo(animatedMarker.x, animatedMarker.y);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // 3. 绘制各个房间方块 (仅绘制在 revealedSet 内的房间)
+        Object.values(nodes).forEach(node => {
+            if (!revealedSet.has(node.id)) {
+                return;
+            }
+
+            const p = this.getNodeCenter(node);
+            const isCurrent = (node.id === currentNodeId && !animatedMarker);
+            const isDestination = animatedMarker && (node.id === animatedMarker.toId);
+            const isVisited = visitedSet.has(node.id);
+            const isHovered = options.hoveredNodeId === node.id;
+
+            const x = p.x - boxSize / 2;
+            const y = p.y - boxSize / 2;
+
+            if (isDestination) {
+                // 行进目标房间：高亮发光提示
+                ctx.fillStyle = "rgba(14, 165, 233, 0.28)";
+                ctx.strokeStyle = "#4ade80";
+                ctx.lineWidth = 2.8;
+                ctx.setLineDash([6, 3]);
+            } else if (isCurrent) {
+                // 当前所在房间
+                ctx.fillStyle = "rgba(56, 189, 248, 0.35)";
+                ctx.strokeStyle = "#38bdf8";
+                ctx.lineWidth = 3;
+                ctx.setLineDash([]);
+            } else if (isVisited) {
+                // 已完全探索过的房间 (若在悬停状态下加强高亮)
+                if (isHovered && options.canFastTravel) {
+                    ctx.fillStyle = "rgba(16, 185, 129, 0.3)";
+                    ctx.strokeStyle = "#4ade80";
+                    ctx.lineWidth = 2.8;
+                } else {
+                    ctx.fillStyle = "rgba(30, 41, 59, 0.85)";
+                    ctx.strokeStyle = "rgba(56, 189, 248, 0.7)";
+                    ctx.lineWidth = 2;
+                }
+                ctx.setLineDash([]);
+            } else {
+                // 周围一格但尚未踏入的迷雾边缘房间
+                ctx.fillStyle = "rgba(15, 23, 42, 0.5)";
+                ctx.strokeStyle = "rgba(148, 163, 184, 0.4)";
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 3]);
+            }
+
+            ctx.beginPath();
+            ctx.rect(x, y, boxSize, boxSize);
+            ctx.fill();
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 当前或目标房间光晕特效
+            if (isCurrent || isDestination) {
+                ctx.shadowColor = isDestination ? "#4ade80" : "#38bdf8";
+                ctx.shadowBlur = 16;
+                ctx.strokeStyle = isDestination ? "#4ade80" : "#ffffff";
+                ctx.strokeRect(x - 2, y - 2, boxSize + 4, boxSize + 4);
+                ctx.shadowBlur = 0;
+            }
+
+            // 文字标注
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            let label = "";
+            let subLabel = "";
+            let tagColor = "#f1f5f9";
+            const showSub = boxSize >= 38;
+
+            if (isVisited || (animatedMarker && node.id === animatedMarker.toId)) {
+                if (node.id === "room_start" || node.isStart || (levelMap && node.id === levelMap.startNodeId)) {
+                    label = "起点"; subLabel = showSub ? "出发点" : ""; tagColor = "#38bdf8";
+                } else if (node.id === "room_npc1") {
+                    label = "NPC1"; subLabel = showSub ? "卡泽" : ""; tagColor = "#38bdf8";
+                } else if (node.id === "room_npc2") {
+                    label = "NPC2"; subLabel = showSub ? "邵可欣" : ""; tagColor = "#f43f5e";
+                } else if (node.id === "room_npc3") {
+                    label = "NPC3"; subLabel = showSub ? "莫尔德" : ""; tagColor = "#a855f7";
+                } else if (node.isExit || node.id === "room_exit" || (node.event && node.event.type === "exit")) {
+                    label = "终点"; subLabel = showSub ? "脱离舱" : ""; tagColor = "#4ade80";
+                } else if (node.event && node.event.type === "food") {
+                    label = "给养"; subLabel = showSub ? "补给" : ""; tagColor = "#f59e0b";
+                } else if (node.event && node.event.type === "npc") {
+                    label = "NPC"; subLabel = showSub ? (node.event.npcId || "同伴") : ""; tagColor = "#c084fc";
+                } else {
+                    label = "走廊"; tagColor = "#94a3b8";
+                }
+            } else {
+                label = "？";
+                subLabel = showSub ? "待探明" : "";
+                tagColor = "rgba(148, 163, 184, 0.75)";
+            }
+
+            const mainFontSize = Math.max(Math.min(Math.floor(boxSize * 0.28), 13), 10);
+            const subFontSize = Math.max(mainFontSize - 2, 8);
+
+            ctx.font = `bold ${mainFontSize}px 'PingFang SC', sans-serif`;
+            ctx.fillStyle = tagColor;
+            ctx.fillText(label, p.x, p.y - (subLabel ? Math.round(subFontSize * 0.65) : 0));
+
+            if (subLabel) {
+                ctx.font = `${subFontSize}px 'PingFang SC', sans-serif`;
+                ctx.fillStyle = (isVisited || (animatedMarker && node.id === animatedMarker.toId))
+                    ? tagColor
+                    : "rgba(148, 163, 184, 0.6)";
+                ctx.fillText(subLabel, p.x, p.y + Math.round(mainFontSize * 0.85));
+            }
+
+            // 静态光标标记
+            if (isCurrent && !animatedMarker) {
+                ctx.fillStyle = "#38bdf8";
+                const hereFontSize = Math.max(Math.min(Math.floor(boxSize * 0.2), 10), 8);
+                ctx.font = `bold ${hereFontSize}px 'Orbitron', monospace`;
+                ctx.fillText(boxSize >= 36 ? "📍HERE" : "📍", p.x, p.y - boxSize / 2 - 6);
+            } else if (options.canFastTravel && isVisited && !animatedMarker) {
+                // 可快速往返房间角标提示
+                const isHover = options.hoveredNodeId === node.id;
+                ctx.fillStyle = isHover ? "#4ade80" : "rgba(74, 222, 128, 0.85)";
+                const travelFontSize = Math.max(Math.min(Math.floor(boxSize * 0.18), 9), 8);
+                ctx.font = `bold ${travelFontSize}px 'Orbitron', sans-serif`;
+                ctx.fillText(boxSize >= 38 ? "⚡快速往返" : "⚡", p.x, p.y - boxSize / 2 - 6);
+            }
+        });
+
+        // 4. 类似 Unity DoTween 平移动画光标渲染 (平滑穿梭于两点之间)
+        if (animatedMarker) {
+            const curX = animatedMarker.x;
+            const curY = animatedMarker.y;
+
+            ctx.save();
+
+            // 4.1 抵达时的扩张脉冲冲击波
+            if (arrivalPulse > 0) {
+                const pulseR = 16 + arrivalPulse * 38;
+                const alpha = Math.max(0, 1 - arrivalPulse);
+                ctx.strokeStyle = `rgba(74, 222, 128, ${alpha})`;
+                ctx.lineWidth = 3 * alpha;
+                ctx.beginPath();
+                ctx.arc(curX, curY, pulseR, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // 4.2 雷达扫描扩散外环
+            const now = Date.now();
+            const ring1 = 18 + 5 * Math.sin(now / 140);
+            ctx.strokeStyle = "rgba(56, 189, 248, 0.55)";
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.arc(curX, curY, ring1, 0, Math.PI * 2);
+            ctx.stroke();
+
+            const ring2 = 25 + 4 * Math.cos(now / 190);
+            ctx.strokeStyle = "rgba(56, 189, 248, 0.25)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(curX, curY, ring2, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // 4.3 核心玩家小球标记 (发光徽章)
+            ctx.shadowColor = "#38bdf8";
+            ctx.shadowBlur = 18;
+            ctx.fillStyle = arrivalPulse > 0 ? "#10b981" : "#0284c7";
+            ctx.beginPath();
+            ctx.arc(curX, curY, 14, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // 核心标记文字
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 12px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("📍", curX, curY - 1);
+
+            // 4.4 悬浮名字标签
+            const tagText = arrivalPulse > 0 ? "抵达" : "L.P.H";
+            ctx.font = "bold 10px 'Orbitron', monospace";
+            const tagW = ctx.measureText(tagText).width + 12;
+            ctx.fillStyle = "rgba(11, 17, 32, 0.92)";
+            ctx.fillRect(curX - tagW / 2, curY - 32, tagW, 16);
+            ctx.strokeStyle = arrivalPulse > 0 ? "#4ade80" : "#38bdf8";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(curX - tagW / 2, curY - 32, tagW, 16);
+
+            ctx.fillStyle = arrivalPulse > 0 ? "#4ade80" : "#38bdf8";
+            ctx.fillText(tagText, curX, curY - 23);
+
+            ctx.restore();
+        }
+
+        // 底部图例
+        ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+        ctx.fillRect(10, height - 34, width - 20, 28);
+        ctx.strokeStyle = "rgba(56, 189, 248, 0.3)";
+        ctx.strokeRect(10, height - 34, width - 20, 28);
+
+        ctx.font = "12px 'PingFang SC', sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillStyle = "#cbd5e1";
+        if (options.canFastTravel) {
+            ctx.fillText("💡 白昼探索机制：直接点击地图上已探索的方块，即可【快速往返】穿梭（不计入面临选择次数）", 18, height - 16);
+        } else {
+            ctx.fillText("迷雾探索机制：已探索区域(实线明亮) ｜ 周围一格待探明(虚线？) ｜ 快速往返仅限白天探索可用", 18, height - 16);
+        }
+    }
+
+    /**
+     * 类似 Unity DoTween 的平滑位移动画 (单段)
+     * @param {Object} levelMap 关卡地图配置
+     * @param {string} fromNodeId 出发房间ID
+     * @param {string} toNodeId 目标房间ID
+     * @param {Set|Array} visitedNodes 已探索房间集合
+     * @param {Array} teamMembers 队伍列表
+     * @param {Function} onComplete 动画完成回调
+     */
+    animateMove(levelMap, fromNodeId, toNodeId, visitedNodes, teamMembers, onComplete) {
+        if (this.animating && this.skipAnimation) {
+            this.skipAnimation();
+        }
+
+        const nodes = levelMap && levelMap.nodes;
+        if (!nodes || !fromNodeId || !toNodeId || fromNodeId === toNodeId) {
+            this.render(levelMap, toNodeId, visitedNodes, teamMembers);
+            if (onComplete) onComplete();
+            return;
+        }
+
+        const fromNode = nodes[fromNodeId];
+        const toNode = nodes[toNodeId];
+        if (!fromNode || !toNode) {
+            this.render(levelMap, toNodeId, visitedNodes, teamMembers);
+            if (onComplete) onComplete();
+            return;
+        }
+
+        // 兼容非浏览器或无 requestAnimationFrame 环境 (如 Node.js 模拟环境)
+        if (typeof requestAnimationFrame === "undefined") {
+            this.render(levelMap, toNodeId, visitedNodes, teamMembers);
+            if (onComplete) onComplete();
+            return;
+        }
+
+        this.animating = true;
+        this.currentLevelMap = levelMap;
+        let finished = false;
+        const moveDuration = 720; // 阶段1: 720ms 平滑位移
+        const holdDuration = 380; // 阶段2: 380ms 抵达脉冲光晕
+        const startTime = performance.now();
+
+        const finish = () => {
+            if (finished) return;
+            finished = true;
+            this.animating = false;
+            if (this.animationFrameId) {
+                cancelAnimationFrame(this.animationFrameId);
+                this.animationFrameId = null;
+            }
+            this.render(levelMap, toNodeId, visitedNodes, teamMembers);
+            if (onComplete) onComplete();
+        };
+
+        this.skipAnimation = finish;
+
+        const p1 = this.getNodeCenter(fromNode);
+        const p2 = this.getNodeCenter(toNode);
+
+        const step = (now) => {
+            if (!this.animating) return;
+
+            const elapsed = now - startTime;
+
+            if (elapsed < moveDuration) {
+                const rawT = elapsed / moveDuration;
+                const t = easeInOutCubic(rawT);
+                const curX = p1.x + (p2.x - p1.x) * t;
+                const curY = p1.y + (p2.y - p1.y) * t;
+
+                this.render(levelMap, fromNodeId, visitedNodes, teamMembers, {
+                    x: curX,
+                    y: curY,
+                    fromId: fromNodeId,
+                    toId: toNodeId,
+                    progress: t
+                }, 0);
+
+                this.animationFrameId = requestAnimationFrame(step);
+            } else if (elapsed < moveDuration + holdDuration) {
+                const holdElapsed = elapsed - moveDuration;
+                const pulseProgress = holdElapsed / holdDuration;
+
+                this.render(levelMap, toNodeId, visitedNodes, teamMembers, {
+                    x: p2.x,
+                    y: p2.y,
+                    fromId: fromNodeId,
+                    toId: toNodeId,
+                    progress: 1
+                }, pulseProgress);
+
+                this.animationFrameId = requestAnimationFrame(step);
+            } else {
+                finish();
+            }
+        };
+
+        this.animationFrameId = requestAnimationFrame(step);
+    }
+
+    /**
+     * 多节点连续平滑穿梭路径动画 (用于地图快速往返)
+     * @param {Object} levelMap 关卡地图配置
+     * @param {Array<string>} pathNodeIds 完整节点ID序列 [startId, n1, n2, ..., destId]
+     * @param {Set|Array} visitedNodes 已探索房间集合
+     * @param {Array} teamMembers 队伍列表
+     * @param {Function} onSegmentStep 每一个新区段开始时的回调 (segIndex, fromId, toId)
+     * @param {Function} onComplete 路径穿梭完全结束的回调
+     */
+    animatePath(levelMap, pathNodeIds, visitedNodes, teamMembers, onSegmentStep, onComplete) {
+        if (this.animating && this.skipAnimation) {
+            this.skipAnimation();
+        }
+
+        const nodes = levelMap && levelMap.nodes;
+        if (!nodes || !pathNodeIds || pathNodeIds.length <= 1) {
+            const destId = pathNodeIds ? pathNodeIds[pathNodeIds.length - 1] : null;
+            this.render(levelMap, destId, visitedNodes, teamMembers);
+            if (onComplete) onComplete();
+            return;
+        }
+
+        const destId = pathNodeIds[pathNodeIds.length - 1];
+
+        // 兼容非浏览器或无 requestAnimationFrame 环境
+        if (typeof requestAnimationFrame === "undefined") {
+            if (onSegmentStep) {
+                for (let i = 0; i < pathNodeIds.length - 1; i++) {
+                    onSegmentStep(i, pathNodeIds[i], pathNodeIds[i + 1]);
+                }
+            }
+            this.render(levelMap, destId, visitedNodes, teamMembers);
+            if (onComplete) onComplete();
+            return;
+        }
+
+        this.animating = true;
+        this.currentLevelMap = levelMap;
+        let finished = false;
+
+        const numSegments = pathNodeIds.length - 1;
+        // 单段行进时间：平滑适中 (根据节点数弹性调整 280ms ~ 420ms)
+        const segmentDuration = Math.max(260, Math.min(420, 1600 / numSegments));
+        const totalMoveDuration = segmentDuration * numSegments;
+        const holdDuration = 360; // 抵达目标时的光晕脉冲保持时间
+        const startTime = performance.now();
+
+        let lastTriggeredSegment = 0;
+        if (onSegmentStep) {
+            onSegmentStep(0, pathNodeIds[0], pathNodeIds[1]);
+        }
+
+        const finish = () => {
+            if (finished) return;
+            finished = true;
+            this.animating = false;
+            if (this.animationFrameId) {
+                cancelAnimationFrame(this.animationFrameId);
+                this.animationFrameId = null;
+            }
+            this.render(levelMap, destId, visitedNodes, teamMembers);
+            if (onComplete) onComplete();
+        };
+
+        this.skipAnimation = finish;
+
+        const step = (now) => {
+            if (!this.animating) return;
+
+            const elapsed = now - startTime;
+
+            if (elapsed < totalMoveDuration) {
+                const curSegIdx = Math.min(numSegments - 1, Math.floor(elapsed / segmentDuration));
+                
+                // 每迈入一个新区段，触发脚步音效和区段回调
+                if (curSegIdx !== lastTriggeredSegment) {
+                    lastTriggeredSegment = curSegIdx;
+                    if (onSegmentStep) {
+                        onSegmentStep(curSegIdx, pathNodeIds[curSegIdx], pathNodeIds[curSegIdx + 1]);
+                    }
+                }
+
+                const segElapsed = elapsed - curSegIdx * segmentDuration;
+                const segT = easeInOutCubic(Math.min(1, segElapsed / segmentDuration));
+
+                const fromNode = nodes[pathNodeIds[curSegIdx]];
+                const toNode = nodes[pathNodeIds[curSegIdx + 1]];
+                const p1 = this.getNodeCenter(fromNode);
+                const p2 = this.getNodeCenter(toNode);
+
+                const curX = p1.x + (p2.x - p1.x) * segT;
+                const curY = p1.y + (p2.y - p1.y) * segT;
+
+                this.render(levelMap, pathNodeIds[0], visitedNodes, teamMembers, {
+                    x: curX,
+                    y: curY,
+                    fromId: pathNodeIds[curSegIdx],
+                    toId: pathNodeIds[curSegIdx + 1],
+                    progress: segT,
+                    path: pathNodeIds
+                }, 0);
+
+                this.animationFrameId = requestAnimationFrame(step);
+            } else if (elapsed < totalMoveDuration + holdDuration) {
+                // 抵达目标房间脉冲
+                const holdElapsed = elapsed - totalMoveDuration;
+                const pulseProgress = holdElapsed / holdDuration;
+                const destNode = nodes[destId];
+                const pDest = this.getNodeCenter(destNode);
+
+                this.render(levelMap, destId, visitedNodes, teamMembers, {
+                    x: pDest.x,
+                    y: pDest.y,
+                    fromId: pathNodeIds[numSegments - 1],
+                    toId: destId,
+                    progress: 1,
+                    path: pathNodeIds
+                }, pulseProgress);
+
+                this.animationFrameId = requestAnimationFrame(step);
+            } else {
+                finish();
+            }
+        };
+
+        this.animationFrameId = requestAnimationFrame(step);
+    }
+
+    /**
+     * 绘制主界面右上角高科技微型雷达 (Mini-map Radar)
+     * 以 currentNodeId 为中心，聚焦当前房间与周边相邻连通房间 (局部视口)
+     */
+    renderMiniRadar(canvas, levelMap, currentNodeId, visitedNodes, isNearMimic = false) {
+        if (!canvas || !levelMap || !levelMap.nodes) return;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        const w = canvas.width = 140;
+        const h = canvas.height = 140;
+
+        // 深邃雷达底色
+        ctx.fillStyle = "#050914";
+        ctx.fillRect(0, 0, w, h);
+
+        // 绘制雷达扫描圆环与十字线
+        const cx = w / 2;
+        const cy = h / 2;
+
+        ctx.strokeStyle = isNearMimic ? "rgba(234, 179, 8, 0.3)" : "rgba(56, 189, 248, 0.18)";
+        ctx.lineWidth = 1;
+
+        ctx.beginPath(); ctx.arc(cx, cy, 32, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, cy, 58, 0, Math.PI * 2); ctx.stroke();
+
+        ctx.beginPath(); ctx.moveTo(cx, 6); ctx.lineTo(cx, h - 6); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(6, cy); ctx.lineTo(w - 6, cy); ctx.stroke();
+
+        const currNode = levelMap.nodes[currentNodeId];
+        if (!currNode) return;
+
+        const visitedSet = new Set(visitedNodes || []);
+        visitedSet.add(currentNodeId);
+
+        const conns = currNode.connections || {};
+        const dirOffsets = {
+            forward: { dx: 0, dy: -38 },
+            backward: { dx: 0, dy: 38 },
+            left: { dx: -38, dy: 0 },
+            right: { dx: 38, dy: 0 }
+        };
+
+        // 绘制连接线与邻接房间
+        Object.entries(conns).forEach(([dir, neighborId]) => {
+            const offset = dirOffsets[dir];
+            if (!offset) return;
+            const nx = cx + offset.dx;
+            const ny = cy + offset.dy;
+
+            ctx.strokeStyle = isNearMimic ? "rgba(234, 179, 8, 0.75)" : "rgba(56, 189, 248, 0.7)";
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(nx, ny);
+            ctx.stroke();
+
+            const nNode = levelMap.nodes[neighborId];
+            if (!nNode) return;
+            const isNVisited = visitedSet.has(neighborId);
+
+            ctx.save();
+            const nSize = 22;
+            const nrx = nx - nSize / 2;
+            const nry = ny - nSize / 2;
+
+            if (isNVisited) {
+                ctx.fillStyle = "rgba(30, 41, 59, 0.9)";
+                ctx.strokeStyle = "#38bdf8";
+            } else {
+                ctx.fillStyle = "rgba(15, 23, 42, 0.6)";
+                ctx.strokeStyle = "rgba(148, 163, 184, 0.5)";
+            }
+            ctx.lineWidth = 1.5;
+            ctx.fillRect(nrx, nry, nSize, nSize);
+            ctx.strokeRect(nrx, nry, nSize, nSize);
+
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.font = "bold 9px 'PingFang SC', sans-serif";
+            if (isNVisited) {
+                if (nNode.isExit || (nNode.event && nNode.event.type === 'exit')) {
+                    ctx.fillStyle = "#4ade80";
+                    ctx.fillText("终", nx, ny);
+                } else if (nNode.event && nNode.event.type === 'food') {
+                    ctx.fillStyle = "#f59e0b";
+                    ctx.fillText("食", nx, ny);
+                } else if (nNode.event && nNode.event.type === 'npc') {
+                    ctx.fillStyle = "#c084fc";
+                    ctx.fillText("人", nx, ny);
+                } else {
+                    ctx.fillStyle = "#94a3b8";
+                    ctx.fillText("●", nx, ny);
+                }
+            } else {
+                ctx.fillStyle = "rgba(148, 163, 184, 0.6)";
+                ctx.fillText("?", nx, ny);
+            }
+            ctx.restore();
+        });
+
+        // 绘制中心当前节点
+        const cSize = 26;
+        ctx.save();
+        ctx.fillStyle = isNearMimic ? "rgba(234, 179, 8, 0.35)" : "rgba(14, 165, 233, 0.35)";
+        ctx.strokeStyle = isNearMimic ? "#eab308" : "#38bdf8";
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = isNearMimic ? "#eab308" : "#38bdf8";
+        ctx.shadowBlur = 10;
+        ctx.fillRect(cx - cSize / 2, cy - cSize / 2, cSize, cSize);
+        ctx.strokeRect(cx - cSize / 2, cy - cSize / 2, cSize, cSize);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 10px 'Orbitron', sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("📍", cx, cy);
+        ctx.restore();
+
+        // 邵可欣被动高熵预警
+        if (isNearMimic) {
+            ctx.save();
+            ctx.fillStyle = "#eab308";
+            ctx.font = "bold 9px 'Orbitron', sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("⚠️ 异常高熵", cx, cy - 20);
+            ctx.restore();
+        }
+    }
+}
+
+
+
+    // =========================================================================
+    // 模块: unlockEvaluator.js
+    // =========================================================================
+/**
+ * 关卡非线性解锁规则检定器 (UnlockEvaluator)
+ * 纯函数/无状态工具类，负责根据玩家通关结算上下文与关卡规则列表计算本次解锁的关卡
+ */
+
+class UnlockEvaluator {
+    /**
+     * 检定关卡解锁规则
+     * @param {Array} rules 关卡配置的 unlockRules 列表
+     * @param {Object} context 通关上下文
+     *   @param {Array<string>} context.evacuatedNpcIds 存活随主角撤离的 NPC ID 列表
+     *   @param {Array<Object>} context.evacuatedNpcs 存活随主角撤离的 NPC 对象数组
+     *   @param {Array<Object>} context.allLevelMimics 本关暗中生成的全部伪人 NPC 数组
+     *   @param {Array<Object>} context.allLevelNpcs 本关全部 NPC 数组
+     *   @param {boolean} context.isSolo 是否仅主角一人撤离 (无任何NPC存活在队)
+     * @returns {Object} { triggeredRules: Array, unlockedLevelIds: Array<number> }
+     */
+    static evaluate(rules = [], context = {}) {
+        if (!Array.isArray(rules) || rules.length === 0) {
+            return {
+                triggeredRules: [],
+                unlockedLevelIds: []
+            };
+        }
+
+        const evacuatedNpcIds = context.evacuatedNpcIds || [];
+        const evacuatedNpcs = context.evacuatedNpcs || [];
+        const allLevelMimics = context.allLevelMimics || [];
+        const isSolo = context.isSolo ?? (evacuatedNpcIds.length === 0);
+
+        const triggeredRules = [];
+        const unlockedIdsSet = new Set();
+
+        for (const rule of rules) {
+            const condition = rule.condition || { type: "clear_any" };
+            let isSatisfied = false;
+
+            switch (condition.type) {
+                // 1. 无论带谁或自己一人，只要通关即满足
+                case "clear_any":
+                    isSatisfied = true;
+                    break;
+
+                // 2. 仅主角一人独身撤离 (孤狼)
+                case "solo_only":
+                    isSatisfied = isSolo;
+                    break;
+
+                // 3. 必须包含指定的 NPC (默认包含即可)
+                case "require_npcs": {
+                    const reqIds = condition.npcIds || [];
+                    if (reqIds.length > 0) {
+                        isSatisfied = reqIds.every(id => evacuatedNpcIds.includes(id));
+                    }
+                    break;
+                }
+
+                // 4. 必须带离场上所有伪人 (全伪人引渡)
+                case "require_all_mimics": {
+                    if (allLevelMimics.length > 0) {
+                        isSatisfied = allLevelMimics.every(mimic => evacuatedNpcIds.includes(mimic.id));
+                    } else {
+                        // 若本关本身无伪人，则不满足此特异条件
+                        isSatisfied = false;
+                    }
+                    break;
+                }
+
+                // 5. 纯人类队伍 (撤离队伍中没有任何伪人)
+                case "require_no_mimics": {
+                    isSatisfied = evacuatedNpcs.every(npc => npc.role !== "wolf");
+                    break;
+                }
+
+                // 6. 自定义回调判定
+                case "custom": {
+                    if (typeof condition.matcher === "function") {
+                        isSatisfied = !!condition.matcher(context);
+                    }
+                    break;
+                }
+
+                default:
+                    console.warn(`[UnlockEvaluator] 未知的解锁条件类型: ${condition.type}`);
+                    isSatisfied = false;
+            }
+
+            if (isSatisfied) {
+                triggeredRules.push(rule);
+                const targetIds = rule.unlockLevelIds || [];
+                targetIds.forEach(id => {
+                    const numId = Number(id);
+                    if (!isNaN(numId) && numId > 0) {
+                        unlockedIdsSet.add(numId);
+                    }
+                });
+            }
+        }
+
+        return {
+            triggeredRules,
+            unlockedLevelIds: Array.from(unlockedIdsSet).sort((a, b) => a - b)
+        };
+    }
+}
+
+
+    // =========================================================================
+    // 模块: exploration.js
+    // =========================================================================
+/**
+ * 地图探索与肉鸽事件驱动器 (Exploration & Roguelike Map Engine)
+ * 负责移动、体力扣减、食物结算、救助NPC入队、终点胜利检定及傍晚步数概率检定
+ */
+
+
+
+
+class ExplorationEngine {
+    constructor(gameEngine) {
+        this.gameEngine = gameEngine;
+        this.currentMap = null;
+        this.currentNodeId = null;
+        this.choiceCount = 0; // 面临选择步数计数器
+        this.visitedNodes = new Set();
+        this.consumedEvents = new Set(); // 已经触发过的食物/NPC事件记录
+    }
+
+    /**
+     * 初始化关卡地图
+     */
+    initLevelMap(mapConfig) {
+        this.currentMap = mapConfig;
+        this.currentNodeId = mapConfig.startNodeId || Object.keys(mapConfig.nodes)[0];
+        this.choiceCount = 0;
+        this.visitedNodes.clear();
+        this.consumedEvents.clear();
+        this.visitedNodes.add(this.currentNodeId);
+    }
+
+    getCurrentNode() {
+        if (!this.currentMap || !this.currentNodeId) return null;
+        return this.currentMap.nodes[this.currentNodeId];
+    }
+
+    /**
+     * 获取当前节点可通行的方向表
+     */
+    getAvailableDirections() {
+        const node = this.getCurrentNode();
+        if (!node || !node.connections) return {};
+        return node.connections;
+    }
+
+    /**
+     * 执行移动操作 (forward, backward, left, right)
+     */
+    moveTo(direction) {
+        const node = this.getCurrentNode();
+        if (!node || !node.connections || !node.connections[direction]) {
+            return false;
+        }
+
+        const nextNodeId = node.connections[direction];
+        const nextNode = this.currentMap.nodes[nextNodeId];
+        if (!nextNode) return false;
+
+        // 1. 消耗 8 点体力并播放移动脚步音效 (移动.wav)
+        const cost = StaminaConfig.stepCost;
+        this.gameEngine.stamina -= cost;
+        if (this.gameEngine.stamina < 0) this.gameEngine.stamina = 0;
+
+        if (typeof Sound !== "undefined" && Sound.playMoveSound) {
+            Sound.playMoveSound();
+        }
+
+        // 步数与同伴历练通知（用于人物记忆图鉴步数检定）
+        if (this.gameEngine && this.gameEngine.onExploreStep) {
+            this.gameEngine.onExploreStep();
+        }
+
+        const dirNames = {
+            forward: "前方",
+            backward: "后方",
+            left: "左侧",
+            right: "右侧"
+        };
+        const dirName = dirNames[direction] || direction;
+
+        // 记录行动日志
+        this.gameEngine.logAction(
+            `【探索移动】向${dirName}行进至 [${nextNode.name}]，消耗体力 ${cost}点（剩余 ${this.gameEngine.stamina}/${StaminaConfig.maxStamina}）`
+        );
+
+        // 2. 更新当前位置
+        this.currentNodeId = nextNodeId;
+        this.visitedNodes.add(nextNodeId);
+
+        // 立即更新顶部状态栏（房间名、当前体力与百分比）
+        this.gameEngine.updateHeaderUI();
+
+        // 3. 终点优先判定：若最后一步踏上的是终点，即使体力耗尽（降至0）也算通过
+        const isExitNode = !!(nextNode.isExit || (nextNode.event && nextNode.event.type === "exit"));
+        if (isExitNode) {
+            this.choiceCount++;
+            this.handleNodeEvents(nextNode);
+            return true;
+        }
+
+        // 4. 检查体力是否耗尽（非终点情况下体力降至0则倒下）
+        if (this.gameEngine.stamina <= 0) {
+            this.gameEngine.triggerGameOver("体力耗尽！你在冰冷黑暗的走廊中耗尽了最后一丝力气，未能生还……");
+            return true;
+        }
+
+        // 5. 增加面临选择次数
+        this.choiceCount++;
+
+        // 6. 触发并检查当前节点事件
+        this.handleNodeEvents(nextNode);
+
+        return true;
+    }
+
+    /**
+     * 处理节点事件（终点、食物、昏迷NPC）
+     */
+    handleNodeEvents(node) {
+        // 更新左上角区域名称与UI
+        this.gameEngine.updateHeaderUI();
+
+        // A. 终点判定 (走到用户决定的地图终点即宣布成功)
+        if (node.isExit || (node.event && node.event.type === "exit")) {
+            this.gameEngine.logAction(`【通关突破】全员成功抵达目的地 [${node.name}]！准备跳跃！`);
+            this.gameEngine.triggerVictory(node);
+            return;
+        }
+
+        // 检查该节点的事件是否已被触发过
+        const eventKey = `${node.id}_event`;
+        if (node.event && !this.consumedEvents.has(eventKey)) {
+            if (node.event.type === "food") {
+                this.handleFoodEvent(node, eventKey);
+                return;
+            } else if (node.event.type === "npc") {
+                this.handleNpcEvent(node, eventKey);
+                return;
+            }
+        }
+
+        // 无事件或普通走廊，直接检查是否触发傍晚
+        this.checkEveningTrigger();
+    }
+
+    /**
+     * 遇到食物补给事件
+     */
+    handleFoodEvent(node, eventKey, afterCallback = null) {
+        this.consumedEvents.add(eventKey);
+        
+        // 根据当前存活的队伍人数结算回复量
+        const teamCount = this.gameEngine.getAliveTeamMembers().length;
+        const recoveryAmount = StaminaConfig.getFoodRecovery(teamCount);
+        const oldStamina = this.gameEngine.stamina;
+        this.gameEngine.stamina = Math.min(StaminaConfig.maxStamina, this.gameEngine.stamina + recoveryAmount);
+        const actualRecovered = this.gameEngine.stamina - oldStamina;
+
+        // 【优化】物资补充时立即刷新UI上的体力值与体力条，而不是等下一次行动才刷新
+        this.gameEngine.updateHeaderUI();
+        if (this.gameEngine.headerStaminaFill) {
+            this.gameEngine.headerStaminaFill.classList.remove("stamina-boost-pulse");
+            if (this.gameEngine.headerStaminaFill.offsetWidth !== undefined) {
+                void this.gameEngine.headerStaminaFill.offsetWidth;
+            }
+            this.gameEngine.headerStaminaFill.classList.add("stamina-boost-pulse");
+        }
+
+        // 播放物资获取专属音效 (物资获取.wav)
+        if (typeof Sound !== "undefined" && Sound.playFoodSound) {
+            Sound.playFoodSound();
+        }
+
+        this.gameEngine.logAction(
+            `【发现食物】在 [${node.name}] 找到了 [${node.event.name || "高能给养"}]！队伍共 ${teamCount} 人，体力恢复了 +${actualRecovered} 点（当前: ${this.gameEngine.stamina}）`
+        );
+
+        // 播放视觉小说对白反馈
+        this.gameEngine.dialogueUI.playSequence([
+            {
+                speaker: { name: "环境广播", themeColor: "#4ade80" },
+                text: `在 [${node.name}] 发现留存的 [${node.event.name || "给养"}]！`
+            },
+            {
+                speaker: this.gameEngine.protagonist,
+                text: `根据当前 ${teamCount} 名同伴的配给均分，每人补充了水分与能量。体力回复了 ${actualRecovered} 点。`
+            }
+        ], () => {
+            if (afterCallback) {
+                afterCallback();
+            } else {
+                this.checkEveningTrigger();
+            }
+        });
+    }
+
+    /**
+     * 遇到昏迷NPC事件
+     */
+    handleNpcEvent(node, eventKey) {
+        const npcId = node.event.npcId;
+        const npc = this.gameEngine.getNpcById(npcId);
+
+        if (!npc) {
+            this.checkEveningTrigger();
+            return;
+        }
+
+        if (npc.status === "dead") {
+            this.consumedEvents.add(eventKey);
+            this.gameEngine.logAction(`【现场勘查】在 [${node.name}] 发现了已遇害的 [${npc.name}] 的遗体。`);
+            this.gameEngine.dialogueUI.say(
+                this.gameEngine.protagonist,
+                `这里是 [${npc.name}] 最后的停留地……现场留下了激烈的搏斗痕迹，伪人抢先一步下了杀手。`,
+                () => {
+                    this.checkEveningTrigger();
+                }
+            );
+            return;
+        }
+
+        if (npc.status !== "unmet") {
+            this.checkEveningTrigger();
+            return;
+        }
+
+        // 弹出对话框并提示玩家选择：让其加入 / 不救助
+        // 若选择救助入队，则标记该事件已消耗；若选择不救助/不理睬，则不标记消耗，允许之后再次踏入该区域时重新触发是否救助！
+        this.gameEngine.showNpcEncounterModal(npc, node, (joined) => {
+            if (joined) {
+                this.consumedEvents.add(eventKey);
+            }
+            this.checkEveningTrigger();
+        });
+    }
+
+    /**
+     * 检定是否触发傍晚时刻
+     * 当面临选择次数大于等于3次后概率触发傍晚时刻 (1,2次0%; 3次40%; 4次70%; 5次100%)
+     * 触发后重置 choiceCount，进入 q4 询问环节
+     */
+    checkEveningTrigger() {
+        const chance = EveningTriggerConfig.getChance(this.choiceCount);
+        const roll = Math.random();
+
+        console.log(`[探索步数计数]: ${this.choiceCount} 次, 傍晚触发概率: ${(chance * 100).toFixed(0)}%, 摇点: ${(roll * 100).toFixed(0)}%`);
+
+        if (roll < chance) {
+            // 触发傍晚！
+            this.choiceCount = 0; // 重新开始计数面临选择
+            this.gameEngine.logAction(`【天色渐暗】时针指向傍晚时刻，全员暂停探索，聚集商榷……`);
+            this.gameEngine.enterEveningPhase();
+        } else {
+            // 继续探索阶段，刷新探索UI
+            this.gameEngine.renderExplorationControls();
+        }
+    }
+
+    /**
+     * 基于已探明房间集合的 BFS 广度优先最短路径寻路
+     * 确保快速往返路线全程只经过已探索的房间
+     * @param {string} fromId 起点房间ID
+     * @param {string} toId 目标房间ID
+     * @returns {Array<string>|null} 完整节点序列，若无连通路径返回 null
+     */
+    findVisitedPath(fromId, toId) {
+        if (!this.currentMap || !this.currentMap.nodes) return null;
+        if (fromId === toId) return [fromId];
+        if (!this.visitedNodes.has(fromId) || !this.visitedNodes.has(toId)) return null;
+
+        const queue = [[fromId]];
+        const visited = new Set([fromId]);
+        const nodes = this.currentMap.nodes;
+
+        while (queue.length > 0) {
+            const path = queue.shift();
+            const currId = path[path.length - 1];
+            const currNode = nodes[currId];
+            if (!currNode || !currNode.connections) continue;
+
+            for (const neighborId of Object.values(currNode.connections)) {
+                if (!this.visitedNodes.has(neighborId) || visited.has(neighborId)) continue;
+                const newPath = [...path, neighborId];
+                if (neighborId === toId) {
+                    return newPath;
+                }
+                visited.add(neighborId);
+                queue.push(newPath);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 执行地图快速往返
+     * 核心规则：
+     * 1. 绝不累加面临选择次数 choiceCount
+     * 2. 绝不触发傍晚时刻判定 checkEveningTrigger
+     * 3. 瞬时抵达安全区域并刷新探索控制盘
+     * @param {string} targetNodeId 目标房间ID
+     * @returns {Array<string>|null} 路径节点序列
+     */
+    fastTravelTo(targetNodeId) {
+        if (!this.currentMap || !this.currentMap.nodes) return null;
+        if (!this.visitedNodes.has(targetNodeId)) return null;
+        if (this.currentNodeId === targetNodeId) return null;
+
+        const path = this.findVisitedPath(this.currentNodeId, targetNodeId);
+        if (!path || path.length < 2) return null;
+
+        const targetNode = this.currentMap.nodes[targetNodeId];
+        if (!targetNode) return null;
+
+        // 体力消耗（快速往返消耗，默认 0）
+        const costPerStep = (typeof StaminaConfig !== "undefined" && StaminaConfig.fastTravelStepCost !== undefined)
+            ? StaminaConfig.fastTravelStepCost
+            : 0;
+        const totalCost = costPerStep * (path.length - 1);
+        if (totalCost > 0) {
+            this.gameEngine.stamina = Math.max(0, this.gameEngine.stamina - totalCost);
+        }
+
+        // 核心规则：快速往返绝对不累加面临选择次数 choiceCount，绝不触发傍晚时刻判定！
+        this.currentNodeId = targetNodeId;
+
+        // 记录行动日志
+        this.gameEngine.logAction(
+            `【快速往返】经由已探明路线快速返回至 [${targetNode.name}]（不计入面临选择次数，安全折返）`
+        );
+
+        // 立即更新顶部状态栏与罗盘方向控制面板
+        this.gameEngine.updateHeaderUI();
+        this.gameEngine.renderExplorationControls();
+
+        // 检查目标房间是否有未消耗的事件（如之前暂缓救助的NPC或物资）
+        const eventKey = `${targetNode.id}_event`;
+        if (targetNode.event && !this.consumedEvents.has(eventKey)) {
+            if (targetNode.event.type === "npc") {
+                const npc = this.gameEngine.getNpcById(targetNode.event.npcId);
+                if (npc && npc.status === "unmet") {
+                    this.gameEngine.showNpcEncounterModal(npc, targetNode, (joined) => {
+                        if (joined) {
+                            this.consumedEvents.add(eventKey);
+                        }
+                    });
+                }
+            } else if (targetNode.event.type === "food") {
+                this.handleFoodEvent(targetNode, eventKey, () => {
+                    this.gameEngine.renderExplorationControls();
+                });
+            }
+        }
+
+        return path;
+    }
+}
+
+
+    // =========================================================================
+    // 模块: gameEngine.js
+    // =========================================================================
+/**
+ * 游戏主循环引擎与状态机 (Game Engine & State Machine)
+ * 严格管理 q1 -> q2 -> q3 -> q4 -> q5 -> q6 -> q7 完整闭环
+ */
+
+
+
+
+
+
+
+
+
+
+
+class GameEngine {
+    constructor() {
+        this.saveSystem = new SaveSystem();
+        this.dialogueUI = new DialogueUI();
+        this.explorationEngine = new ExplorationEngine(this);
+        this.mapRenderer = null;
+        this.hoveredMapNodeId = null;
+
+        // 核心游戏状态
+        this.currentLevel = null;
+        this.phase = "menu"; // menu, q1_black, q2_intro, q3_explore, q4_inquiry, q5_judgement, q6_night, q7_day, victory, gameover
+        this.dayCount = 1;
+        this.stamina = 100;
+        this.actionLogs = [];
+
+        // 角色与队伍
+        this.protagonist = null;
+        this.teamMembers = []; // 队伍内所有成员（包含主角与已加入的NPC）
+        this.allNpcMap = new Map(); // 关卡中所有NPC状态存储
+
+        // 傍晚与夜间暂存数据
+        this.eveningInquiryCount = 0; // 当前傍晚已询问人数 (0, 1, 2)
+        this.eveningTargetNpc = null;
+        this.confinedNpcId = null; // 今晚被禁锢的角色ID
+        this.exiledNpcId = null;   // 今晚被放逐的角色ID
+        this.nightProtectedNpcId = null; // 护卫守护目标
+        this.nightTargetVictimId = null; // 伪人预定袭击目标
+        this.witchSaved = false;         // 歌咏者是否施救
+
+        // 人物特征/秘密图鉴与专属被动状态
+        this.activePersonaCharId = "kaze";
+        this.stepsWithNpc = {};
+        this.nightCounterDeflected = false;
+        this.nightModeDefended = false;
+
+        this.initDomReferences();
+        this.bindEvents();
+    }
+
+    initDomReferences() {
+        // 界面大屏
+        this.screenMenu = document.getElementById("screen-menu");
+        this.screenBlack = document.getElementById("screen-q1-black");
+        this.screenEveningBlack = document.getElementById("screen-evening-black");
+        this.screenDeathBlack = document.getElementById("screen-death-black");
+        this.deathBlackCallback = null;
+        this.screenGame = document.getElementById("screen-game");
+
+        // q1 黑屏白字
+        this.blackTextContent = document.getElementById("q1-black-text");
+        this.blackPrompt = document.getElementById("q1-click-prompt");
+
+        // 顶栏与状态
+        this.headerLocation = document.getElementById("header-current-location");
+        this.headerStaminaFill = document.getElementById("header-stamina-fill");
+        this.headerStaminaText = document.getElementById("header-stamina-text");
+        this.headerTeamCount = document.getElementById("header-team-count");
+        this.headerDayText = document.getElementById("header-day-text");
+
+        // 左侧行动日志
+        this.logListElement = document.getElementById("action-log-list");
+
+        // 中间探索控制盘与操作台
+        this.exploreControls = document.getElementById("exploration-controls");
+        this.directionButtons = {
+            forward: document.getElementById("btn-move-forward"),
+            backward: document.getElementById("btn-move-backward"),
+            left: document.getElementById("btn-move-left"),
+            right: document.getElementById("btn-move-right")
+        };
+
+        // 模态弹窗们
+        this.modalMap = document.getElementById("modal-map-view");
+        this.modalEncounter = document.getElementById("modal-npc-encounter");
+        this.modalInquiry = document.getElementById("modal-inquiry-select");
+        this.modalJudgement = document.getElementById("modal-judgement");
+        this.modalNight = document.getElementById("modal-night-action");
+        this.modalResult = document.getElementById("modal-game-result");
+        this.modalLevelSelect = document.getElementById("modal-level-select");
+        this.levelGrid = document.getElementById("level-select-grid");
+        this.btnOpenLevelSelect = document.getElementById("btn-menu-select-level");
+
+        // 任务清单 DOM 引用
+        this.btnViewMissions = document.getElementById("btn-view-missions");
+        this.modalMissions = document.getElementById("modal-mission-checklist");
+        this.btnCloseMissions = document.getElementById("btn-close-missions");
+        this.missionsSidebarList = document.getElementById("missions-sidebar-list");
+        this.missionModalList = document.getElementById("mission-modal-list");
+        this.missionsSummaryTag = document.getElementById("missions-summary-tag");
+
+        // 人物特征/秘密图鉴 DOM 引用
+        this.btnMenuPersonaLog = document.getElementById("btn-menu-persona-log");
+        this.modalPersonaLog = document.getElementById("modal-persona-log");
+        this.btnClosePersonaLog = document.getElementById("btn-close-persona-log");
+        this.personaCharTabs = document.getElementById("persona-char-tabs");
+        this.personaCharDetail = document.getElementById("persona-char-detail");
+
+        // 小地图战术微型雷达 DOM 引用
+        this.hudMiniRadar = document.getElementById("hud-mini-radar");
+        this.miniRadarCanvas = document.getElementById("mini-radar-canvas");
+        this.btnRadarExpand = document.getElementById("btn-radar-expand");
+        this.btnRadarToggle = document.getElementById("btn-radar-toggle");
+        this.radarBodyWrap = document.getElementById("radar-body-wrap");
+        this.radarPosTag = document.getElementById("radar-pos-tag");
+    }
+
+    bindEvents() {
+        // 顶栏任务清单入口
+        this.btnViewMissions?.addEventListener("click", () => {
+            this.showMissionsModal();
+        });
+        this.btnCloseMissions?.addEventListener("click", () => {
+            this.modalMissions?.classList.add("hidden");
+        });
+
+        // 主菜单：5x5 关卡选择弹窗入口
+        this.btnOpenLevelSelect?.addEventListener("click", () => {
+            this.showLevelSelectModal();
+        });
+        document.getElementById("btn-close-level-select")?.addEventListener("click", () => {
+            this.modalLevelSelect?.classList.add("hidden");
+        });
+
+        // 主菜单：记忆图鉴 · 角色专属分支入口
+        this.btnMenuPersonaLog?.addEventListener("click", () => {
+            this.showPersonaLogModal();
+        });
+        this.btnClosePersonaLog?.addEventListener("click", () => {
+            this.modalPersonaLog?.classList.add("hidden");
+        });
+
+        // 小地图战术微型雷达快捷交互
+        this.btnRadarExpand?.addEventListener("click", () => {
+            this.showMapModal();
+        });
+        this.miniRadarCanvas?.addEventListener("click", () => {
+            this.showMapModal();
+        });
+        this.btnRadarToggle?.addEventListener("click", () => {
+            this.toggleMiniRadar();
+        });
+
+        // 兼容原按钮直接触发 (Level 1 / Level 2)
+        document.getElementById("btn-menu-new-game")?.addEventListener("click", () => {
+            this.startNewGame(1);
+        });
+
+        document.getElementById("btn-menu-level2")?.addEventListener("click", () => {
+            this.startNewGame(2);
+        });
+
+        document.getElementById("btn-menu-load-game")?.addEventListener("click", () => {
+            this.loadGameProgress();
+        });
+
+        document.getElementById("btn-menu-exit")?.addEventListener("click", () => {
+            alert("感谢体验《潜伏危机：循环伪装体》！您可以关闭此网页标签页。");
+        });
+
+        // 顶栏通用按钮
+        document.getElementById("btn-view-map")?.addEventListener("click", () => {
+            this.showMapModal();
+        });
+        document.getElementById("btn-close-map")?.addEventListener("click", () => {
+            this.modalMap.classList.add("hidden");
+        });
+
+        // 地图 Tab 模式切换
+        const tabLive = document.getElementById("btn-tab-live-map");
+        const tabSketch = document.getElementById("btn-tab-sketch-map");
+        const viewLive = document.getElementById("map-live-view");
+        const viewSketch = document.getElementById("map-sketch-view");
+
+        tabLive?.addEventListener("click", () => {
+            tabLive.classList.add("active");
+            tabSketch?.classList.remove("active");
+            viewLive?.classList.remove("hidden");
+            viewSketch?.classList.add("hidden");
+            this.renderLiveMap();
+        });
+
+        tabSketch?.addEventListener("click", () => {
+            tabSketch.classList.add("active");
+            tabLive?.classList.remove("active");
+            viewSketch?.classList.remove("hidden");
+            viewLive?.classList.add("hidden");
+        });
+
+        // 实时地图 Canvas 点击与悬浮快速往返交互
+        const liveCanvas = document.getElementById("live-map-canvas");
+        liveCanvas?.addEventListener("click", (e) => {
+            // 若当前正在移动动画中，由动画的 skipHandler 负责消费点击
+            if (this.isMovingAnimation) return;
+
+            const rect = liveCanvas.getBoundingClientRect ? liveCanvas.getBoundingClientRect() : { left: 0, top: 0, width: 680, height: 460 };
+            const scaleX = (liveCanvas.width || 680) / (rect.width || 680 || 1);
+            const scaleY = (liveCanvas.height || 460) / (rect.height || 460 || 1);
+            const clientX = e.clientX !== undefined ? e.clientX : ((e.x || 0) + (rect.left || 0));
+            const clientY = e.clientY !== undefined ? e.clientY : ((e.y || 0) + (rect.top || 0));
+            const clickX = (clientX - (rect.left || 0)) * scaleX;
+            const clickY = (clientY - (rect.top || 0)) * scaleY;
+
+            if (this.mapRenderer) {
+                const clickedNode = this.mapRenderer.getNodeAtPosition(clickX, clickY, this.currentLevel?.map);
+                if (clickedNode) {
+                    this.handleMapNodeClick(clickedNode);
+                }
+            }
+        });
+
+        liveCanvas?.addEventListener("mousemove", (e) => {
+            if (this.isMovingAnimation || !this.mapRenderer) return;
+            const rect = liveCanvas.getBoundingClientRect ? liveCanvas.getBoundingClientRect() : { left: 0, top: 0, width: 680, height: 460 };
+            const scaleX = (liveCanvas.width || 680) / (rect.width || 680 || 1);
+            const scaleY = (liveCanvas.height || 460) / (rect.height || 460 || 1);
+            const clientX = e.clientX !== undefined ? e.clientX : ((e.x || 0) + (rect.left || 0));
+            const clientY = e.clientY !== undefined ? e.clientY : ((e.y || 0) + (rect.top || 0));
+            const mouseX = (clientX - (rect.left || 0)) * scaleX;
+            const mouseY = (clientY - (rect.top || 0)) * scaleY;
+
+            const node = this.mapRenderer.getNodeAtPosition(mouseX, mouseY, this.currentLevel?.map);
+            const isVisited = node && this.explorationEngine.visitedNodes.has(node.id);
+            const isCurrent = node && node.id === this.explorationEngine.currentNodeId;
+
+            if (this.phase === "q3_explore" && isVisited && !isCurrent) {
+                if (liveCanvas.style) liveCanvas.style.cursor = "pointer";
+                if (this.hoveredMapNodeId !== node.id) {
+                    this.hoveredMapNodeId = node.id;
+                    this.renderLiveMap();
+                }
+            } else {
+                if (liveCanvas.style) liveCanvas.style.cursor = "default";
+                if (this.hoveredMapNodeId) {
+                    this.hoveredMapNodeId = null;
+                    this.renderLiveMap();
+                }
+            }
+        });
+
+        liveCanvas?.addEventListener("mouseleave", () => {
+            if (liveCanvas.style) liveCanvas.style.cursor = "default";
+            if (this.hoveredMapNodeId) {
+                this.hoveredMapNodeId = null;
+                this.renderLiveMap();
+            }
+        });
+
+        document.getElementById("btn-save-progress")?.addEventListener("click", () => {
+            this.saveGameProgress();
+        });
+
+        document.getElementById("btn-exit-to-menu")?.addEventListener("click", () => {
+            if (confirm("确定要保存并返回主菜单吗？")) {
+                this.saveGameProgress();
+                this.showMenu();
+            }
+        });
+
+        // 探索移动按钮绑定 (点击后打开地图并触发平移动画)
+        Object.entries(this.directionButtons).forEach(([dir, btn]) => {
+            btn?.addEventListener("click", () => {
+                if (this.phase === "q3_explore") {
+                    this.performMoveWithMapAnimation(dir);
+                }
+            });
+        });
+
+        // q1 黑屏白字点击推进
+        this.screenBlack?.addEventListener("click", () => {
+            this.handleQ1BlackClick();
+        });
+
+        // 傍晚来临全黑屏点击推进
+        this.screenEveningBlack?.addEventListener("click", () => {
+            this.handleEveningBlackClick();
+        });
+
+        // 遇害公布全黑屏死亡立绘点击推进
+        this.screenDeathBlack?.addEventListener("click", () => {
+            this.handleDeathBlackClick();
+        });
+
+        // 检查存档并激活“加载存档”按钮
+        this.updateMenuButtons();
+    }
+
+    updateMenuButtons() {
+        const btnLoad = document.getElementById("btn-menu-load-game");
+        if (btnLoad) {
+            btnLoad.disabled = !this.saveSystem.hasSave();
+        }
+    }
+
+    showMenu() {
+        this.phase = "menu";
+        this.screenMenu.classList.remove("hidden");
+        this.screenBlack.classList.add("hidden");
+        this.screenEveningBlack?.classList.add("hidden");
+        this.screenDeathBlack?.classList.add("hidden");
+        this.screenGame.classList.add("hidden");
+        this.modalLevelSelect?.classList.add("hidden");
+        this.modalMissions?.classList.add("hidden");
+        this.modalPersonaLog?.classList.add("hidden");
+        this.hudMiniRadar?.classList.add("hidden");
+        this.updateMenuButtons();
+    }
+
+    /**
+     * 打开当前关卡任务清单模态弹窗
+     */
+    showMissionsModal() {
+        this.renderMissionsPanel();
+        this.modalMissions?.classList.remove("hidden");
+    }
+
+    /**
+     * 渲染当前关卡任务清单 (侧边栏及弹窗)
+     */
+    renderMissionsPanel() {
+        const rules = this.currentLevel?.unlockRules || [];
+        if (this.missionsSummaryTag) {
+            this.missionsSummaryTag.textContent = `${rules.length}个解锁点`;
+        }
+
+        const activeNpcIds = this.teamMembers.filter(m => !m.isProtagonist && m.status === "active").map(m => m.id);
+        const deadNpcIds = Array.from(this.allNpcMap.values()).filter(m => m.status === "dead").map(m => m.id);
+        const allMimics = Array.from(this.allNpcMap.values()).filter(m => m.role === "wolf");
+        const mimicsInTeam = allMimics.filter(m => activeNpcIds.includes(m.id));
+
+        let sidebarHtml = "";
+        let modalHtml = "";
+
+        rules.forEach((rule, idx) => {
+            const taskNumStr = ["一", "二", "三", "四", "五"][idx] || `${idx + 1}`;
+            const taskName = rule.taskName || `任务${taskNumStr}：${rule.title || "特定撤离"}`;
+            const taskObjective = rule.taskObjective || "达成特定撤离条件并到达终点大门";
+            // 绝不预先透露解锁的是哪个具体关卡
+            const taskReward = "解构未知深层扇区 🔒???";
+
+            // 检查历史解锁状态
+            const isUnlockedHistory = (rule.unlockLevelIds || []).every(id => this.saveSystem.isLevelUnlocked(id));
+
+            // 当局实时队伍状态判定
+            let realtimeStatus = "";
+            let realtimeClass = "";
+            const cond = rule.condition || { type: "clear_any" };
+
+            if (cond.type === "clear_any") {
+                realtimeStatus = "🏃 突破重叠回廊，开启终点折跃气闸即可达成";
+                realtimeClass = "realtime-ready";
+            } else if (cond.type === "require_npcs") {
+                const reqIds = cond.npcIds || [];
+                const allInTeam = reqIds.every(id => activeNpcIds.includes(id));
+                const anyDead = reqIds.some(id => deadNpcIds.includes(id));
+                if (allInTeam) {
+                    const reqNames = reqIds.map(id => this.allNpcMap.get(id)?.name || id).join("、");
+                    realtimeStatus = `🟢 [${reqNames}] 已接入队伍信标，抵达终点即可达成`;
+                    realtimeClass = "realtime-ready";
+                } else if (anyDead) {
+                    realtimeStatus = `❌ 关键目标生命体征已湮灭（本循环无法达成）`;
+                    realtimeClass = "realtime-failed";
+                } else {
+                    const missingNames = reqIds.filter(id => !activeNpcIds.includes(id)).map(id => this.allNpcMap.get(id)?.name || id).join("、");
+                    realtimeStatus = `⏳ [${missingNames}] 尚未汇合（需在回廊中搜寻救助）`;
+                    realtimeClass = "realtime-waiting";
+                }
+            } else if (cond.type === "require_all_mimics") {
+                if (allMimics.length > 0 && mimicsInTeam.length === allMimics.length) {
+                    realtimeStatus = `🟢 场上所有拟态伪装体 (${mimicsInTeam.length}/${allMimics.length}) 均在队内，抵达终点即可达成`;
+                    realtimeClass = "realtime-ready";
+                } else {
+                    realtimeStatus = `🕵️ 拟态引渡同步率 (${mimicsInTeam.length}/${allMimics.length})`;
+                    realtimeClass = "realtime-waiting";
+                }
+            } else if (cond.type === "solo_only") {
+                if (activeNpcIds.length === 0) {
+                    realtimeStatus = "🟢 当前仅孤身一人，抵达终点即可达成";
+                    realtimeClass = "realtime-ready";
+                } else {
+                    realtimeStatus = "👥 当前有同伴随行（单人脱出要求零随行）";
+                    realtimeClass = "realtime-waiting";
+                }
+            } else {
+                realtimeStatus = "🎯 特殊条件待达成";
+                realtimeClass = "realtime-waiting";
+            }
+
+            const statusBadgeText = isUnlockedHistory ? "● 已探明" : "🔒 待解锁";
+            const statusBadgeClass = isUnlockedHistory ? "mission-status-unlocked" : "mission-status-locked";
+
+            // 侧边栏精简卡片
+            sidebarHtml += `
+                <div class="mission-item-card ${isUnlockedHistory ? 'mission-completed' : ''}">
+                    <div class="mission-card-top">
+                        <span class="mission-name">${taskName}</span>
+                        <span class="mission-status-tag ${statusBadgeClass}">${statusBadgeText}</span>
+                    </div>
+                    <div class="mission-objective">${taskObjective}</div>
+                    <div class="mission-reward">🎁 奖励：${taskReward}</div>
+                    <div class="mission-realtime ${realtimeClass}">${realtimeStatus}</div>
+                </div>
+            `;
+
+            // 模态弹窗详细卡片
+            modalHtml += `
+                <div class="mission-modal-item ${isUnlockedHistory ? 'mission-completed' : ''}">
+                    <div class="mission-card-top">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:1.1rem;">🎯</span>
+                            <span class="mission-name" style="font-size:0.95rem;">${taskName}</span>
+                        </div>
+                        <span class="mission-status-tag ${statusBadgeClass}">${statusBadgeText}</span>
+                    </div>
+                    <div class="mission-objective" style="font-size:0.86rem; color:#cbd5e1;">目标描述：${taskObjective}</div>
+                    <div class="mission-reward" style="font-size:0.82rem;">🎁 通关解锁报酬：${taskReward}</div>
+                    <div class="mission-realtime ${realtimeClass}" style="font-size:0.82rem; padding:4px 8px; background:rgba(0,0,0,0.25); border-radius:4px;">
+                        当前进展：${realtimeStatus}
+                    </div>
+                </div>
+            `;
+        });
+
+        if (this.missionsSidebarList) {
+            this.missionsSidebarList.innerHTML = sidebarHtml;
+        }
+        if (this.missionModalList) {
+            this.missionModalList.innerHTML = modalHtml;
+        }
+    }
+
+    /**
+     * 打开 5×5 关卡选择弹窗
+     */
+    showLevelSelectModal() {
+        if (!this.modalLevelSelect) return;
+        this.renderLevelSelectGrid();
+        this.modalLevelSelect.classList.remove("hidden");
+    }
+
+    /**
+     * 渲染 5×5 关卡选择网格 (共25关，根据存储与条件动态解锁)
+     */
+    renderLevelSelectGrid() {
+        if (!this.levelGrid) return;
+        this.levelGrid.innerHTML = "";
+
+        const unlockedLevels = this.saveSystem.getUnlockedLevels();
+
+        const levelNames = [
+            "残破遗迹", "深层重叠", "湮灭奇点", "高熵裂隙", "拟态深渊",
+            "量子回声", "虚数空间", "超弦引力", "矩阵崩塌", "绝对零度",
+            "暗物质界", "时间牢笼", "拟人茧房", "异构核心", "折叠维度",
+            "因果律断", "空洞节点", "反转信标", "终极拟态", "意识海床",
+            "镜像死局", "光锥视界", "高维裂解", "原初黑洞", "终焉回响"
+        ];
+
+        for (let i = 1; i <= 25; i++) {
+            const card = document.createElement("button");
+            const isUnlocked = unlockedLevels.includes(i);
+            const levelNumStr = i < 10 ? `0${i}` : `${i}`;
+            const levelName = levelNames[i - 1] || `扇区 ${levelNumStr}`;
+
+            card.className = `level-card ${isUnlocked ? "level-unlocked" : "level-locked"} ${i === 2 ? "level-2" : ""} ${i === 14 ? "level-14" : ""}`;
+            card.id = `btn-level-${i}`;
+            if (i === 1) {
+                card.setAttribute("data-legacy-id", "btn-menu-new-game");
+            }
+            if (i === 2) {
+                card.setAttribute("data-legacy-id", "btn-menu-level2");
+            }
+            card.setAttribute("data-level", String(i));
+
+            if (!isUnlocked) {
+                card.disabled = true;
+            }
+
+            card.innerHTML = `
+                <span class="card-num">SECTOR ${levelNumStr}</span>
+                <span class="card-name">${levelName}</span>
+                <span class="card-status">${isUnlocked ? "● 开放" : "🔒 待解锁"}</span>
+            `;
+
+            card.addEventListener("click", () => {
+                if (isUnlocked) {
+                    this.modalLevelSelect?.classList.add("hidden");
+                    this.startNewGame(i);
+                } else {
+                    if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
+                    alert(`【扇区 ${levelNumStr} 锁定】该关卡尚未解构，请在前面的关卡中寻找特定线索或带离关键人员脱离以解锁！`);
+                }
+            });
+
+            this.levelGrid.appendChild(card);
+        }
+    }
+
+    // =========================================================================
+    // Q1: 黑屏中间有白字
+    // =========================================================================
+    startNewGame(levelId = 1) {
+        const levelConfig = LevelRegistry.find(l => l.levelId === levelId) || LevelRegistry[0];
+        this.currentLevel = levelConfig;
+
+        // 初始化主角
+        this.protagonist = {
+            ...CharacterRegistry.protagonist,
+            role: levelConfig.defaultProtagonistRole || "seer",
+            inquiryCount: 0,
+            status: "active",
+            fallbackSvg: CharacterRegistry.getAvatarSvg(CharacterRegistry.protagonist)
+        };
+
+        // 初始化候选NPC状态池与身份洗牌
+        this.initCharactersForLevel(levelConfig);
+
+        // 重置体力与天数
+        this.stamina = levelConfig.initialStamina || StaminaConfig.initialStamina;
+        this.dayCount = 1;
+        this.actionLogs = [];
+        this.stepsWithNpc = {};
+        this.nightCounterDeflected = false;
+        this.nightModeDefended = false;
+        this.logAction(`【开始新循环】启动关卡：${levelConfig.title}。主角 L.P.H 身份：${WorldviewConfig.roleNames[this.protagonist.role].name}`);
+
+        // 初始化地图
+        this.explorationEngine.initLevelMap(levelConfig.map);
+
+        // 进入 q1: 黑屏白字
+        this.enterQ1BlackScreen();
+    }
+
+    initCharactersForLevel(levelConfig) {
+        this.allNpcMap.clear();
+        this.teamMembers = [this.protagonist];
+
+        // 准备候选NPC
+        const pool = [...levelConfig.candidateNPCs];
+
+        // 计算本局潜伏伪人的实际数量 (支持随机范围 [min, max] 或固定数值)
+        let actualWolfCount = 1;
+        if (Array.isArray(levelConfig.wolfCountRange)) {
+            const min = Math.max(0, levelConfig.wolfCountRange[0] || 0);
+            const max = Math.max(min, levelConfig.wolfCountRange[1] !== undefined ? levelConfig.wolfCountRange[1] : min);
+            actualWolfCount = Math.floor(Math.random() * (max - min + 1)) + min;
+        } else if (Array.isArray(levelConfig.wolfCount)) {
+            const min = Math.max(0, levelConfig.wolfCount[0] || 0);
+            const max = Math.max(min, levelConfig.wolfCount[1] !== undefined ? levelConfig.wolfCount[1] : min);
+            actualWolfCount = Math.floor(Math.random() * (max - min + 1)) + min;
+        } else if (typeof levelConfig.wolfCount === 'number') {
+            actualWolfCount = levelConfig.wolfCount;
+        }
+
+        // 边界保护：不超过候选NPC池的总人数
+        actualWolfCount = Math.min(pool.length, actualWolfCount);
+        console.log(`[关卡生成] 候选总数: ${pool.length}, 本局暗中生成的伪人数量: ${actualWolfCount}`);
+
+        // 随机挑选指定数量作为伪人
+        const shuffled = [...pool].sort(() => 0.5 - Math.random());
+        shuffled.forEach((cand, idx) => {
+            const rawChar = CharacterRegistry.npcs[cand.id];
+            if (!rawChar) return;
+
+            // 分配身份：优先看是否显式指定了 assignedRole，否则按随机抽出的 actualWolfCount 分配
+            let role = cand.assignedRole;
+            if (!role) {
+                role = idx < actualWolfCount ? "wolf" : "villager";
+            }
+
+            const npcObj = {
+                ...rawChar,
+                role: role,
+                inquiryCount: 0, // 被玩家选择询问的累计次数
+                status: "unmet", // unmet(未遇), active(队内活人), confined(被禁锢), exiled(被放逐), dead(遇害)
+                svgAvatar: CharacterRegistry.getAvatarSvg(rawChar),
+                fallbackSvg: CharacterRegistry.getAvatarSvg(rawChar)
+            };
+
+            this.allNpcMap.set(npcObj.id, npcObj);
+        });
+
+        // 处理初始自带同伴
+        if (levelConfig.initialTeam && levelConfig.initialTeam.length > 0) {
+            levelConfig.initialTeam.forEach(npcId => {
+                const npc = this.allNpcMap.get(npcId);
+                if (npc) {
+                    npc.status = "active";
+                    this.teamMembers.push(npc);
+                }
+            });
+        }
+    }
+
+    enterQ1BlackScreen() {
+        this.phase = "q1_black";
+        this.screenMenu.classList.add("hidden");
+        this.screenGame.classList.add("hidden");
+        this.screenBlack.classList.remove("hidden");
+
+        this.q1Texts = this.currentLevel.blackScreenText || [
+            "冷冻休眠仓的气压泄放声在空旷的回廊中回荡...",
+            "警告：队伍中可能潜伏着未知的伪人拟态感染体。",
+            "抵达终点脱离大门是唯一的逃生通路。",
+            "——点击屏幕进入游戏。"
+        ];
+        this.q1Index = 0;
+        this.renderQ1Text();
+    }
+
+    renderQ1Text() {
+        if (this.q1Index < this.q1Texts.length) {
+            this.blackTextContent.style.opacity = "0";
+            setTimeout(() => {
+                this.blackTextContent.textContent = this.q1Texts[this.q1Index];
+                this.blackTextContent.style.opacity = "1";
+            }, 150);
+        } else {
+            // 所有文字播放完毕，进入 q2 正式游戏页面
+            this.enterQ2GameInit();
+        }
+    }
+
+    handleQ1BlackClick() {
+        if (this.phase !== "q1_black") return;
+        this.q1Index++;
+        this.renderQ1Text();
+    }
+
+    // =========================================================================
+    // Q2: 点击后进入正式游戏页面
+    // =========================================================================
+    enterQ2GameInit() {
+        this.phase = "q2_intro";
+        this.screenBlack.classList.add("hidden");
+        this.screenGame.classList.remove("hidden");
+
+        this.updateHeaderUI();
+        this.renderActionLogs();
+
+        // 播放开局第一段视觉小说对话
+        const startNode = this.explorationEngine.getCurrentNode();
+        this.dialogueUI.playSequence([
+            {
+                speaker: { name: "环境广播", themeColor: "#38bdf8" },
+                text: `系统自检完毕。当前定位坐标：${startNode ? startNode.name : "正门"}。`
+            },
+            {
+                speaker: this.protagonist,
+                text: `我已经苏醒。作为队伍的指挥者，我必须谨慎探索前进，并警惕潜伏在同伴之中的伪人。`
+            }
+        ], () => {
+            // 对话完毕，进入 q3 肉鸽探索循环
+            this.enterQ3Exploration();
+        });
+    }
+
+    // =========================================================================
+    // Q3: 探索走图、消耗体力与事件交互
+    // =========================================================================
+    enterQ3Exploration() {
+        this.phase = "q3_explore";
+        this.updateHeaderUI();
+        this.renderExplorationControls();
+
+        const currentNode = this.explorationEngine.getCurrentNode();
+        if (currentNode) {
+            this.dialogueUI.say(
+                { name: "区域指引", themeColor: "#94a3b8" },
+                `当前位于 [${currentNode.name}]。${currentNode.desc} 请选择行动方向。`
+            );
+        }
+    }
+
+    renderExplorationControls() {
+        const available = this.explorationEngine.getAvailableDirections();
+        const dirMap = {
+            forward: "前 ⬆",
+            backward: "后 ⬇",
+            left: "左 ⬅",
+            right: "右 ➡"
+        };
+
+        Object.entries(this.directionButtons).forEach(([dir, btn]) => {
+            if (!btn) return;
+            const targetId = available[dir];
+            if (targetId) {
+                const targetNode = this.currentLevel.map.nodes[targetId];
+                btn.disabled = false;
+                btn.classList.add("active-dir");
+                btn.innerHTML = `${dirMap[dir]} <span class="dest-preview">(${targetNode ? targetNode.name : targetId})</span>`;
+            } else {
+                btn.disabled = true;
+                btn.classList.remove("active-dir");
+                btn.innerHTML = `${dirMap[dir]} <span class="dest-preview">(不可通行)</span>`;
+            }
+        });
+    }
+
+    // 遇到昏迷NPC交互弹窗
+    showNpcEncounterModal(npc, node, onHandled) {
+        if (!this.modalEncounter) return;
+
+        const titleElem = document.getElementById("encounter-npc-name");
+        const avatarElem = document.getElementById("encounter-npc-avatar");
+        const descElem = document.getElementById("encounter-npc-dialogue");
+        const btnJoin = document.getElementById("btn-encounter-accept");
+        const btnIgnore = document.getElementById("btn-encounter-reject");
+
+        const firstLineParsed = CharacterRegistry.parseDialogueLine(npc.introDialogue && npc.introDialogue[0]);
+        titleElem.textContent = `发现昏迷人员：${npc.name}`;
+        titleElem.style.color = npc.themeColor;
+
+        const exp = firstLineParsed.expression || "clam";
+        const candidates = CharacterRegistry.getCharacterImageCandidates(npc, exp);
+        const fallbackSvg = CharacterRegistry.getAvatarSvg(npc, exp);
+        const candidatesAttr = JSON.stringify(candidates).replace(/"/g, '&quot;');
+        avatarElem.innerHTML = `<img src="${candidates[0] || fallbackSvg}" data-candidates="${candidatesAttr}" data-index="0" data-fallback="${fallbackSvg}" alt="${npc.name}" onerror="window.handlePortraitError && window.handlePortraitError(this)">`;
+        avatarElem.style.filter = `drop-shadow(0 0 12px ${npc.themeColor}80)`;
+
+        descElem.textContent = firstLineParsed.text || "发现一名失去知觉的乘员倒在此处。";
+
+        this.modalEncounter.classList.remove("hidden");
+
+        const cleanup = () => {
+            this.modalEncounter.classList.add("hidden");
+            btnJoin.onclick = null;
+            btnIgnore.onclick = null;
+        };
+
+        btnJoin.onclick = () => {
+            cleanup();
+            // 让其加入队伍
+            npc.status = "active";
+            this.teamMembers.push(npc);
+            this.logAction(`【营救同伴】救醒了 [${npc.name}]，加入队伍！当前队伍人数: ${this.getAliveTeamMembers().length} 人`);
+            this.updateHeaderUI();
+
+            // 触发人物图鉴历练检定 (如邵可欣救援入队)
+            this.checkPersonaSecretUnlocks("suffer_fate", { charId: npc.id, type: "rescued" });
+
+            // 播放入队对话
+            const lines = (npc.introDialogue || []).slice(1).map(raw => {
+                const parsed = CharacterRegistry.parseDialogueLine(raw);
+                return {
+                    speaker: npc,
+                    text: parsed.text,
+                    expression: parsed.expression
+                };
+            });
+            if (lines.length === 0) {
+                lines.push({ speaker: npc, text: `谢谢你救了我，L.P.H！我愿意跟随你一起撤离！`, expression: "happy" });
+            }
+
+            this.dialogueUI.playSequence(lines, () => {
+                if (onHandled) onHandled(true);
+            });
+        };
+
+        btnIgnore.onclick = () => {
+            cleanup();
+            this.logAction(`【暂不救助】你决定暂不唤醒昏迷的 [${npc.name}]，队伍继续前进。`);
+            this.dialogueUI.say(
+                this.protagonist,
+                `情况不明，我们现在还没有多余的精力照顾他。稍后需要时可以再回来救助。`,
+                () => {
+                    if (onHandled) onHandled(false);
+                }
+            );
+        };
+    }
+
+    // =========================================================================
+    // Q4: 傍晚询问环节 (先黑屏白字，点击后再进入)
+    // =========================================================================
+    enterEveningPhase() {
+        this.phase = "evening_black";
+        this.eveningInquiryCount = 0;
+        this.updateHeaderUI();
+
+        // 切换至全黑屏转场视口
+        this.screenGame.classList.add("hidden");
+        this.screenEveningBlack?.classList.remove("hidden");
+    }
+
+    handleEveningBlackClick() {
+        if (this.phase !== "evening_black") return;
+        this.phase = "q4_inquiry";
+        this.screenEveningBlack?.classList.add("hidden");
+        this.screenGame.classList.remove("hidden");
+
+        this.dialogueUI.say(
+            { id: "broadcast", isBroadcast: true, name: "全员集结", themeColor: "#f59e0b" },
+            `傍晚时分，幸存者们聚集在暂歇区。你可以选择与 1~2 名同伴单独交谈打探线索，或者直接跳过进入裁决。`,
+            () => {
+                this.showInquiryModal();
+            }
+        );
+    }
+
+    showInquiryModal() {
+        const aliveNpcs = this.getAliveNpcTeamMembers();
+        const listContainer = document.getElementById("inquiry-target-list");
+        const btnSkip = document.getElementById("btn-inquiry-skip");
+        const statusHint = document.getElementById("inquiry-status-hint");
+
+        statusHint.textContent = `当前已询问：${this.eveningInquiryCount} / 2 名同伴`;
+
+        listContainer.innerHTML = "";
+
+        if (aliveNpcs.length === 0) {
+            listContainer.innerHTML = `<div style="color:#94a3b8; padding:15px; text-align:center;">当前队伍中没有其他存活同伴可供询问。</div>`;
+        } else {
+            aliveNpcs.forEach(npc => {
+                const card = document.createElement("div");
+                card.className = "inquiry-card";
+                card.style.borderColor = npc.themeColor;
+                card.innerHTML = `
+                    <div class="inquiry-card-avatar" style="border-color:${npc.themeColor}">
+                        <img src="${npc.svgAvatar}" alt="${npc.name}">
+                    </div>
+                    <div class="inquiry-card-info">
+                        <div class="inquiry-card-name" style="color:${npc.themeColor}">${npc.name}</div>
+                        <div class="inquiry-card-times">已交谈次数: ${npc.inquiryCount} 次</div>
+                    </div>
+                    <button class="inquiry-card-btn" style="background:${npc.themeColor}33; border-color:${npc.themeColor}; color:${npc.themeColor}">交谈 ➔</button>
+                `;
+
+                card.querySelector("button").onclick = () => {
+                    this.executeInquiryDialogue(npc);
+                };
+                listContainer.appendChild(card);
+            });
+        }
+
+        btnSkip.onclick = () => {
+            this.modalInquiry.classList.add("hidden");
+            this.logAction(`【傍晚时刻】决定结束询问交谈，直接进入裁决阶段。`);
+            this.enterQ5Judgement();
+        };
+
+        this.modalInquiry.classList.remove("hidden");
+    }
+
+    executeInquiryDialogue(npc) {
+        this.modalInquiry.classList.add("hidden");
+        this.eveningInquiryCount++;
+
+        // 获取该 NPC 对应的第 N 次询问台词
+        const count = npc.inquiryCount;
+        let dialogueArray = [];
+        if (npc.inquiryDialogues && npc.inquiryDialogues.length > 0) {
+            // 如果超出设定次数，取最后一条
+            const idx = Math.min(count, npc.inquiryDialogues.length - 1);
+            dialogueArray = npc.inquiryDialogues[idx];
+        } else {
+            dialogueArray = [`（${npc.name} 保持着沉默，注视着你的眼睛）`];
+        }
+
+        // 被询问次数累加
+        npc.inquiryCount++;
+
+        this.logAction(`【深入交谈】与同伴 [${npc.name}] 进行了第 ${npc.inquiryCount} 次交谈。`);
+
+        // 检定交谈特征解构
+        this.checkPersonaSecretUnlocks("inquiry_count", { charId: npc.id, count: npc.inquiryCount });
+
+        // 构建对白队列
+        const seq = dialogueArray.map(item => {
+            const parsed = CharacterRegistry.parseDialogueLine(item);
+            return {
+                speaker: npc,
+                text: parsed.text,
+                expression: parsed.expression
+            };
+        });
+
+        this.dialogueUI.playSequence(seq, () => {
+            // 判断是否还可以继续询问第2位
+            if (this.eveningInquiryCount < 2 && this.getAliveNpcTeamMembers().length > 1) {
+                // 提示是否继续
+                this.showInquiryModal();
+            } else {
+                // 已经询问满2人，进入裁决
+                this.enterQ5Judgement();
+            }
+        });
+    }
+
+    // =========================================================================
+    // Q5: 裁决阶段 (禁锢 / 放逐 / 放弃裁决)
+    // =========================================================================
+    enterQ5Judgement() {
+        this.phase = "q5_judgement";
+        this.modalInquiry.classList.add("hidden");
+
+        this.dialogueUI.say(
+            { name: "全员审决", themeColor: "#ef4444" },
+            `进入裁决阶段。作为队长，你可以选择【禁锢一人】限制其夜间行动、或【放逐一人】永久除名，亦可【放弃裁决】。`,
+            () => {
+                this.showJudgementModal();
+            }
+        );
+    }
+
+    showJudgementModal() {
+        const aliveNpcs = this.getAliveNpcTeamMembers();
+        const container = document.getElementById("judgement-target-list");
+        const btnPass = document.getElementById("btn-judgement-pass");
+
+        container.innerHTML = "";
+
+        if (aliveNpcs.length === 0) {
+            container.innerHTML = `<div style="color:#94a3b8; text-align:center; padding:15px;">暂无其他同伴可裁决。</div>`;
+        } else {
+            aliveNpcs.forEach(npc => {
+                const item = document.createElement("div");
+                item.className = "judgement-item";
+                item.style.borderColor = npc.themeColor;
+                item.innerHTML = `
+                    <div class="judgement-info">
+                        <span class="judgement-name" style="color:${npc.themeColor}">${npc.name}</span>
+                        <span class="judgement-role-hint">嫌疑观测中</span>
+                    </div>
+                    <div class="judgement-actions">
+                        <button class="judge-btn btn-confine" title="限制其夜间活动，若其为伪人则今晚无法袭击">🔒 禁锢今夜</button>
+                        <button class="judge-btn btn-exile" title="将其永久驱逐出队伍">🚪 永久放逐</button>
+                    </div>
+                `;
+
+                // 禁锢按钮
+                item.querySelector(".btn-confine").onclick = () => {
+                    this.executeConfine(npc);
+                };
+
+                // 放逐按钮
+                item.querySelector(".btn-exile").onclick = () => {
+                    this.executeExile(npc);
+                };
+
+                container.appendChild(item);
+            });
+        }
+
+        // 放弃裁决
+        btnPass.onclick = () => {
+            this.modalJudgement.classList.add("hidden");
+            this.confinedNpcId = null;
+            this.logAction(`【放弃裁决】出于信任与谨慎，你决定今晚不处分任何同伴。`);
+            this.dialogueUI.say(
+                this.protagonist,
+                `没有确凿证据前不能盲目自相残杀，今夜全员各自回舱待命！`,
+                () => {
+                    this.enterQ6Night();
+                }
+            );
+        };
+
+        this.modalJudgement.classList.remove("hidden");
+    }
+
+    executeConfine(npc) {
+        this.modalJudgement.classList.add("hidden");
+        this.confinedNpcId = npc.id;
+
+        const isWolf = (npc.role === "wolf");
+        this.logAction(`【执行禁锢】将同伴 [${npc.name}] 锁入隔离舱禁闭，限制其夜间行动。`);
+
+        // 触发受难历练检定 (如卡泽/莫德被禁锢)
+        this.checkPersonaSecretUnlocks("suffer_fate", { charId: npc.id, type: "confined" });
+
+        this.dialogueUI.playSequence([
+            {
+                speaker: this.protagonist,
+                text: `[${npc.name}]，为了大家的安全，今夜请在封锁舱中度过。`
+            },
+            {
+                speaker: npc,
+                text: isWolf ? `……（眼神中闪过一丝阴鸷的冷光，顺从地走进了禁闭室）` : `既然是队长的决定，我遵守安排……但请一定要小心！`,
+                expression: isWolf ? "happy" : "sad"
+            }
+        ], () => {
+            this.enterQ6Night();
+        });
+    }
+
+    executeExile(npc) {
+        this.modalJudgement.classList.add("hidden");
+        this.exiledNpcId = npc.id;
+        npc.status = "exiled"; // 永久除名
+
+        this.logAction(`【执行放逐】将同伴 [${npc.name}] 驱逐出队伍！队伍存活人数变更: ${this.getAliveTeamMembers().length} 人`);
+
+        // 触发放逐伪人历练检定 (卡泽在队且放逐伪人)
+        this.checkPersonaSecretUnlocks("exile_wolf_with", { isExiledWolf: npc.role === "wolf", charId: npc.id });
+
+        this.dialogueUI.playSequence([
+            {
+                speaker: this.protagonist,
+                text: `你的疑点太大，队伍不能承担被全灭的风险。请交出给养，独自离开这支队伍。`
+            },
+            {
+                speaker: npc,
+                text: `你会为今天的决定后悔的……祝你们好运。`,
+                expression: "angry"
+            }
+        ], () => {
+            this.updateHeaderUI();
+            this.enterQ6Night();
+        });
+    }
+
+    // =========================================================================
+    // Q6: 黑夜阶段 (根据玩家身份发动夜间技能)
+    // =========================================================================
+    enterQ6Night() {
+        this.phase = "q6_night";
+        this.nightProtectedNpcId = null;
+        this.witchSaved = false;
+
+        // 先预计算伪人的拟袭击目标 (用于歌咏者女巫感知)
+        this.calculateNightWolfPlan();
+
+        this.dialogueUI.say(
+            { name: "夜深人静", themeColor: "#818cf8" },
+            `夜幕降临，舱内灯光切换为暗红色睡眠模式。作为【${WorldviewConfig.roleNames[this.protagonist.role].name}】，开始执行夜间行动。`,
+            () => {
+                this.showNightActionModal();
+            }
+        );
+    }
+
+    calculateNightWolfPlan() {
+        this.nightTargetVictimId = null;
+
+        // 核心规则：队伍里有伪人才能刀人！
+        // 1. 检查队伍中存活的伪人
+        const wolvesInTeam = this.getAliveTeamMembers().filter(m => m.role === "wolf");
+        if (wolvesInTeam.length === 0) {
+            console.log("[夜间伪人行动] 当前队伍中没有伪人，平安无事，绝不刀人。");
+            return;
+        }
+
+        // 2. 检查队伍中的伪人是否全部被禁锢
+        const activeWolvesInTeam = wolvesInTeam.filter(w => w.id !== this.confinedNpcId);
+        if (activeWolvesInTeam.length === 0) {
+            console.log("[夜间伪人行动] 队伍中的伪人今晚已被禁锢，无法行动。");
+            return;
+        }
+
+        // 3. 队伍中有具备行动能力的伪人：必定自主猎杀队伍内的同伴（100% 刀人，绝不漏刀）
+        // 目标优先级：
+        // 优先 1：队伍中存活的普通人类同伴（非伪人、非主角）
+        const teamHumanCandidates = this.getAliveNpcTeamMembers().filter(m => m.role !== "wolf");
+        
+        let target = null;
+        if (teamHumanCandidates.length > 0) {
+            target = teamHumanCandidates[Math.floor(Math.random() * teamHumanCandidates.length)];
+        } else {
+            // 优先 2：若当前队伍除伪人外已无其他同伴，伪人直接猎杀主角！
+            target = this.protagonist;
+        }
+
+        if (target) {
+            this.nightTargetVictimId = target.id;
+            console.log(`[伪人队内猎杀] 队伍中的伪人已锁定刀人目标: ${target.name} (ID: ${target.id})`);
+        }
+    }
+
+    showNightActionModal() {
+        const role = this.protagonist.role;
+        const titleElem = document.getElementById("night-modal-title");
+        const descElem = document.getElementById("night-modal-desc");
+        const listElem = document.getElementById("night-target-list");
+        const btnPass = document.getElementById("btn-night-skip");
+
+        const aliveNpcs = this.getAliveNpcTeamMembers();
+
+        listElem.innerHTML = "";
+
+        if (role === "seer") {
+            // 魔镜 (预言家)
+            titleElem.textContent = "🔮 魔镜真理检视";
+            descElem.textContent = "选择一名存活同伴查验其真实身份，探明其是否已被伪人替换：";
+            
+            aliveNpcs.forEach(npc => {
+                const btn = document.createElement("button");
+                btn.className = "night-choice-btn";
+                btn.style.borderColor = npc.themeColor;
+                btn.innerHTML = `<span style="color:${npc.themeColor}">${npc.name}</span> <span>查验真身 ➔</span>`;
+                btn.onclick = () => {
+                    this.executeSeerInspect(npc);
+                };
+                listElem.appendChild(btn);
+            });
+        } else if (role === "guard") {
+            // 护卫 (守卫)
+            titleElem.textContent = "🛡️ 护卫守备防御";
+            descElem.textContent = "选择一名存活同伴（或守护自己）通宵设防，今夜若其遭到伪人袭击将毫发无伤：";
+
+            const guardCandidates = [...aliveNpcs, this.protagonist];
+            guardCandidates.forEach(member => {
+                const btn = document.createElement("button");
+                btn.className = "night-choice-btn";
+                btn.style.borderColor = member.themeColor || "#38bdf8";
+                btn.innerHTML = `<span style="color:${member.themeColor || "#38bdf8"}">${member.name}${member.isProtagonist ? " (你自己)" : ""}</span> <span>设立护盾 ➔</span>`;
+                btn.onclick = () => {
+                    this.executeGuardProtect(member);
+                };
+                listElem.appendChild(btn);
+            });
+        } else if (role === "witch") {
+            // 歌咏者 (女巫)
+            titleElem.textContent = "✨ 歌咏者生命感知";
+            if (this.nightTargetVictimId) {
+                const victim = (this.nightTargetVictimId === this.protagonist.id)
+                    ? this.protagonist
+                    : this.getNpcById(this.nightTargetVictimId);
+                descElem.innerHTML = `感知到微弱的呼救脑波！今晚同伴 <strong style="color:#ef4444">[${victim ? victim.name : "某人"}]</strong> 遭遇了致命袭击！是否施展歌咏之力挽救生命？`;
+
+                const btnSave = document.createElement("button");
+                btnSave.className = "night-choice-btn btn-save-action";
+                btnSave.innerHTML = `<span>✨ 施加生命救助 (救赎 ${victim ? victim.name : ""})</span>`;
+                btnSave.onclick = () => {
+                    this.executeWitchSave(victim);
+                };
+                listElem.appendChild(btnSave);
+            } else {
+                descElem.textContent = "今夜舱内静谧，未感知到濒死危机。没有同伴受到致命威胁。";
+            }
+        } else {
+            // 普通人
+            titleElem.textContent = "🌙 闭目待晓";
+            descElem.textContent = "你保持着警惕，静静等待黎明到来。";
+        }
+
+        btnPass.textContent = role === "witch" && this.nightTargetVictimId ? "保留神力 (不施救)" : "跳过行动";
+        btnPass.onclick = () => {
+            this.modalNight.classList.add("hidden");
+            this.logAction(`【黑夜度过】你选择在舱室内闭目养神，静待黎明到来。`);
+            this.enterQ7Day();
+        };
+
+        this.modalNight.classList.remove("hidden");
+    }
+
+    executeSeerInspect(npc) {
+        this.modalNight.classList.add("hidden");
+        const isWolf = (npc.role === "wolf");
+        const roleInfo = WorldviewConfig.roleNames[npc.role] || { name: "普通同伴" };
+
+        this.logAction(`【魔镜查验】查验了同伴 [${npc.name}] 的真身：${isWolf ? "【伪人！！】" : "【正常人类】"}`);
+
+        this.dialogueUI.playSequence([
+            {
+                speaker: this.protagonist,
+                text: `启动魔镜扫描仪，锁定 [${npc.name}] 的细胞反射波长……`
+            },
+            {
+                speaker: { id: "broadcast", isBroadcast: true, name: "魔镜终端", themeColor: isWolf ? "#ff3366" : "#4ade80" },
+                text: isWolf
+                    ? `⚠️ 警报！检测到高熵拟态神经束！[${npc.name}] 确定为【${WorldviewConfig.roleNames.wolf.name}】！`
+                    : `✅ 扫描结果：生体特征完全正常，[${npc.name}] 是【人类同伴】。`
+            }
+        ], () => {
+            this.enterQ7Day();
+        });
+    }
+
+    executeGuardProtect(npc) {
+        this.modalNight.classList.add("hidden");
+        this.nightProtectedNpcId = npc.id;
+
+        this.logAction(`【护卫守备】通宵设防，重点守护了同伴 [${npc.name}]。`);
+
+        this.dialogueUI.say(
+            this.protagonist,
+            `我在 [${npc.name}] 的门前布设了高频防御力场，今晚他不会有生命危险。`,
+            () => {
+                this.enterQ7Day();
+            }
+        );
+    }
+
+    executeWitchSave(victim) {
+        this.modalNight.classList.add("hidden");
+        this.witchSaved = true;
+
+        this.logAction(`【歌咏救赎】消耗生命灵药，成功挽救了险遭抹杀的 [${victim ? victim.name : "同伴"}]！`);
+
+        this.dialogueUI.say(
+            this.protagonist,
+            `咏唱生命回路，生体血清注入……成功将 [${victim ? victim.name : "同伴"}] 从死亡边缘拉了回来！`,
+            () => {
+                this.enterQ7Day();
+            }
+        );
+    }
+
+    // =========================================================================
+    // Q7: 白天阶段 (公布夜晚结果，伤亡结算，全屏黑屏死亡特写，重置计数回到Q3)
+    // =========================================================================
+    enterDeathBlackPhase(victim, onProceed) {
+        this.phase = "death_black";
+        this.deathBlackCallback = onProceed;
+        this.deathRevealed = false;
+        if (this.deathRevealTimer) {
+            clearTimeout(this.deathRevealTimer);
+            this.deathRevealTimer = null;
+        }
+
+        const img = document.getElementById("death-portrait-img");
+        const titleElem = document.getElementById("death-victim-name");
+        const textElem = document.getElementById("death-black-text");
+        const suspenseLayer = document.getElementById("death-suspense-layer");
+        const contentContainer = document.getElementById("death-content-container");
+
+        if (titleElem) {
+            titleElem.textContent = `【同伴遇害：${victim.name}】`;
+        }
+        if (textElem) {
+            textElem.innerHTML = `生活舱深处传来刺耳的蜂鸣警报，晨曦中发现了一具冰冷的遗体……<br>同伴 [${victim.name}] 昨夜遭遇潜伏伪人残酷袭击，生命体征已完全终止。`;
+        }
+
+        const exp = "dead";
+        const candidates = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getCharacterImageCandidates)
+            ? CharacterRegistry.getCharacterImageCandidates(victim, exp)
+            : [];
+        const fallbackSvg = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getAvatarSvg)
+            ? CharacterRegistry.getAvatarSvg(victim, exp)
+            : "";
+        if (img) {
+            img.onerror = () => {
+                if (window.handlePortraitError) {
+                    window.handlePortraitError(img);
+                }
+            };
+            img.setAttribute("data-candidates", JSON.stringify(candidates));
+            img.setAttribute("data-index", "0");
+            img.setAttribute("data-fallback", fallbackSvg);
+            img.src = candidates[0] || fallbackSvg;
+        }
+
+        // 核心表现优化：黑夜行动结束后，先纯黑屏2秒，之后再渐渐浮现死者，并播放音效
+        suspenseLayer?.classList.remove("fade-out");
+        contentContainer?.classList.remove("death-content-revealed");
+        contentContainer?.classList.add("death-content-hidden");
+
+        this.screenGame?.classList.add("hidden");
+        this.screenDeathBlack?.classList.remove("hidden");
+
+        const blackDuration = (typeof DeathRevealConfig !== "undefined" && DeathRevealConfig.blackScreenDurationMs !== undefined)
+            ? DeathRevealConfig.blackScreenDurationMs
+            : 2000;
+
+        // 设置2秒黑屏悬念定时器
+        this.deathRevealTimer = setTimeout(() => {
+            this.revealDeathContent();
+        }, blackDuration);
+    }
+
+    /**
+     * 2秒黑屏后渐渐浮现死者，并触发相应配置音效
+     */
+    revealDeathContent() {
+        if (this.deathRevealed) return;
+        this.deathRevealed = true;
+
+        if (this.deathRevealTimer) {
+            clearTimeout(this.deathRevealTimer);
+            this.deathRevealTimer = null;
+        }
+
+        const suspenseLayer = document.getElementById("death-suspense-layer");
+        const contentContainer = document.getElementById("death-content-container");
+
+        suspenseLayer?.classList.add("fade-out");
+        contentContainer?.classList.remove("death-content-hidden");
+        contentContainer?.classList.add("death-content-revealed");
+
+        // 播放死者展示专属音效 (支持用户在 config.js 中自由配置音频文件)
+        try {
+            if (typeof Sound !== "undefined" && Sound.playDeathSound) {
+                Sound.playDeathSound();
+            }
+        } catch (err) {
+            console.warn("[DeathSound] 播放音效异常:", err);
+        }
+    }
+
+    handleDeathBlackClick() {
+        if (this.phase !== "death_black") return;
+
+        // 若尚处于2秒黑屏期，玩家点击屏幕可快速跳过黑屏等待，立即浮现死者
+        if (!this.deathRevealed) {
+            this.revealDeathContent();
+            return;
+        }
+
+        // 死者已浮现状态下，点击推进至白天对话
+        this.phase = "q7_day";
+        this.screenDeathBlack?.classList.add("hidden");
+        this.screenGame?.classList.remove("hidden");
+
+        const cb = this.deathBlackCallback;
+        this.deathBlackCallback = null;
+        if (cb) cb();
+    }
+
+    enterQ7Day() {
+        this.phase = "q7_day";
+        this.dayCount++;
+
+        // 结算夜晚袭击
+        let victimName = null;
+        let survivedReason = null; // "confined", "guarded", "witch_saved", "no_attack"
+
+        // 核心规则：队伍里有伪人才能刀人！
+        const wolvesInTeam = this.getAliveTeamMembers().filter(m => m.role === "wolf");
+        const activeWolvesInTeam = wolvesInTeam.filter(w => w.id !== this.confinedNpcId);
+
+        if (wolvesInTeam.length === 0) {
+            survivedReason = "no_attack"; // 队伍里没有伪人，全员安全度过黑夜
+        } else if (activeWolvesInTeam.length === 0) {
+            survivedReason = "confined"; // 队伍内的伪人已被白天裁决禁锢限制
+        }
+
+        let victimObj = null;
+        if (!survivedReason) {
+            if (!this.nightTargetVictimId) {
+                survivedReason = "no_attack";
+            } else if (this.nightProtectedNpcId === this.nightTargetVictimId) {
+                survivedReason = "guarded"; // 护卫守护
+            } else if (this.witchSaved) {
+                survivedReason = "witch_saved"; // 女巫救助
+            } else if (this.nightTargetVictimId === "kaze" && this.saveSystem.isCharacterPassiveUnlocked("kaze") && Math.random() < 0.35) {
+                survivedReason = "kaze_counter"; // 卡泽【战术反制】成功化解！
+                this.logAction("【战术反制】卡泽敏锐识破了伪装体的暗夜突袭，凭借特战直觉破门格挡反制，化险为夷！");
+            } else if (this.nightTargetVictimId === this.protagonist.id && this.getAliveNpcTeamMembers().some(m => m.id === "mode") && this.saveSystem.isCharacterPassiveUnlocked("mode")) {
+                survivedReason = "mode_shield"; // 莫德【防爆坚守】挺身格挡！
+                this.logAction("【防爆坚守】潜伏伪装体企图暗算队长！莫德以重装防爆盾死死扼守住舱门，替队长挡下了致命抹杀！");
+            } else {
+                // 遇害离场
+                if (this.nightTargetVictimId === this.protagonist.id) {
+                    this.triggerGameOver("生活区已无其他人类同伴生还……潜伏在队伍中的伪人撕下伪装向你扑来。你在绝望中倒下了。");
+                    return;
+                }
+                const victim = this.getNpcById(this.nightTargetVictimId);
+                if (victim) {
+                    victim.status = "dead";
+                    victimName = victim.name;
+                    victimObj = victim;
+                }
+            }
+        }
+
+        // 清空当晚临时状态
+        const prevReason = survivedReason;
+        this.confinedNpcId = null;
+        this.nightProtectedNpcId = null;
+        this.witchSaved = false;
+        this.nightTargetVictimId = null;
+
+        // 更新顶栏与UI
+        this.updateHeaderUI();
+
+        if (victimObj) {
+            this.logAction(`【黎明公布】第 ${this.dayCount} 天：同伴 [${victimObj.name}] 昨夜遇袭身亡，当前队伍存活: ${this.getAliveTeamMembers().length} 人`);
+
+            // 触发人物图鉴历练检定 (同伴遇害牺牲)
+            this.checkPersonaSecretUnlocks("suffer_fate", { charId: victimObj.id, type: "dead" });
+
+            // 核心优化：全屏黑屏中间展示死亡立绘特写（比例适中，不要太大也不要太小）
+            this.enterDeathBlackPhase(victimObj, () => {
+                const lines = [
+                    {
+                        speaker: { id: "broadcast", isBroadcast: true, name: "黎明广播", themeColor: "#38bdf8" },
+                        text: `第 ${this.dayCount} 循环黎明到来，全员重新集结。`
+                    },
+                    {
+                        speaker: { id: "broadcast", isBroadcast: true, name: "警报广播", themeColor: "#ef4444" },
+                        text: `⚠️ 警报！检测到乘员生命体征中断，在生活舱发现了遗体……`
+                    }
+                ];
+
+                // 存活同伴目睹死亡后的随机反应台词 (随机触发存活NPC的专属特殊语句)
+                const aliveNpcs = this.getAliveNpcTeamMembers().filter(m => m.id !== victimObj.id);
+                if (aliveNpcs.length > 0) {
+                    // 随机打乱存活同伴顺序
+                    const shuffled = [...aliveNpcs].sort(() => 0.5 - Math.random());
+                    const reactor1 = shuffled[0];
+                    const reaction1 = CharacterRegistry.getRandomDeathReaction(reactor1, victimObj);
+                    if (reaction1) {
+                        lines.push({
+                            speaker: reactor1,
+                            expression: reaction1.expression,
+                            text: reaction1.text
+                        });
+                        this.logAction(`【同伴哀痛】[${reactor1.name}] 对 [${victimObj.name}] 的牺牲做出了反应。`);
+                    }
+
+                    // 若队伍还有其他存活NPC，有几率追加第 2 人的感叹
+                    if (shuffled.length > 1 && Math.random() < 0.5) {
+                        const reactor2 = shuffled[1];
+                        const reaction2 = CharacterRegistry.getRandomDeathReaction(reactor2, victimObj);
+                        if (reaction2) {
+                            lines.push({
+                                speaker: reactor2,
+                                expression: reaction2.expression,
+                                text: reaction2.text
+                            });
+                        }
+                    }
+                }
+
+                this.dialogueUI.playSequence(lines, () => {
+                    // 循环回到 q3 探索，步数已在傍晚时清零，开启全新一天的选择
+                    this.enterQ3Exploration();
+                });
+            });
+        } else {
+            // 平安夜判定
+            this.checkPersonaSecretUnlocks("peaceful_night_with", { isPeaceful: true });
+
+            // 用户明确要求：禁锢的就算是伪人，也不要在白天广播时说出来，就说平安夜就行
+            let reasonText = "平安夜！昨夜没有任何同伴遇害。";
+            if (prevReason === "kaze_counter") {
+                reasonText = "昨夜暗影突袭被防区特战本能挫败，平安度过！";
+            } else if (prevReason === "mode_shield") {
+                reasonText = "重装防爆力场彻底拦截了暗夜突袭，平安度过！";
+            }
+
+            const lines = [
+                {
+                    speaker: { id: "broadcast", isBroadcast: true, name: "广播通信", themeColor: "#4ade80" },
+                    text: `✅ ${reasonText}`
+                }
+            ];
+
+            if (prevReason === "kaze_counter") {
+                const kazeNpc = this.getNpcById("kaze");
+                if (kazeNpc) {
+                    lines.push({
+                        speaker: kazeNpc,
+                        expression: "angry",
+                        text: "昨晚有东西试图从通风口摸进来。不过被我短刀反制割裂了表皮，已经逃窜了。"
+                    });
+                }
+            } else if (prevReason === "mode_shield") {
+                const modeNpc = this.getNpcById("mode");
+                if (modeNpc) {
+                    lines.push({
+                        speaker: modeNpc,
+                        expression: "angry",
+                        text: "队长，昨晚那帮拟态杂碎摸到你舱门前了。老子把防爆盾砸它脸上，给老子夹着尾巴滚了！"
+                    });
+                }
+            }
+
+            this.logAction(`【黎明公布】第 ${this.dayCount} 天：${reasonText}`);
+
+            this.dialogueUI.playSequence(lines, () => {
+                // 循环回到 q3 探索，步数已在傍晚时清零，开启全新一天的选择
+                this.enterQ3Exploration();
+            });
+        }
+    }
+
+    // =========================================================================
+    // 胜利与失败结算
+    // =========================================================================
+    triggerVictory(exitNode) {
+        this.phase = "victory";
+        const aliveMembers = this.getAliveTeamMembers();
+        const wolfAlive = aliveMembers.filter(m => m.role === "wolf");
+        const currentLvlId = this.currentLevel ? this.currentLevel.levelId : 1;
+
+        // 收集人员撤离与伪人状态上下文
+        const evacuatedNpcs = aliveMembers.filter(m => !m.isProtagonist);
+        const evacuatedNpcIds = evacuatedNpcs.map(m => m.id);
+        const allLevelMimics = Array.from(this.allNpcMap.values()).filter(m => m.role === "wolf");
+        const allLevelNpcs = Array.from(this.allNpcMap.values());
+        const isSolo = (evacuatedNpcIds.length === 0);
+
+        const evalContext = {
+            evacuatedNpcIds,
+            evacuatedNpcs,
+            allLevelMimics,
+            allLevelNpcs,
+            isSolo
+        };
+
+        // 检定非线性关卡解锁规则
+        const unlockResult = UnlockEvaluator.evaluate(this.currentLevel?.unlockRules || [], evalContext);
+        const newlyUnlocked = this.saveSystem.unlockLevels(unlockResult.unlockedLevelIds);
+
+        // 检定同伴撤离深度档案解构 (带领卡泽/邵可欣/莫德撤离)
+        this.checkPersonaSecretUnlocks("evacuate_with", { evacuatedNpcIds });
+
+        let msg = "";
+        if (wolfAlive.length > 0) {
+            msg = "气闸开启，门外仍是起点长廊。时钟倒流，身后的拟态伪装体在阴影中露出微笑。";
+        } else {
+            msg = "气闸开启，门外仍是起点长廊。抓痕未愈，时钟倒流——观测者，你从未逃脱循环。";
+        }
+
+        this.showResultModal("🌀 奇点坍缩 · 循环重置 (OBSERVATION)", msg, true, { unlockResult, newlyUnlocked });
+    }
+
+    triggerGameOver(reason) {
+        this.phase = "gameover";
+        this.logAction(`【任务失败】${reason}`);
+        this.showResultModal("💀 探索中止 (GAME OVER)", reason, false);
+    }
+
+    showResultModal(title, message, isVictory, unlockData = {}) {
+        const titleElem = document.getElementById("result-title");
+        const msgElem = document.getElementById("result-message");
+        const btnNext = document.getElementById("btn-result-next");
+        const btnLevelSelect = document.getElementById("btn-result-level-select");
+        const btnRestart = document.getElementById("btn-result-restart");
+        const btnLoad = document.getElementById("btn-result-load");
+
+        titleElem.textContent = title;
+        titleElem.style.color = isVictory ? "#38bdf8" : "#ff3366";
+        msgElem.textContent = message;
+
+        const currentLvlId = this.currentLevel ? this.currentLevel.levelId : 1;
+        const newlyUnlocked = unlockData.newlyUnlocked || [];
+
+        const unlockNoticeElem = document.getElementById("result-unlock-notice");
+        if (unlockNoticeElem) {
+            if (isVictory && unlockData.unlockResult && unlockData.unlockResult.triggeredRules && unlockData.unlockResult.triggeredRules.length > 0) {
+                unlockNoticeElem.classList.remove("hidden");
+                let html = `<div style="font-weight: bold; margin-bottom: 6px; color: #38bdf8;">🌌 扇区拓扑解析 · 观测网络重构</div>`;
+                unlockData.unlockResult.triggeredRules.forEach(rule => {
+                    const isNew = (rule.unlockLevelIds || []).some(id => newlyUnlocked.includes(id));
+                    html += `<div style="margin: 2px 0;">✦ ${rule.title || "扇区信标"}：${rule.toast || "信标激活"} ${isNew ? '<span style="color: #4ade80; font-weight: bold;">【✨ 新解锁】</span>' : '<span style="color: #94a3b8;">【已探明】</span>'}</div>`;
+                });
+                unlockNoticeElem.innerHTML = html;
+            } else {
+                unlockNoticeElem.classList.add("hidden");
+                unlockNoticeElem.innerHTML = "";
+            }
+        }
+
+        // 检视 5x5 矩阵按钮
+        if (btnLevelSelect) {
+            if (isVictory) {
+                btnLevelSelect.classList.remove("hidden");
+                btnLevelSelect.onclick = () => {
+                    this.modalResult.classList.add("hidden");
+                    this.showMenu();
+                    this.showLevelSelectModal();
+                };
+            } else {
+                btnLevelSelect.classList.add("hidden");
+            }
+        }
+
+        if (btnNext) {
+            if (isVictory) {
+                btnNext.classList.remove("hidden");
+                // 优先指引踏入新解锁的目标扇区
+                let targetLvl = null;
+                if (newlyUnlocked.length > 0) {
+                    targetLvl = newlyUnlocked[0];
+                } else if (currentLvlId === 1 && this.saveSystem.isLevelUnlocked(2)) {
+                    targetLvl = 2;
+                }
+
+                if (targetLvl && targetLvl > 0) {
+                    const targetLvlConfig = LevelRegistry.find(l => l.levelId === targetLvl);
+                    const targetName = targetLvlConfig ? targetLvlConfig.title : `扇区 ${targetLvl < 10 ? '0' + targetLvl : targetLvl}`;
+                    btnNext.textContent = `🌌 踏入新解锁扇区 (进入 ${targetName.split("：")[0]})`;
+                    btnNext.onclick = () => {
+                        this.modalResult.classList.add("hidden");
+                        this.startNewGame(targetLvl);
+                    };
+                } else {
+                    btnNext.textContent = "🔄 重构奇点 (重新进入此循环)";
+                    btnNext.onclick = () => {
+                        this.modalResult.classList.add("hidden");
+                        this.startNewGame(currentLvlId);
+                    };
+                }
+            } else {
+                btnNext.classList.add("hidden");
+            }
+        }
+
+        btnRestart.onclick = () => {
+            this.modalResult.classList.add("hidden");
+            this.startNewGame(this.currentLevel ? this.currentLevel.levelId : 1);
+        };
+
+        btnLoad.onclick = () => {
+            this.modalResult.classList.add("hidden");
+            this.loadGameProgress();
+        };
+
+        this.modalResult.classList.remove("hidden");
+    }
+
+    // =========================================================================
+    // 存档与读档实现
+    // =========================================================================
+    saveGameProgress() {
+        const state = {
+            levelId: this.currentLevel ? this.currentLevel.levelId : 1,
+            phase: this.phase,
+            dayCount: this.dayCount,
+            stamina: this.stamina,
+            choiceCount: this.explorationEngine.choiceCount,
+            currentNodeId: this.explorationEngine.currentNodeId,
+            visitedNodes: Array.from(this.explorationEngine.visitedNodes),
+            consumedEvents: Array.from(this.explorationEngine.consumedEvents),
+            actionLogs: this.actionLogs,
+            protagonistRole: this.protagonist.role,
+            teamNpcIds: this.teamMembers.filter(m => !m.isProtagonist).map(m => m.id),
+            npcs: Array.from(this.allNpcMap.values()).map(npc => ({
+                id: npc.id,
+                role: npc.role,
+                status: npc.status,
+                inquiryCount: npc.inquiryCount
+            }))
+        };
+
+        const success = this.saveSystem.saveGame(state);
+        if (success) {
+            alert("进度已成功保存在本地存储中！");
+            this.logAction(`【系统存档】游戏进度与当前状态保存成功。`);
+        } else {
+            alert("存档保存失败，请检查浏览器存储权限。");
+        }
+    }
+
+    loadGameProgress() {
+        const data = this.saveSystem.loadGame();
+        if (!data) {
+            alert("未找到可用的历史存档记录。");
+            return;
+        }
+
+        const levelConfig = LevelRegistry.find(l => l.levelId === data.levelId) || LevelRegistry[0];
+        this.currentLevel = levelConfig;
+
+        // 恢复主角
+        this.protagonist = {
+            ...CharacterRegistry.protagonist,
+            role: data.protagonistRole || "seer",
+            inquiryCount: 0,
+            status: "active",
+            fallbackSvg: CharacterRegistry.getAvatarSvg(CharacterRegistry.protagonist)
+        };
+
+        // 恢复NPC
+        this.allNpcMap.clear();
+        this.teamMembers = [this.protagonist];
+
+        (data.npcs || []).forEach(item => {
+            const rawChar = CharacterRegistry.npcs[item.id];
+            if (!rawChar) return;
+            const npcObj = {
+                ...rawChar,
+                role: item.role,
+                status: item.status,
+                inquiryCount: item.inquiryCount || 0,
+                svgAvatar: CharacterRegistry.getAvatarSvg(rawChar),
+                fallbackSvg: CharacterRegistry.getAvatarSvg(rawChar)
+            };
+            this.allNpcMap.set(npcObj.id, npcObj);
+
+            if (npcObj.status === "active") {
+                this.teamMembers.push(npcObj);
+            }
+        });
+
+        // 恢复数值
+        this.stamina = data.stamina;
+        this.dayCount = data.dayCount;
+        this.actionLogs = data.actionLogs || [];
+
+        // 恢复地图状态
+        this.explorationEngine.initLevelMap(levelConfig.map);
+        this.explorationEngine.currentNodeId = data.currentNodeId;
+        this.explorationEngine.choiceCount = data.choiceCount || 0;
+        this.explorationEngine.visitedNodes = new Set(data.visitedNodes || []);
+        this.explorationEngine.consumedEvents = new Set(data.consumedEvents || []);
+
+        this.screenMenu.classList.add("hidden");
+        this.screenBlack.classList.add("hidden");
+        this.screenEveningBlack?.classList.add("hidden");
+        this.screenDeathBlack?.classList.add("hidden");
+        this.screenGame.classList.remove("hidden");
+
+        this.logAction(`【读档成功】恢复至第 ${this.dayCount} 天，当前位置：${this.explorationEngine.getCurrentNode()?.name || "未知"}`);
+
+        this.enterQ3Exploration();
+    }
+
+    // =========================================================================
+    // 工具辅助函数
+    // =========================================================================
+    getNpcById(id) {
+        return this.allNpcMap.get(id);
+    }
+
+    // 获取当前在队伍中且存活的所有成员（含主角）
+    getAliveTeamMembers() {
+        return this.teamMembers.filter(m => m.status === "active");
+    }
+
+    // 获取当前在队伍中且存活的NPC同伴（不含主角）
+    getAliveNpcTeamMembers() {
+        return this.teamMembers.filter(m => !m.isProtagonist && m.status === "active");
+    }
+
+    updateHeaderUI() {
+        const currentNode = this.explorationEngine.getCurrentNode();
+        if (this.headerLocation) {
+            this.headerLocation.textContent = currentNode ? currentNode.name : "未知区域";
+        }
+
+        if (this.headerStaminaFill && this.headerStaminaText) {
+            const pct = Math.max(0, Math.min(100, (this.stamina / StaminaConfig.maxStamina) * 100));
+            this.headerStaminaFill.style.width = `${pct}%`;
+            this.headerStaminaText.textContent = `${this.stamina} / ${StaminaConfig.maxStamina}`;
+            if (this.stamina <= 24) {
+                this.headerStaminaFill.style.background = "#ef4444";
+            } else if (this.stamina <= 50) {
+                this.headerStaminaFill.style.background = "#f59e0b";
+            } else {
+                this.headerStaminaFill.style.background = "#38bdf8";
+            }
+        }
+
+        if (this.headerTeamCount) {
+            const alive = this.getAliveTeamMembers().length;
+            this.headerTeamCount.textContent = `队伍幸存: ${alive} 人`;
+        }
+
+        if (this.headerDayText) {
+            this.headerDayText.textContent = `第 ${this.dayCount} 循环`;
+        }
+
+        // 保持侧边栏与弹窗的任务清单实时刷新
+        this.renderMissionsPanel();
+
+        // 实时刷新战术微型雷达
+        this.updateMiniRadar();
+    }
+
+    logAction(text) {
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const entry = { time: timeStr, text: text };
+        this.actionLogs.push(entry);
+        this.renderActionLogs();
+    }
+
+    renderActionLogs() {
+        if (!this.logListElement) return;
+        this.logListElement.innerHTML = "";
+        this.actionLogs.slice(-40).forEach(log => {
+            const li = document.createElement("li");
+            li.className = "log-entry";
+            li.innerHTML = `<span class="log-time">[${log.time}]</span> <span class="log-text">${log.text}</span>`;
+            this.logListElement.appendChild(li);
+        });
+        // 自动滚动到底部
+        this.logListElement.scrollTop = this.logListElement.scrollHeight;
+    }
+
+    /**
+     * 选择移动方向时：自动打开地图并播放类似 Unity DoTween 的平移动画
+     */
+    performMoveWithMapAnimation(direction) {
+        if (this.phase !== "q3_explore" || this.isMovingAnimation) return;
+
+        const currentNode = this.explorationEngine.getCurrentNode();
+        if (!currentNode || !currentNode.connections || !currentNode.connections[direction]) {
+            return;
+        }
+
+        const nextNodeId = currentNode.connections[direction];
+        const nextNode = this.currentLevel && this.currentLevel.map && this.currentLevel.map.nodes[nextNodeId];
+        if (!nextNode) return;
+
+        const isExitNode = !!(nextNode.isExit || (nextNode.event && nextNode.event.type === "exit"));
+
+        // 若体力已耗尽且不是通往终点，直接触发结算倒下
+        if (this.stamina <= 0 && !isExitNode) {
+            this.explorationEngine.moveTo(direction);
+            return;
+        }
+
+        this.isMovingAnimation = true;
+
+        // 播放移动探索脚步音效 (移动.wav)
+        if (typeof Sound !== "undefined" && Sound.playMoveSound) {
+            Sound.playMoveSound();
+        }
+
+        // 打开地图弹窗并执行平移位移动画
+        this.showMapModalForMove(currentNode, nextNode, () => {
+            this.isMovingAnimation = false;
+            // 动画完成，关闭地图弹窗并执行真实状态结算
+            this.modalMap?.classList.add("hidden");
+            this.explorationEngine.moveTo(direction);
+        });
+    }
+
+    /**
+     * 专属地图位移动画弹窗
+     */
+    showMapModalForMove(fromNode, toNode, onFinished) {
+        const banner = document.getElementById("map-move-banner");
+        const bannerText = document.getElementById("map-move-text");
+        const tabLive = document.getElementById("btn-tab-live-map");
+        const tabSketch = document.getElementById("btn-tab-sketch-map");
+        const viewLive = document.getElementById("map-live-view");
+        const viewSketch = document.getElementById("map-sketch-view");
+
+        // 切换至实时定位蓝图模式
+        tabLive?.classList.add("active");
+        tabSketch?.classList.remove("active");
+        viewLive?.classList.remove("hidden");
+        viewSketch?.classList.add("hidden");
+
+        const fromName = (fromNode && fromNode.name) || "当前位置";
+        const toName = (toNode && toNode.name) || "目标位置";
+        const fromId = fromNode?.id || (fromNode ? String(fromNode) : "");
+        const toId = toNode?.id || (toNode ? String(toNode) : "");
+
+        if (banner && bannerText) {
+            banner.classList.remove("hidden");
+            bannerText.innerHTML = `🧭 正在行进：<span style="color:#38bdf8">[${fromName}]</span> ➔ <span style="color:#4ade80">[${toName}]</span>...`;
+        }
+
+        this.modalMap.classList.remove("hidden");
+
+        if (!this.mapRenderer) {
+            const canvas = document.getElementById("live-map-canvas");
+            if (canvas) {
+                this.mapRenderer = new MapRenderer(canvas);
+            }
+        }
+
+        let finished = false;
+        const completeOnce = () => {
+            if (finished) return;
+            finished = true;
+            if (banner) banner.classList.add("hidden");
+            if (onFinished) onFinished();
+        };
+
+        const canvasElem = document.getElementById("live-map-canvas");
+        const skipHandler = () => {
+            if (this.mapRenderer && this.mapRenderer.skipAnimation) {
+                this.mapRenderer.skipAnimation();
+            }
+        };
+
+        canvasElem?.addEventListener("click", skipHandler, { once: true });
+
+        if (this.mapRenderer && typeof requestAnimationFrame !== "undefined" && fromId && toId) {
+            this.mapRenderer.animateMove(
+                this.currentLevel.map,
+                fromId,
+                toId,
+                this.explorationEngine.visitedNodes,
+                this.teamMembers,
+                () => {
+                    canvasElem?.removeEventListener("click", skipHandler);
+                    if (bannerText) {
+                        bannerText.innerHTML = `📍 已抵达：<span style="color:#4ade80">[${toName}]</span>`;
+                    }
+                    setTimeout(() => {
+                        completeOnce();
+                    }, 380);
+                }
+            );
+        } else {
+            completeOnce();
+        }
+    }
+
+    showMapModal() {
+        const banner = document.getElementById("map-move-banner");
+        const bannerText = document.getElementById("map-move-text");
+        if (banner && bannerText) {
+            if (this.phase === "q3_explore") {
+                banner.classList.remove("hidden");
+                bannerText.innerHTML = `🟢 <b>快速往返已就绪：</b>点击地图上已探索的方块，即可快速安全折返（不计入面临选择次数）`;
+            } else {
+                banner.classList.add("hidden");
+            }
+        }
+
+        const img = document.getElementById("modal-map-img");
+        if (img && this.currentLevel) {
+            img.src = this.currentLevel.mapImageUrl || "assets/level1_sketch.jpg";
+        }
+
+        const notesElem = document.querySelector(".map-notes");
+        if (notesElem && this.currentLevel) {
+            if (this.currentLevel.levelId === 2) {
+                notesElem.innerHTML = `<span>起点：深潜次级减压闸</span> ｜ <span>终点：超弦共振核心</span> ｜ <span>深层散落：莫德、邵可欣、卡泽</span>`;
+            } else {
+                notesElem.innerHTML = `<span>起点：下层中央大厅</span> ｜ <span>终点：北侧脱离大门</span> ｜ <span>沿途：卡泽(NPC1)、邵可欣(NPC2)、莫德(NPC3)</span>`;
+            }
+        }
+        const tabSketch = document.getElementById("btn-tab-sketch-map");
+        if (tabSketch && this.currentLevel) {
+            tabSketch.style.display = this.currentLevel.mapImageUrl ? "" : "none";
+        }
+
+        this.modalMap.classList.remove("hidden");
+        // 默认显示实时蓝图并绘制
+        this.renderLiveMap();
+    }
+
+    renderLiveMap() {
+        if (!this.mapRenderer) {
+            const canvas = document.getElementById("live-map-canvas");
+            if (canvas) {
+                this.mapRenderer = new MapRenderer(canvas);
+            }
+        }
+
+        if (this.mapRenderer && this.currentLevel && this.currentLevel.map) {
+            this.mapRenderer.render(
+                this.currentLevel.map,
+                this.explorationEngine.currentNodeId,
+                this.explorationEngine.visitedNodes,
+                this.teamMembers,
+                null,
+                0,
+                {
+                    canFastTravel: this.phase === "q3_explore",
+                    hoveredNodeId: this.hoveredMapNodeId
+                }
+            );
+        }
+    }
+
+    /**
+     * 处理点击地图房间节点触发快速往返
+     */
+    handleMapNodeClick(node) {
+        if (!node) return;
+
+        // 1. 阶段约束：快速往返只能在白天自由探索（q3_explore）使用，傍晚时刻、裁决、询问、黑夜均不可使用
+        if (this.phase !== "q3_explore") {
+            const banner = document.getElementById("map-move-banner");
+            const bannerText = document.getElementById("map-move-text");
+            if (banner && bannerText) {
+                banner.classList.remove("hidden");
+                bannerText.innerHTML = `⚠️ <span style="color:#ef4444">快速往返锁定：</span>该功能仅限白昼探索时段使用，当前时段（傍晚/裁决/黑夜）禁止使用！`;
+                setTimeout(() => {
+                    if (!this.isMovingAnimation) banner.classList.add("hidden");
+                }, 2400);
+            }
+            if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
+            return;
+        }
+
+        // 2. 区域探明约束：只能前往已探索区域
+        if (!this.explorationEngine.visitedNodes.has(node.id)) {
+            const banner = document.getElementById("map-move-banner");
+            const bannerText = document.getElementById("map-move-text");
+            if (banner && bannerText) {
+                banner.classList.remove("hidden");
+                bannerText.innerHTML = `⚠️ <span style="color:#f59e0b">[未探明迷雾]</span> 只能快速往返于已经探索过的安全房间！`;
+                setTimeout(() => {
+                    if (!this.isMovingAnimation) banner.classList.add("hidden");
+                }, 2200);
+            }
+            if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
+            return;
+        }
+
+        // 3. 当前位置校验：若点击的就是当前所在房间
+        if (node.id === this.explorationEngine.currentNodeId) {
+            const banner = document.getElementById("map-move-banner");
+            const bannerText = document.getElementById("map-move-text");
+            if (banner && bannerText) {
+                banner.classList.remove("hidden");
+                bannerText.innerHTML = `📍 <span style="color:#38bdf8">你当前已在 [${node.name}]！</span>无需折返。`;
+                setTimeout(() => {
+                    if (!this.isMovingAnimation) banner.classList.add("hidden");
+                }, 1800);
+            }
+            return;
+        }
+
+        // 4. 寻路校验：寻找经由已探索房间的最短路径
+        const path = this.explorationEngine.findVisitedPath(this.explorationEngine.currentNodeId, node.id);
+        if (!path || path.length < 2) {
+            const banner = document.getElementById("map-move-banner");
+            const bannerText = document.getElementById("map-move-text");
+            if (banner && bannerText) {
+                banner.classList.remove("hidden");
+                bannerText.innerHTML = `⚠️ 暂无连通的已探索路线前往 [${node.name}]！`;
+                setTimeout(() => {
+                    if (!this.isMovingAnimation) banner.classList.add("hidden");
+                }, 2200);
+            }
+            return;
+        }
+
+        // 5. 开始执行带动画与音效的快速往返
+        this.performFastTravel(node.id, path);
+    }
+
+    /**
+     * 执行带多段平移动画与脚步音效的快速往返穿梭
+     */
+    performFastTravel(targetNodeId, path) {
+        if (this.isMovingAnimation) return;
+        this.isMovingAnimation = true;
+
+        const startNode = this.explorationEngine.getCurrentNode();
+        const destNode = this.currentLevel.map.nodes[targetNodeId];
+        const banner = document.getElementById("map-move-banner");
+        const bannerText = document.getElementById("map-move-text");
+        const tabLive = document.getElementById("btn-tab-live-map");
+        const tabSketch = document.getElementById("btn-tab-sketch-map");
+        const viewLive = document.getElementById("map-live-view");
+        const viewSketch = document.getElementById("map-sketch-view");
+
+        // 确保切换至实时定位蓝图
+        tabLive?.classList.add("active");
+        tabSketch?.classList.remove("active");
+        viewLive?.classList.remove("hidden");
+        viewSketch?.classList.add("hidden");
+
+        const startName = startNode ? startNode.name : "当前位置";
+        const destName = destNode ? destNode.name : targetNodeId;
+
+        if (banner && bannerText) {
+            banner.classList.remove("hidden");
+            bannerText.innerHTML = `🧭 正在快速往返：<span style="color:#38bdf8">[${startName}]</span> ➔ <span style="color:#4ade80">[${destName}]</span> (途经 ${path.length - 1} 间安全走廊)... ⚡ 点击画面可跳过`;
+        }
+
+        this.modalMap?.classList.remove("hidden");
+
+        if (!this.mapRenderer) {
+            const canvas = document.getElementById("live-map-canvas");
+            if (canvas) {
+                this.mapRenderer = new MapRenderer(canvas);
+            }
+        }
+
+        let finished = false;
+        const completeOnce = () => {
+            if (finished) return;
+            finished = true;
+            this.isMovingAnimation = false;
+            this.skipFastTravelAnimation = null;
+            if (banner) banner.classList.add("hidden");
+            this.modalMap?.classList.add("hidden");
+
+            // 执行快速往返状态结算（不累加面临选择次数）
+            this.explorationEngine.fastTravelTo(targetNodeId);
+
+            // 视觉小说对白反馈
+            this.dialogueUI.say(
+                { name: "区域指引", themeColor: "#4ade80" },
+                `已快速返回至 [${destName}]。${destNode?.desc || ""} 请选择下一步行动方向。`
+            );
+        };
+
+        const canvasElem = document.getElementById("live-map-canvas");
+        const skipHandler = () => {
+            if (finished) return;
+            if (this.mapRenderer && this.mapRenderer.skipAnimation) {
+                this.mapRenderer.skipAnimation();
+            }
+            completeOnce();
+        };
+
+        this.skipFastTravelAnimation = skipHandler;
+        canvasElem?.addEventListener("click", skipHandler, { once: true });
+
+        // 播放首个区段脚步音效 (移动.wav)
+        if (typeof Sound !== "undefined" && Sound.playMoveSound) {
+            Sound.playMoveSound();
+        }
+
+        if (this.mapRenderer && typeof requestAnimationFrame !== "undefined" && path && path.length >= 2) {
+            this.mapRenderer.animatePath(
+                this.currentLevel.map,
+                path,
+                this.explorationEngine.visitedNodes,
+                this.teamMembers,
+                (segIdx, fromId, toId) => {
+                    // 每段移动播放移动脚步音效 (与普通走路声一致)
+                    if (typeof Sound !== "undefined" && Sound.playMoveSound) {
+                        Sound.playMoveSound();
+                    }
+                    if (bannerText) {
+                        const toN = this.currentLevel.map.nodes[toId];
+                        bannerText.innerHTML = `🧭 正在快速往返：<span style="color:#38bdf8">[${startName}]</span> ➔ <span style="color:#4ade80">[${destName}]</span> (正在经过: ${toN?.name || toId})... ⚡ 点击跳过`;
+                    }
+                },
+                () => {
+                    canvasElem?.removeEventListener("click", skipHandler);
+                    if (bannerText) {
+                        bannerText.innerHTML = `📍 已安全抵达：<span style="color:#4ade80">[${destName}]</span>`;
+                    }
+                    setTimeout(() => {
+                        completeOnce();
+                    }, 350);
+                }
+            );
+        } else {
+            completeOnce();
+        }
+    }
+
+    // =========================================================================
+    // 战术微型雷达 (Mini-map Radar)
+    // =========================================================================
+    onExploreStep() {
+        this.getAliveNpcTeamMembers().forEach(npc => {
+            this.stepsWithNpc[npc.id] = (this.stepsWithNpc[npc.id] || 0) + 1;
+            this.checkPersonaSecretUnlocks("steps_with", { charId: npc.id, steps: this.stepsWithNpc[npc.id] });
+        });
+    }
+
+    toggleMiniRadar() {
+        if (!this.radarBodyWrap || !this.btnRadarToggle) return;
+        const isCollapsed = this.radarBodyWrap.classList.contains("hidden");
+        if (isCollapsed) {
+            this.radarBodyWrap.classList.remove("hidden");
+            this.btnRadarToggle.textContent = "−";
+            this.btnRadarToggle.title = "折叠雷达";
+        } else {
+            this.radarBodyWrap.classList.add("hidden");
+            this.btnRadarToggle.textContent = "+";
+            this.btnRadarToggle.title = "展开雷达";
+        }
+    }
+
+    updateMiniRadar() {
+        if (!this.hudMiniRadar || !this.currentLevel || !this.currentLevel.map) return;
+
+        // 仅在游戏主界面非隐藏状态下显示悬浮雷达
+        const inGame = this.screenGame && !this.screenGame.classList.contains("hidden");
+        if (!inGame || this.phase === "menu" || this.phase === "victory" || this.phase === "gameover") {
+            this.hudMiniRadar.classList.add("hidden");
+            return;
+        }
+
+        this.hudMiniRadar.classList.remove("hidden");
+
+        const currentNodeId = this.explorationEngine.currentNodeId;
+        const currNode = this.currentLevel.map.nodes[currentNodeId];
+
+        // 刷新坐标微标牌
+        if (this.radarPosTag && currNode) {
+            if (currNode.coord) {
+                this.radarPosTag.textContent = `[X: ${currNode.coord.x}, Y: ${currNode.coord.y}]`;
+            } else {
+                this.radarPosTag.textContent = `[${currNode.name ? currNode.name.slice(0, 8) : '当前'}]`;
+            }
+        }
+
+        // 检定邵可欣被动技能【第六感预警 (Intuitive Pulse)】
+        // 若邵可欣存活且在队内、且被动已觉醒，侦测四周未探索邻居房间是否有潜伏伪装体
+        let isNearMimic = false;
+        const isShaokexinActive = this.getAliveNpcTeamMembers().some(m => m.id === "shaokexin");
+        const isShaokexinPassiveUnlocked = this.saveSystem.isCharacterPassiveUnlocked("shaokexin");
+
+        if (isShaokexinActive && isShaokexinPassiveUnlocked && currNode && currNode.connections) {
+            const conns = Object.values(currNode.connections);
+            for (const neighborId of conns) {
+                if (!this.explorationEngine.visitedNodes.has(neighborId)) {
+                    const nNode = this.currentLevel.map.nodes[neighborId];
+                    if (nNode && nNode.event && nNode.event.type === "npc") {
+                        const targetNpc = this.allNpcMap.get(nNode.event.npcId);
+                        if (targetNpc && targetNpc.role === "wolf") {
+                            isNearMimic = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!this.mapRenderer) {
+            const liveCanvas = document.getElementById("live-map-canvas");
+            this.mapRenderer = new MapRenderer(liveCanvas || this.miniRadarCanvas);
+        }
+
+        if (this.mapRenderer && this.miniRadarCanvas) {
+            this.mapRenderer.renderMiniRadar(
+                this.miniRadarCanvas,
+                this.currentLevel.map,
+                currentNodeId,
+                this.explorationEngine.visitedNodes,
+                isNearMimic
+            );
+        }
+    }
+
+    // =========================================================================
+    // 人物特征 / 秘密图鉴 (Persona Log)
+    // =========================================================================
+    checkPersonaSecretUnlocks(triggerType, context = {}) {
+        if (typeof CharacterRegistry === "undefined" || !CharacterRegistry.npcs) return;
+
+        Object.values(CharacterRegistry.npcs).forEach(char => {
+            if (!char || !char.persona || !Array.isArray(char.persona.secrets)) return;
+
+            char.persona.secrets.forEach(secret => {
+                if (this.saveSystem.isPersonaSecretUnlocked(char.id, secret.id)) return;
+                let shouldUnlock = false;
+
+                if (secret.unlockType === "inquiry_count" && triggerType === "inquiry_count") {
+                    if (context.charId === char.id && (context.count || 0) >= secret.threshold) {
+                        shouldUnlock = true;
+                    }
+                } else if (secret.unlockType === "evacuate_with" && triggerType === "evacuate_with") {
+                    const evacuatedNpcIds = context.evacuatedNpcIds || [];
+                    if (evacuatedNpcIds.includes(char.id)) {
+                        shouldUnlock = true;
+                    }
+                } else if (secret.unlockType === "exile_wolf_with" && triggerType === "exile_wolf_with") {
+                    const kazeInTeam = this.getAliveNpcTeamMembers().some(m => m.id === "kaze");
+                    if (char.id === "kaze" && kazeInTeam && context.isExiledWolf) {
+                        shouldUnlock = true;
+                    }
+                } else if (secret.unlockType === "peaceful_night_with" && triggerType === "peaceful_night_with") {
+                    const shaoInTeam = this.getAliveNpcTeamMembers().some(m => m.id === "shaokexin");
+                    if (char.id === "shaokexin" && shaoInTeam && context.isPeaceful) {
+                        shouldUnlock = true;
+                    }
+                } else if (secret.unlockType === "suffer_fate" && triggerType === "suffer_fate") {
+                    if (context.charId === char.id) {
+                        shouldUnlock = true;
+                    }
+                } else if (secret.unlockType === "steps_with" && triggerType === "steps_with") {
+                    if (context.charId === char.id && (context.steps || 0) >= secret.threshold) {
+                        shouldUnlock = true;
+                    }
+                }
+
+                if (shouldUnlock) {
+                    const newlyUnlocked = this.saveSystem.unlockPersonaSecret(char.id, secret.id);
+                    if (newlyUnlocked) {
+                        this.logAction(`【档案解构】解开了 [${char.name}] 的深层记忆档案：【${secret.title}】！`);
+                        this.showPersonaToast(char, secret);
+
+                        if (this.saveSystem.isCharacterPassiveUnlocked(char.id)) {
+                            this.logAction(`【特质完全觉醒】[${char.name}] 达成全记忆解构！觉醒专属被动【${char.persona.passiveSkill.name}】并开启专属剧情分支！`);
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    showPersonaToast(char, secret) {
+        if (typeof document === "undefined") return;
+
+        let toast = document.getElementById("persona-unlock-toast");
+        if (!toast) {
+            toast = document.createElement("div");
+            toast.id = "persona-unlock-toast";
+            toast.className = "persona-toast";
+            document.body.appendChild(toast);
+        }
+
+        const isFullyAwakened = this.saveSystem.isCharacterPassiveUnlocked(char.id);
+        toast.innerHTML = `
+            <div class="persona-toast-title">
+                <span>✨ 记忆图鉴解构 · ${char.name}</span>
+            </div>
+            <div class="persona-toast-body">
+                <span>解锁档案：<b>【${secret.title}】</b></span><br>
+                <span style="font-size:0.75rem; color:#94a3b8;">${secret.desc.slice(0, 36)}...</span>
+                ${isFullyAwakened ? `<div style="color:#fbbf24; font-weight:bold; margin-top:4px;">🌟 达成全部解构！觉醒被动【${char.persona.passiveSkill.name}】！</div>` : ''}
+            </div>
+        `;
+
+        toast.classList.remove("fade-out", "hidden");
+        if (this.toastTimeout) {
+            clearTimeout(this.toastTimeout);
+        }
+
+        this.toastTimeout = setTimeout(() => {
+            toast.classList.add("fade-out");
+            setTimeout(() => {
+                toast.classList.add("hidden");
+            }, 450);
+        }, 3600);
+    }
+
+    showPersonaLogModal(selectedCharId = null) {
+        if (!this.modalPersonaLog) return;
+        if (selectedCharId) {
+            this.activePersonaCharId = selectedCharId;
+        } else if (!this.activePersonaCharId) {
+            this.activePersonaCharId = "kaze";
+        }
+        this.renderPersonaLogModal(this.activePersonaCharId);
+        this.modalPersonaLog.classList.remove("hidden");
+    }
+
+    renderPersonaLogModal(selectedCharId = "kaze") {
+        if (!this.personaCharTabs || !this.personaCharDetail) return;
+        this.activePersonaCharId = selectedCharId;
+
+        const npcs = CharacterRegistry.npcs;
+        const charKeys = ["kaze", "shaokexin", "mode"];
+
+        // 1. 渲染角色切换 Tab 按钮
+        this.personaCharTabs.innerHTML = "";
+        charKeys.forEach(key => {
+            const char = npcs[key];
+            if (!char || !char.persona) return;
+
+            const unlockedList = this.saveSystem.getUnlockedSecrets(char.id);
+            const count = unlockedList.length;
+            const total = char.persona.secrets.length;
+            const isFull = count >= total;
+
+            const tab = document.createElement("button");
+            tab.className = `persona-tab-btn ${key === this.activePersonaCharId ? "active" : ""}`;
+            tab.style.borderColor = key === this.activePersonaCharId ? char.themeColor : "";
+            tab.innerHTML = `
+                <span class="tab-char-name" style="color:${char.themeColor}">${char.name}</span>
+                <span class="tab-char-count ${isFull ? 'count-complete' : ''}">(${count}/${total})</span>
+            `;
+
+            tab.addEventListener("click", () => {
+                this.renderPersonaLogModal(key);
+            });
+            this.personaCharTabs.appendChild(tab);
+        });
+
+        // 2. 渲染选定角色的完整档案面
+        const activeChar = npcs[this.activePersonaCharId];
+        if (!activeChar || !activeChar.persona) return;
+
+        const persona = activeChar.persona;
+        const unlockedList = this.saveSystem.getUnlockedSecrets(activeChar.id);
+        const unlockedCount = unlockedList.length;
+        const totalSecrets = persona.secrets.length;
+        const pct = Math.round((unlockedCount / totalSecrets) * 100);
+        const isPassiveUnlocked = this.saveSystem.isCharacterPassiveUnlocked(activeChar.id);
+
+        let secretsHtml = "";
+        persona.secrets.forEach((s, idx) => {
+            const isUnlocked = this.saveSystem.isPersonaSecretUnlocked(activeChar.id, s.id);
+            secretsHtml += `
+                <div class="persona-secret-card ${isUnlocked ? 'secret-unlocked' : 'secret-locked'}">
+                    <div class="persona-secret-top">
+                        <span class="persona-secret-title">
+                            ${isUnlocked ? `✦ ${s.title}` : `🔒 深度记忆 #${idx + 1}`}
+                        </span>
+                        <span class="persona-secret-status ${isUnlocked ? 'status-unlocked' : 'status-locked'}">
+                            ${isUnlocked ? '已解构' : '待探明'}
+                        </span>
+                    </div>
+                    <div class="persona-secret-desc">
+                        ${isUnlocked ? s.desc : '……此处记忆神经回路发生熵阻断裂，无法读取。'}
+                    </div>
+                    ${!isUnlocked ? `<div class="persona-secret-hint">💡 解锁线索：${s.hint}</div>` : ''}
+                </div>
+            `;
+        });
+
+        const branch = persona.exclusiveBranch;
+
+        this.personaCharDetail.innerHTML = `
+            <!-- 头部概览卡 -->
+            <div class="persona-hero-card" style="border-left-color: ${activeChar.themeColor};">
+                <div class="persona-hero-avatar" style="border-color: ${activeChar.themeColor};">
+                    <img src="${activeChar.svgAvatar}" alt="${activeChar.name}">
+                </div>
+                <div class="persona-hero-info">
+                    <div class="persona-hero-title-row">
+                        <span class="persona-hero-name" style="color:${activeChar.themeColor};">${activeChar.name}</span>
+                        <span class="persona-hero-role-tag" style="background:${activeChar.themeColor}26; border-color:${activeChar.themeColor}; color:${activeChar.themeColor};">${persona.title}</span>
+                    </div>
+                    <div class="persona-progress-wrap">
+                        <div class="persona-progress-bar-bg">
+                            <div class="persona-progress-bar-fill" style="width:${pct}%; background:${activeChar.themeColor};"></div>
+                        </div>
+                        <span class="persona-progress-text">记忆拼合进度: ${unlockedCount} / ${totalSecrets} (${pct}%)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4 条核心深层记忆卡片网格 -->
+            <div class="persona-secrets-grid">
+                ${secretsHtml}
+            </div>
+
+            <!-- 专属保命被动技能与专属分支启航栏 -->
+            <div class="persona-reward-deck">
+                <div class="persona-passive-box ${isPassiveUnlocked ? 'active-skill' : ''}">
+                    <div class="persona-passive-header">
+                        <span>${persona.passiveSkill.icon}</span>
+                        <span>专属特质：${persona.passiveSkill.name}</span>
+                        <span style="font-size:0.75rem; margin-left:auto; color:${isPassiveUnlocked ? '#4ade80' : '#94a3b8'};">
+                            ${isPassiveUnlocked ? '【✨ 已激活】' : '【🔒 需集齐4项记忆】'}
+                        </span>
+                    </div>
+                    <div class="persona-passive-desc">${persona.passiveSkill.desc}</div>
+                </div>
+
+                <div class="persona-branch-action">
+                    <button id="btn-launch-exclusive-branch" 
+                            class="btn-launch-branch ${isPassiveUnlocked ? 'enabled' : 'disabled'}"
+                            ${isPassiveUnlocked ? '' : 'disabled'}>
+                        ${isPassiveUnlocked ? `🚀 开启专属分支：${branch.badge}` : `🔒 需完整拼合记忆解锁分支`}
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // 绑定专属分支进入按钮
+        const btnLaunch = document.getElementById("btn-launch-exclusive-branch");
+        if (btnLaunch && isPassiveUnlocked) {
+            btnLaunch.onclick = () => {
+                this.modalPersonaLog?.classList.add("hidden");
+                this.startExclusiveBranch(branch.levelId);
+            };
+        }
+    }
+
+    startExclusiveBranch(levelId) {
+        if (!levelId) return;
+        // 自动解锁此专属关卡并启动新游戏
+        this.saveSystem.unlockLevels([levelId]);
+        this.screenMenu?.classList.add("hidden");
+        this.startNewGame(levelId);
+    }
+}
+
+
+
+    // =========================================================================
+    // 游戏自启动引导入口
+    // 挂载全局对象以便于调试和扩展
+    window.CharacterRegistry = CharacterRegistry;
+    window.LevelRegistry = LevelRegistry;
+    window.WorldviewConfig = WorldviewConfig;
+    window.StaminaConfig = StaminaConfig;
+    window.EveningTriggerConfig = EveningTriggerConfig;
+    window.AudioConfig = AudioConfig;
+    window.Sound = Sound;
+    window.UnlockEvaluator = UnlockEvaluator;
+
+    function bootstrap() {
+        if (!window.gameApp) {
+            console.log("[DOPPELGANGER] 启动游戏主引擎...");
+            window.gameApp = new GameEngine();
+        }
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", bootstrap);
+    } else {
+        bootstrap();
+    }
+})();
