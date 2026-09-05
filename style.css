@@ -865,36 +865,49 @@ html, body {
    ========================================================================== */
 .modal-backdrop {
     position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(3, 7, 18, 0.82);
-    backdrop-filter: blur(8px);
+    inset: 0;
+    background: rgba(3, 7, 18, 0.88);
+    backdrop-filter: blur(10px);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 300;
-    animation: fadeIn 0.25s ease;
+    padding: 12px 10px;
+    animation: fadeIn 0.22s ease;
 }
 
 .modal-box {
-    background: rgba(15, 23, 42, 0.96);
+    background: rgba(12, 18, 34, 0.98);
     border: 1px solid var(--border-cyan);
     border-radius: 12px;
-    box-shadow: 0 0 35px rgba(56, 189, 248, 0.35);
-    padding: 24px 28px;
+    box-shadow: 0 0 35px rgba(56, 189, 248, 0.35), 0 10px 40px rgba(0, 0, 0, 0.8);
+    padding: 16px 18px;
     max-width: 580px;
-    width: 90%;
+    width: 100%;
     position: relative;
-    max-height: 90vh;
-    overflow-y: auto;
+    max-height: 84vh;
+    max-height: 84dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .modal-header {
+    flex-shrink: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid rgba(56, 189, 248, 0.25);
-    padding-bottom: 12px;
-    margin-bottom: 14px;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+.modal-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
 }
 
 .modal-header h3 {
@@ -964,6 +977,12 @@ html, body {
 .map-modal-box {
     max-width: 820px;
     width: 96%;
+    max-height: 86vh;
+    max-height: 86dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 14px 16px;
 }
 .map-tab-group {
     display: flex;
@@ -995,8 +1014,8 @@ html, body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 18px;
-    margin-bottom: 12px;
+    padding: 6px 14px;
+    margin-bottom: 8px;
     background: rgba(14, 165, 233, 0.16);
     border: 1px solid var(--border-cyan);
     border-radius: 8px;
@@ -1009,14 +1028,14 @@ html, body {
 }
 
 .map-move-text {
-    font-size: 1rem;
+    font-size: 0.92rem;
     font-weight: 600;
     color: #f0f9ff;
     letter-spacing: 0.8px;
 }
 
 .map-move-sub {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     color: rgba(224, 242, 254, 0.7);
     letter-spacing: 0.5px;
 }
@@ -1028,17 +1047,29 @@ html, body {
 
 .map-view-container {
     width: 100%;
+    flex: 1;
+    min-height: 220px;
+    max-height: 58vh;
+    max-height: 58dvh;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    justify-content: flex-start;
+    align-items: flex-start;
     background: #080d1a;
     border-radius: 8px;
-    border: 1px solid rgba(56, 189, 248, 0.25);
-    overflow: hidden;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    overflow: auto !important; /* 解锁自由滑动与双向拖拽查看大地图 */
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x pan-y !important;
+    cursor: grab;
     padding: 10px;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.7);
+}
+.map-view-container:active {
+    cursor: grabbing;
 }
 .live-canvas {
-    max-width: 100%;
+    min-width: 600px;
+    max-width: none;
     height: auto;
     display: block;
     user-select: none;
@@ -1046,16 +1077,27 @@ html, body {
     touch-action: manipulation;
 }
 .full-map-image {
-    width: 100%;
+    min-width: 600px;
+    max-width: none;
+    height: auto;
     max-height: 65vh;
     object-fit: contain;
     border-radius: 8px;
 }
+.map-pan-hint {
+    text-align: center;
+    font-size: 0.76rem;
+    color: #38bdf8;
+    margin-top: 6px;
+    opacity: 0.85;
+    letter-spacing: 0.5px;
+}
 .map-notes {
-    margin-top: 10px;
-    font-size: 0.85rem;
+    margin-top: 6px;
+    font-size: 0.8rem;
     color: var(--text-muted);
     text-align: center;
+    flex-shrink: 0;
 }
 
 /* 遭遇昏迷人员弹窗 */
@@ -1869,30 +1911,48 @@ html, body {
 
 /* 弹窗中的任务卡片 */
 .mission-modal-box {
-    max-width: 640px;
-    width: 90%;
+    max-width: 560px;
+    width: 95%;
+    max-height: 82vh;
+    max-height: 82dvh;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     background: rgba(10, 15, 30, 0.98);
     border: 1px solid var(--border-cyan);
     box-shadow: 0 0 35px rgba(56, 189, 248, 0.3);
 }
 
-.mission-modal-cards-list {
+.mission-modal-body {
+    flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin: 14px 0;
-    max-height: 55vh;
+    overflow: hidden;
+}
+
+.mission-modal-cards-list {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 8px 0;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-right: 4px;
 }
 
 .mission-modal-item {
     background: rgba(15, 23, 42, 0.85);
     border: 1px solid rgba(56, 189, 248, 0.25);
     border-radius: 10px;
-    padding: 14px 16px;
+    padding: 12px 14px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     transition: all 0.2s ease;
 }
 
@@ -1908,10 +1968,11 @@ html, body {
 
 .mission-footer-notice {
     text-align: center;
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     color: var(--text-muted);
-    padding-top: 10px;
+    padding-top: 8px;
     border-top: 1px solid rgba(56, 189, 248, 0.15);
+    flex-shrink: 0;
 }
 
 .result-unlock-notice {
@@ -1928,36 +1989,163 @@ html, body {
 }
 
 /* ========================================================================= */
-/* 小地图雷达 (Mini-map Radar) 悬浮微件 */
+/* 星舰环境遥测与随行同伴栏目 (Telemetry HUD & Team Companions Deck) */
 /* ========================================================================= */
-.mini-radar-widget {
-    position: absolute;
-    top: 14px;
-    right: 18px;
-    background: rgba(8, 14, 28, 0.9);
-    border: 1px solid rgba(56, 189, 248, 0.4);
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), 0 0 15px rgba(56, 189, 248, 0.2);
-    backdrop-filter: blur(8px);
-    z-index: 25;
-    overflow: hidden;
-    transition: all 0.25s ease;
+.sector-telemetry-hud {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 4px 12px;
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 20px;
+    margin-bottom: 6px;
+    box-shadow: 0 0 14px rgba(56, 189, 248, 0.12);
+    backdrop-filter: blur(6px);
+    max-width: 440px;
+    width: 95%;
 }
 
-.radar-header {
+.telemetry-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.74rem;
+    font-family: var(--font-hud);
+    color: #cbd5e1;
+    white-space: nowrap;
+}
+
+.live-pulse {
+    width: 6px;
+    height: 6px;
+    background: #38bdf8;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #38bdf8;
+    animation: dotPulse 1.8s infinite ease-in-out;
+}
+
+@keyframes dotPulse {
+    0%, 100% { opacity: 0.35; transform: scale(0.85); }
+    50% { opacity: 1; transform: scale(1.25); }
+}
+
+.text-glow-green {
+    color: #4ade80;
+    text-shadow: 0 0 6px rgba(74, 222, 128, 0.45);
+}
+
+/* 随行同伴实时头像状态栏 */
+.team-roster-deck {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 6px;
+    min-height: 38px;
+    max-width: 440px;
+    width: 95%;
+}
+
+.roster-card {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(30, 41, 59, 0.75);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 20px;
+    padding: 3px 10px 3px 4px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s;
+}
+
+.roster-card:hover {
+    border-color: #38bdf8;
+    transform: translateY(-2px);
+}
+
+.roster-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid #38bdf8;
+}
+
+.roster-name {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #f1f5f9;
+}
+
+.roster-status {
+    font-size: 0.68rem;
+    color: #c084fc;
+}
+
+/* ========================================================================= */
+/* 战术全息微型雷达 (嵌入在操作盘正中央上方) */
+/* ========================================================================= */
+.mini-radar-widget.embedded-radar {
+    position: static !important; /* 彻底告别右上角悬浮！ */
+    width: 100%;
+    max-width: 220px;
+    margin-bottom: 8px;
+    background: rgba(10, 16, 32, 0.95);
+    border: 1px solid var(--border-cyan);
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.25);
+    overflow: hidden;
+}
+
+.mini-radar-widget.embedded-radar .radar-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 6px 10px;
-    background: rgba(15, 23, 42, 0.85);
+    padding: 4px 10px;
+    background: rgba(15, 23, 42, 0.9);
     border-bottom: 1px solid rgba(56, 189, 248, 0.25);
 }
 
-.radar-title {
-    font-size: 0.78rem;
-    font-weight: 600;
+.mini-radar-widget.embedded-radar .radar-title {
+    font-size: 0.74rem;
+    font-weight: 700;
     color: #38bdf8;
-    letter-spacing: 0.5px;
+}
+
+.mini-radar-widget.embedded-radar .radar-pos-tag {
+    font-family: var(--font-hud);
+    font-size: 0.72rem;
+    color: #cbd5e1;
+    margin-right: 6px;
+}
+
+.mini-radar-widget.embedded-radar .radar-btn {
+    background: rgba(56, 189, 248, 0.15);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    color: #7dd3fc;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.7rem;
+    cursor: pointer;
+}
+
+.mini-radar-widget.embedded-radar .radar-body-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 6px;
+    background: radial-gradient(circle, rgba(14, 165, 233, 0.12) 0%, rgba(3, 7, 18, 0.95) 100%);
+}
+
+.mini-radar-widget.embedded-radar canvas {
+    width: 100px !important;
+    height: 100px !important;
+    border-radius: 50%;
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
 }
 
 .radar-actions {

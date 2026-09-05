@@ -10,7 +10,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>潜伏危机：循环伪装体 (视觉小说·肉鸽探索·AI伪人杀)</title>
-    <link rel="stylesheet" href="./style.css?v=1788629712436">
+    <link rel="stylesheet" href="./style.css?v=1788630146469">
 </head>
 <body>
 
@@ -180,22 +180,28 @@
                 </ul>
             </aside>
 
-            <!-- 屏幕正中：立绘展示区与肉鸽探索控制盘 -->
+            <!-- 屏幕正中：太空星舰环境仪 + 随行同伴羁绊栏 + 战术中枢雷达探索盘 -->
             <section class="stage-center-area">
                 
-                <!-- 右上角小地图雷达浮窗 (Mini-map Radar) -->
-                <div id="hud-mini-radar" class="mini-radar-widget">
-                    <div class="radar-header">
-                        <span class="radar-title">📡 战术微型雷达</span>
-                        <div class="radar-actions">
-                            <button id="btn-radar-expand" class="radar-btn" title="查看战术大地图">⛶</button>
-                            <button id="btn-radar-toggle" class="radar-btn" title="折叠/展开">−</button>
-                        </div>
+                <!-- 1. 星舰实时环境遥测仪表 (Sector Telemetry HUD) -->
+                <div id="sector-telemetry-hud" class="sector-telemetry-hud">
+                    <div class="telemetry-chip">
+                        <span class="telemetry-dot live-pulse"></span>
+                        <span id="telemetry-sector-code" class="telemetry-text">SECTOR // 探明中</span>
                     </div>
-                    <div id="radar-body-wrap" class="radar-body-wrap">
-                        <canvas id="mini-radar-canvas" width="140" height="140"></canvas>
-                        <div id="radar-pos-tag" class="radar-pos-tag">[X: --, Y: --]</div>
+                    <div class="telemetry-chip">
+                        <span class="telemetry-icon">💨</span>
+                        <span class="telemetry-text">舱压 1.0 ATM</span>
                     </div>
+                    <div class="telemetry-chip">
+                        <span class="telemetry-icon">🧬</span>
+                        <span id="telemetry-mimic-signal" class="telemetry-text text-glow-green">未检出异动</span>
+                    </div>
+                </div>
+
+                <!-- 2. 随行同伴实时羁绊头像状态栏 (Team Companions Deck) -->
+                <div id="team-roster-deck" class="team-roster-deck">
+                    <!-- 动态注入同伴微缩头像与专属状态 -->
                 </div>
 
                 <!-- 当前发言者/交互对象的半身大立绘插槽 -->
@@ -203,11 +209,23 @@
                     <!-- 动态注入立绘 -->
                 </div>
 
-                <!-- 探索操作盘 (前/后/左/右) -->
+                <!-- 3. 探索操作核心中枢盘 (直接内嵌战术雷达 + 方向导航) -->
                 <div id="exploration-controls" class="exploration-hud">
-                    <div class="hud-header">
-                        <span class="hud-title">🧭 走廊探索导航面板 (消耗 8 体力/步)</span>
+                    
+                    <!-- 战术全息微型雷达 (嵌入在操作盘正上方，视线与按键自然合一) -->
+                    <div id="hud-mini-radar" class="mini-radar-widget embedded-radar">
+                        <div class="radar-header">
+                            <span class="radar-title">📡 战术微型雷达</span>
+                            <div class="radar-actions">
+                                <span id="radar-pos-tag" class="radar-pos-tag">[X: --, Y: --]</span>
+                                <button id="btn-radar-expand" class="radar-btn" title="查看战术大地图">🗺️ 大地图</button>
+                            </div>
+                        </div>
+                        <div id="radar-body-wrap" class="radar-body-wrap">
+                            <canvas id="mini-radar-canvas" width="140" height="140"></canvas>
+                        </div>
                     </div>
+
                     <div class="compass-cross">
                         <button id="btn-move-forward" class="nav-btn nav-forward">
                             前 ⬆
@@ -216,7 +234,7 @@
                             <button id="btn-move-left" class="nav-btn nav-left">
                                 左 ⬅
                             </button>
-                            <div class="compass-center-hub">
+                            <div class="compass-center-hub" id="compass-center-hub" title="点击查看大地图">
                                 <span class="hub-radar">📡</span>
                             </div>
                             <button id="btn-move-right" class="nav-btn nav-right">
@@ -304,6 +322,7 @@
                 <div id="map-sketch-view" class="map-view-container hidden">
                     <img id="modal-map-img" src="assets/level1_sketch.jpg" alt="关卡地图手绘" class="full-map-image">
                 </div>
+                <div class="map-pan-hint">👆 支持单指自由滑动拖拽全图 ｜ 点击已探索房间可快速穿梭往返</div>
                 <div class="map-notes">
                     <span>起点：下层中央大厅</span> ｜ <span>终点：北侧脱离大门</span> ｜ <span>沿途：卡泽(NPC1)、邵可欣(NPC2)、莫尔德(NPC3)</span>
                 </div>
@@ -443,7 +462,7 @@
     <button id="btn-toggle-landscape" class="btn-float-rotate" title="旋转屏幕方向">🔄</button>
 
     <!-- 游戏启动引导脚本 (单文件普通JS，彻底规避file://协议CORS限制，双击即可直接畅玩) -->
-    <script src="js/app.bundle.js?v=1788629712436"></script>
+    <script src="js/app.bundle.js?v=1788630146469"></script>
 </body>
 </html>
 

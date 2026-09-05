@@ -165,6 +165,9 @@ export class GameEngine {
         this.miniRadarCanvas?.addEventListener("click", () => {
             this.showMapModal();
         });
+        document.getElementById("compass-center-hub")?.addEventListener("click", () => {
+            this.showMapModal();
+        });
         this.btnRadarToggle?.addEventListener("click", () => {
             this.toggleMiniRadar();
         });
@@ -1848,6 +1851,81 @@ export class GameEngine {
 
         // 实时刷新战术微型雷达
         this.updateMiniRadar();
+
+        // 实时刷新环境遥测与随行同伴头像栏
+        this.updateTelemetryAndRoster();
+    }
+
+    updateTelemetryAndRoster() {
+        // 1. 刷新环境遥测
+        const sectorElem = document.getElementById("telemetry-sector-code");
+        const mimicElem = document.getElementById("telemetry-mimic-signal");
+        const lvlId = this.currentLevel ? this.currentLevel.levelId : 1;
+        const lvlName = (this.currentLevel && (this.currentLevel.title || this.currentLevel.name)) || "残破遗迹";
+        const cleanName = lvlName.replace(/^第\d+关[：:]?\s*/, "").slice(0, 10);
+        const lvlStr = lvlId < 10 ? `0${lvlId}` : `${lvlId}`;
+
+        if (sectorElem) {
+            sectorElem.textContent = `SECTOR ${lvlStr} // ${cleanName}`;
+        }
+
+        if (mimicElem) {
+            let hasNearbyMimic = false;
+            if (this.currentLevelMap && this.explorationEngine) {
+                const currentId = this.explorationEngine.currentNodeId;
+                const node = this.currentLevelMap.nodes[currentId];
+                if (node && node.connections) {
+                    node.connections.forEach(connId => {
+                        const targetNpc = Array.from(this.allNpcMap.values()).find(n => n.nodeId === connId);
+                        if (targetNpc && targetNpc.role === "wolf" && targetNpc.status === "active") {
+                            hasNearbyMimic = true;
+                        }
+                    });
+                }
+            }
+
+            if (hasNearbyMimic) {
+                mimicElem.className = "telemetry-text text-glow-red";
+                mimicElem.textContent = "⚠️ 检出邻近拟态波";
+            } else {
+                mimicElem.className = "telemetry-text text-glow-green";
+                mimicElem.textContent = "未探知拟态波";
+            }
+        }
+
+        // 2. 刷新随行同伴羁绊卡片栏
+        const deck = document.getElementById("team-roster-deck");
+        if (!deck) return;
+
+        const aliveMembers = this.getAliveTeamMembers();
+        let html = "";
+        aliveMembers.forEach(char => {
+            if (char.isProtagonist) {
+                html += `
+                    <div class="roster-card" title="你（指挥官）">
+                        <span style="font-size: 1rem;">🧑‍🚀</span>
+                        <span class="roster-name">指挥官</span>
+                        <span class="roster-status" style="color: #38bdf8;">队长</span>
+                    </div>
+                `;
+            } else {
+                const statusMap = {
+                    kaze: "🗡️ 战术警惕",
+                    shaokexin: "🌸 拟态直觉",
+                    mode: "🛡️ 重装坚守"
+                };
+                const statusText = statusMap[char.id] || "🤝 随行";
+                const avatar = char.avatarUrl || "assets/characters/kaze/normal.webp";
+                html += `
+                    <div class="roster-card" title="${char.name}（已加入随行）">
+                        <img class="roster-avatar" src="${avatar}" alt="${char.name}" onerror="this.src='assets/characters/kaze/normal.webp'">
+                        <span class="roster-name">${char.name}</span>
+                        <span class="roster-status">${statusText}</span>
+                    </div>
+                `;
+            }
+        });
+        deck.innerHTML = html;
     }
 
     logAction(text) {
