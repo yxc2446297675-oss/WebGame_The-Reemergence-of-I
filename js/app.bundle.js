@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-05T16:37:03.544Z
+ * 自动生成于 2026-09-05T17:17:23.804Z
  */
 (function() {
     'use strict';
@@ -180,11 +180,23 @@ class SoundEngine {
         }
     }
 
-    // 触摸解锁：应对手机浏览器 Autoplay Policy 限制
+    // 触摸解锁：应对手机浏览器及 iOS Safari / WebView 的 Autoplay Policy 限制
     unlock() {
         this.init();
         if (this.ctx && this.ctx.state === 'suspended') {
             this.ctx.resume();
+        }
+        // iOS Safari 唤醒：触发一个 1-frame 静音 buffer 彻底激活硬件声道
+        if (this.ctx && typeof this.ctx.createBuffer === "function") {
+            try {
+                const buffer = this.ctx.createBuffer(1, 1, 22050);
+                const source = this.ctx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(this.ctx.destination);
+                source.start(0);
+            } catch (e) {
+                // ignore
+            }
         }
     }
 
@@ -534,6 +546,20 @@ class SoundEngine {
 
 const Sound = new SoundEngine();
 
+// 移动端/iOS Safari 首次手势（触摸/点击/轻扫）全局静默激活音频上下文
+if (typeof window !== "undefined") {
+    const autoUnlock = () => {
+        Sound.unlock();
+        ["touchstart", "touchend", "pointerdown", "click", "keydown"].forEach(evt => {
+            window.removeEventListener(evt, autoUnlock, true);
+        });
+    };
+    ["touchstart", "touchend", "pointerdown", "click", "keydown"].forEach(evt => {
+        window.addEventListener(evt, autoUnlock, { capture: true, passive: true, once: true });
+    });
+}
+
+
 
     // =========================================================================
     // 模块: characters.js
@@ -569,16 +595,16 @@ const CharacterRegistry = {
             themeColor: "#38bdf8", // 科技明蓝
             boxBorderColor: "rgba(56, 189, 248, 0.9)",
             boxBgGlow: "rgba(56, 189, 248, 0.25)",
-            avatarUrl: "assets/characters/kaze/clam.png",
+            avatarUrl: "assets/characters/kaze/clam.webp",
             expressions: {
-                clam: "assets/characters/kaze/clam.png",     // 平静 (无指示时的默认照片)
-                happy: "assets/characters/kaze/happy.png",   // 开心 / 微笑
-                sad: "assets/characters/kaze/sad.png",       // 悲伤 / 沮丧
-                normal: "assets/characters/kaze/normal.png", // 正常
-                angry: "assets/characters/kaze/angry.png",   // 生气 / 质问
-                doubt: "assets/characters/kaze/doubt.png",   // 疑惑 / 审视
-                shock: "assets/characters/kaze/shock.png",   // 震惊 / 错愕
-                dead: "assets/characters/kaze/dead.jpg"      // 遇害 / 死亡 (用户已放置 dead.jpg)
+                clam: "assets/characters/kaze/clam.webp",     // 平静 (无指示时的默认照片，极速 WebP)
+                happy: "assets/characters/kaze/happy.webp",   // 开心 / 微笑
+                sad: "assets/characters/kaze/sad.webp",       // 悲伤 / 沮丧
+                normal: "assets/characters/kaze/normal.webp", // 正常
+                angry: "assets/characters/kaze/angry.webp",   // 生气 / 质问
+                doubt: "assets/characters/kaze/doubt.webp",   // 疑惑 / 审视
+                shock: "assets/characters/kaze/shock.webp",   // 震惊 / 错愕
+                dead: "assets/characters/kaze/dead.webp"      // 遇害 / 死亡
             },
             introDialogue: [
                 { text: "（一名穿着破损战术服的年轻男子捂着手臂，眼神凌厉而冷漠地抬起头）", expression: "clam" },
@@ -673,16 +699,16 @@ const CharacterRegistry = {
             themeColor: "#f43f5e", // 玫瑰粉红
             boxBorderColor: "rgba(244, 63, 94, 0.9)",
             boxBgGlow: "rgba(244, 63, 94, 0.25)",
-            avatarUrl: "assets/characters/shaokexin/clam.png",
+            avatarUrl: "assets/characters/shaokexin/clam.webp",
             expressions: {
-                clam: "assets/characters/shaokexin/clam.png",     // 平静 (无指示时的默认照片)
-                happy: "assets/characters/shaokexin/happy.png",   // 开心 / 微笑
-                sad: "assets/characters/shaokexin/sad.png",       // 悲伤 / 委屈
-                normal: "assets/characters/shaokexin/normal.png", // 正常
-                angry: "assets/characters/shaokexin/angry.png",   // 生气
-                doubt: "assets/characters/shaokexin/doubt.png",   // 疑惑 / 茫然
-                shock: "assets/characters/shaokexin/shock.png",   // 震惊 / 害怕
-                dead: "assets/characters/shaokexin/dead.jpg"      // 遇害 / 死亡 (用户已放置 dead.jpg)
+                clam: "assets/characters/shaokexin/clam.webp",     // 平静 (无指示时的默认照片，极速 WebP)
+                happy: "assets/characters/shaokexin/happy.webp",   // 开心 / 微笑
+                sad: "assets/characters/shaokexin/sad.webp",       // 悲伤 / 委屈
+                normal: "assets/characters/shaokexin/normal.webp", // 正常
+                angry: "assets/characters/shaokexin/angry.webp",   // 生气
+                doubt: "assets/characters/shaokexin/doubt.webp",   // 疑惑 / 茫然
+                shock: "assets/characters/shaokexin/shock.webp",   // 震惊 / 害怕
+                dead: "assets/characters/shaokexin/dead.webp"      // 遇害 / 死亡
             },
             introDialogue: [
                 { text: "（昏暗的管道阴影中，一名少女抱膝缩在角落，听到脚步声猛地颤抖起来）", expression: "shock" },
@@ -776,16 +802,16 @@ const CharacterRegistry = {
             themeColor: "#a855f7", // 幽邃紫晶
             boxBorderColor: "rgba(168, 85, 247, 0.9)",
             boxBgGlow: "rgba(168, 85, 247, 0.25)",
-            avatarUrl: "assets/characters/mode/clam.png",
+            avatarUrl: "assets/characters/mode/clam.webp",
             expressions: {
-                clam: "assets/characters/mode/clam.png",     // 平静 (无指示时的默认照片)
-                happy: "assets/characters/mode/happy.png",   // 开心 / 冷笑
-                sad: "assets/characters/mode/sad.png",       // 沮丧
-                normal: "assets/characters/mode/normal.png", // 正常
-                angry: "assets/characters/mode/angry.png",   // 生气 / 凶狠
-                doubt: "assets/characters/mode/doubt.png",   // 疑惑 / 警惕
-                shock: "assets/characters/mode/shock.png",   // 震惊
-                dead: "assets/characters/mode/dead.jpg"      // 遇害 / 死亡 (用户已放置 dead.jpg)
+                clam: "assets/characters/mode/clam.webp",     // 平静 (无指示时的默认照片，极速 WebP)
+                happy: "assets/characters/mode/happy.webp",   // 开心 / 冷笑
+                sad: "assets/characters/mode/sad.webp",       // 沮丧
+                normal: "assets/characters/mode/normal.webp", // 正常
+                angry: "assets/characters/mode/angry.webp",   // 生气 / 凶狠
+                doubt: "assets/characters/mode/doubt.webp",   // 疑惑 / 警惕
+                shock: "assets/characters/mode/shock.webp",   // 震惊
+                dead: "assets/characters/mode/dead.webp"      // 遇害 / 死亡
             },
             introDialogue: [
                 { text: "（靠在金属隔板旁的魁梧男子捂着胸口艰难喘息，看到你的徽章后冷笑了一声）", expression: "angry" },
@@ -996,8 +1022,8 @@ const CharacterRegistry = {
         };
 
         const namesToTry = expAliases[exp] || [exp];
-        // 针对遇害立绘 dead，由于用户放置了 dead.jpg，优先探测 jpg，同时兼顾 png
-        const extensions = (exp === "dead") ? ["jpg", "png", "jpeg", "webp"] : ["png", "jpg", "jpeg", "webp"];
+        // 优先探测极速轻量的 webp，同时兼顾兼容旧版 png / jpg
+        const extensions = ["webp", "png", "jpg", "jpeg"];
 
         const candidates = [];
 
