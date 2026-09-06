@@ -10,9 +10,39 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>潜伏危机：循环伪装体 (视觉小说·肉鸽探索·AI伪人杀)</title>
-    <link rel="stylesheet" href="./style.css?v=1788681746376">
+    <link rel="stylesheet" href="./style.css?v=1788682308474">
 </head>
 <body>
+
+    <!-- ================================================================= -->
+    <!-- 0. 游戏初始极速资源预加载进度屏 (0% -> 100% 进度条) -->
+    <!-- ================================================================= -->
+    <div id="screen-loading" class="loading-screen">
+        <div class="loading-container">
+            <div class="loading-hud-tag">PROJECT MIMIC // NEURAL SYNC</div>
+            <h1 class="loading-title">DOPPELGANGER</h1>
+            <div class="loading-subtitle">母舰拓扑网络与感应神经元加载中</div>
+
+            <!-- 进度条主体 -->
+            <div class="loading-progress-wrapper">
+                <div class="loading-progress-track">
+                    <div id="loading-progress-bar" class="loading-progress-bar" style="width: 0%;">
+                        <span class="loading-progress-glow"></span>
+                    </div>
+                </div>
+                <div class="loading-info-row">
+                    <span id="loading-status-text" class="loading-status-text">初始化母舰神经链路...</span>
+                    <span id="loading-percent-text" class="loading-percent-text">0%</span>
+                </div>
+            </div>
+
+            <!-- 100% 加载完成后进入游戏的激活按钮 (同时顺滑解锁移动端音频播放) -->
+            <button id="btn-loading-start" class="loading-start-btn hidden">
+                <span class="btn-glow-dot"></span>
+                <span>🚀 资源就绪 · 启动观测</span>
+            </button>
+        </div>
+    </div>
 
     <!-- ================================================================= -->
     <!-- 1. 主菜单界面 (Main Menu) -->
@@ -278,13 +308,13 @@
 
         <!-- 屏幕正中底下占满的视觉小说对话框 (无对话时完全隐藏不占空间) -->
         <footer id="vn-dialogue-box" class="vn-dialogue-wrapper vn-hidden">
+            <!-- 左上角NPC立绘挂载区 (用户要求：位于对话框左上角) -->
+            <div id="vn-dialogue-corner-avatar" class="vn-corner-portrait-slot portrait-hidden"></div>
+
             <!-- 左上角人名标牌 (每个NPC专属颜色) -->
             <div id="vn-speaker-name" class="vn-name-badge">
                 L.P.H
             </div>
-
-            <!-- 右上角NPC立绘挂载区 (仅NPC说话时显示，主角说话时不显示) -->
-            <div id="vn-dialogue-corner-avatar" class="vn-corner-portrait-slot portrait-hidden"></div>
 
             <!-- 对话文本正文 -->
             <div id="vn-dialogue-text" class="vn-text-content">
@@ -496,7 +526,7 @@
     <button id="btn-toggle-landscape" class="btn-float-rotate" title="旋转屏幕方向">🔄</button>
 
     <!-- 游戏启动引导脚本 (单文件普通JS，彻底规避file://协议CORS限制，双击即可直接畅玩) -->
-    <script src="js/app.bundle.js?v=1788681746376"></script>
+    <script src="js/app.bundle.js?v=1788682308474"></script>
 </body>
 </html>
 

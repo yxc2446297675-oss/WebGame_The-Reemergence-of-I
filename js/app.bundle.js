@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-06T08:02:26.366Z
+ * 自动生成于 2026-09-06T08:11:48.462Z
  */
 (function() {
     'use strict';
@@ -3183,6 +3183,7 @@ class DialogueUI {
     hideBox() {
         if (this.boxElement) {
             this.boxElement.classList.add("vn-hidden");
+            this.boxElement.classList.remove("has-portrait");
         }
         if (this.portraitElement) {
             this.portraitElement.classList.add("portrait-hidden");
@@ -3274,12 +3275,18 @@ class DialogueUI {
             if (this.portraitElement) {
                 this.portraitElement.classList.add("portrait-hidden");
             }
+            if (this.boxElement) {
+                this.boxElement.classList.remove("has-portrait");
+            }
             return;
         }
 
-        // NPC 说话时：立绘展示在对话框右上角！根据当前表情显示对应立绘 (遇害时展示 dead 照片)
+        // NPC 说话时：立绘展示在对话框左上角！用户明确要求：不要标注“生气/平静”等字样
         if (this.cornerAvatarElement) {
             this.cornerAvatarElement.classList.remove("portrait-hidden");
+            if (this.boxElement) {
+                this.boxElement.classList.add("has-portrait");
+            }
 
             const color = speaker.themeColor || "#38bdf8";
             const exp = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.normalizeExpression)
@@ -3296,26 +3303,11 @@ class DialogueUI {
                 ? CharacterRegistry.getAvatarSvg(speaker, exp)
                 : (speaker.fallbackSvg || "");
 
-            // 表情中文名标签展示
-            const expCnMap = {
-                clam: "平静",
-                calm: "平静",
-                normal: "正常",
-                happy: "开心",
-                smile: "开心",
-                sad: "悲伤",
-                angry: "生气",
-                doubt: "疑惑",
-                shock: "震惊",
-                dead: "已遇害"
-            };
             const isDead = (exp === "dead");
             const borderColor = isDead ? "#ef4444" : color;
             const shadowGlow = isDead
                 ? "0 0 24px rgba(239, 68, 68, 0.95), inset 0 0 16px rgba(239, 68, 68, 0.6)"
                 : `0 0 16px ${color}80, inset 0 0 12px ${color}40`;
-            const tagBg = isDead ? "#dc2626" : color;
-            const expLabel = isDead ? "已遇害 💀" : (expCnMap[exp] || exp);
 
             const primaryUrl = candidates[0] || fallbackSvg;
             const candidatesAttr = JSON.stringify(candidates).replace(/"/g, '&quot;');
@@ -3325,15 +3317,15 @@ class DialogueUI {
                      data-candidates="${candidatesAttr}"
                      data-index="0"
                      data-fallback="${fallbackSvg}"
-                     alt="${speaker.name} - ${expLabel}"
+                     alt="${speaker.name}"
                      class="corner-portrait-img ${isDead ? 'dead-portrait-img' : ''}"
                      onerror="window.handlePortraitError && window.handlePortraitError(this)">
             `;
 
+            // 用户要求：立绘位于左上角，无需任何“生气/平静”标签文字
             this.cornerAvatarElement.innerHTML = `
                 <div class="corner-avatar-frame ${isDead ? 'avatar-frame-dead' : ''}" style="border-color:${borderColor}; box-shadow:${shadowGlow};">
                     ${imgHtml}
-                    <div class="corner-avatar-tag" style="background:${tagBg};">${speaker.name} · ${expLabel}</div>
                 </div>
             `;
         }
@@ -5832,9 +5824,19 @@ class GameEngine {
         if (this.stageMapCanvas && !this.stageMapRenderer) {
             this.stageMapRenderer = new MapRenderer(this.stageMapCanvas);
         }
+
+        this.startInitialLoading();
     }
 
     initDomReferences() {
+        // 0. 初始资源加载屏
+        this.screenLoading = document.getElementById("screen-loading");
+        this.loadingProgressBar = document.getElementById("loading-progress-bar");
+        this.loadingStatusText = document.getElementById("loading-status-text");
+        this.loadingPercentText = document.getElementById("loading-percent-text");
+        this.btnLoadingStart = document.getElementById("btn-loading-start");
+        this.isInitialLoadingDone = false;
+
         // 界面大屏
         this.screenMenu = document.getElementById("screen-menu");
         this.screenBlack = document.getElementById("screen-q1-black");
@@ -5913,6 +5915,177 @@ class GameEngine {
         this.btnForceLandscape = document.getElementById("btn-force-landscape");
         this.btnIgnoreOrientation = document.getElementById("btn-ignore-orientation");
         this.btnToggleLandscape = document.getElementById("btn-toggle-landscape");
+    }
+
+    /**
+     * 游戏启动全屏 0% -> 100% 极速科技加载进度条
+     * 明确向用户展示所有音频、地图底图、各角色表情立绘的实际加载进度，加载完毕后解锁进入游戏
+     */
+    startInitialLoading() {
+        if (!this.screenLoading || this.isInitialLoadingDone) return;
+
+        // 如果在非浏览器或自动化测试运行环境中（例如 JSDOM / Node.js 且非完整真实环境），直接标记就绪
+        if (typeof window === "undefined" || !window.document || !window.Audio) {
+            this.isInitialLoadingDone = true;
+            if (this.screenLoading) this.screenLoading.classList.add("hidden");
+            return;
+        }
+
+        // 收集所有需要预热的静态媒体资源清单
+        const assetTasks = [];
+
+        // 1. 核心音频资源 (4 项)
+        if (typeof AudioConfig !== "undefined") {
+            const sounds = [
+                { type: "audio", name: "踏步位移音效", url: AudioConfig.moveSoundUrl },
+                { type: "audio", name: "物资获取音效", url: AudioConfig.foodSoundUrl },
+                { type: "audio", name: "警报鸣响音效", url: AudioConfig.alarmSoundUrl },
+                { type: "audio", name: "遇害死亡重音", url: AudioConfig.deathSoundUrl }
+            ].filter(s => !!s.url);
+            assetTasks.push(...sounds);
+        }
+
+        // 2. 关卡高维拓扑底图 (1 项)
+        assetTasks.push({ type: "image", name: "母舰扇区蓝图手绘", url: "assets/level1_sketch.jpg" });
+
+        // 3. 所有NPC候选角色的全表情独立立绘 (24 项)
+        if (typeof CharacterRegistry !== "undefined" && CharacterRegistry.npcs) {
+            const expNames = {
+                clam: "平静",
+                normal: "正常",
+                happy: "开心",
+                sad: "悲伤",
+                angry: "生气",
+                doubt: "疑惑",
+                shock: "震惊",
+                dead: "遇害"
+            };
+            Object.values(CharacterRegistry.npcs).forEach(char => {
+                if (!char || !char.expressions) return;
+                // 去重，防止 morde 与 mode 重复添加
+                if (char.id === "morde") return;
+                Object.entries(char.expressions).forEach(([expKey, url]) => {
+                    if (url) {
+                        const cnExp = expNames[expKey] || expKey;
+                        assetTasks.push({
+                            type: "image",
+                            name: `角色立绘 [${char.name} · ${cnExp}]`,
+                            url: url
+                        });
+                    }
+                });
+            });
+        }
+
+        const total = assetTasks.length;
+        if (total === 0) {
+            this.finishInitialLoading();
+            return;
+        }
+
+        let loadedCount = 0;
+        const updateUI = (taskName) => {
+            const pct = Math.min(100, Math.round((loadedCount / total) * 100));
+            if (this.loadingProgressBar) {
+                this.loadingProgressBar.style.width = pct + "%";
+            }
+            if (this.loadingPercentText) {
+                this.loadingPercentText.textContent = pct + "%";
+            }
+            if (this.loadingStatusText) {
+                this.loadingStatusText.textContent = `[${loadedCount}/${total}] 正在同步：${taskName}`;
+            }
+
+            if (loadedCount >= total) {
+                this.onInitialLoadingComplete();
+            }
+        };
+
+        // 逐一异步加载资源，超时保底避免死锁
+        assetTasks.forEach(task => {
+            let finished = false;
+            const onDone = () => {
+                if (finished) return;
+                finished = true;
+                loadedCount++;
+                updateUI(task.name);
+            };
+
+            const timer = setTimeout(onDone, 900);
+
+            if (task.type === "audio") {
+                if (typeof Sound !== "undefined" && Sound.preloadAudio) {
+                    Sound.preloadAudio(task.url);
+                }
+                try {
+                    const a = new Audio(encodeURI(task.url));
+                    a.preload = "auto";
+                    a.addEventListener("canplaythrough", () => { clearTimeout(timer); onDone(); }, { once: true });
+                    a.addEventListener("loadeddata", () => { clearTimeout(timer); onDone(); }, { once: true });
+                    a.addEventListener("error", () => { clearTimeout(timer); onDone(); }, { once: true });
+                    if (a.load) a.load();
+                } catch (e) {
+                    clearTimeout(timer);
+                    onDone();
+                }
+            } else if (task.type === "image") {
+                if (typeof CharacterRegistry !== "undefined" && CharacterRegistry.preloadImage) {
+                    CharacterRegistry.preloadImage(task.url);
+                }
+                try {
+                    const img = new Image();
+                    img.src = encodeURI(task.url);
+                    if (typeof img.decode === "function") {
+                        img.decode().then(() => { clearTimeout(timer); onDone(); }).catch(() => { clearTimeout(timer); onDone(); });
+                    } else {
+                        img.onload = () => { clearTimeout(timer); onDone(); };
+                        img.onerror = () => { clearTimeout(timer); onDone(); };
+                    }
+                } catch (e) {
+                    clearTimeout(timer);
+                    onDone();
+                }
+            }
+        });
+    }
+
+    onInitialLoadingComplete() {
+        if (this.loadingProgressBar) {
+            this.loadingProgressBar.style.width = "100%";
+        }
+        if (this.loadingPercentText) {
+            this.loadingPercentText.textContent = "100%";
+        }
+        if (this.loadingStatusText) {
+            this.loadingStatusText.textContent = "✅ 全部核心音频、拓扑底图与立绘神经元 100% 校验完成！";
+        }
+
+        // 显示进入游戏激活按钮（顺带触发移动端音频上下文唤醒）
+        if (this.btnLoadingStart) {
+            this.btnLoadingStart.classList.remove("hidden");
+            this.btnLoadingStart.onclick = () => {
+                this.finishInitialLoading();
+            };
+        } else {
+            setTimeout(() => this.finishInitialLoading(), 300);
+        }
+    }
+
+    finishInitialLoading() {
+        if (this.isInitialLoadingDone) return;
+        this.isInitialLoadingDone = true;
+
+        if (typeof Sound !== "undefined" && Sound.unlock) {
+            Sound.unlock();
+            Sound.preloadDefaults();
+        }
+
+        if (this.screenLoading) {
+            this.screenLoading.classList.add("loading-fade-out");
+            setTimeout(() => {
+                this.screenLoading.classList.add("hidden");
+            }, 400);
+        }
     }
 
     bindEvents() {

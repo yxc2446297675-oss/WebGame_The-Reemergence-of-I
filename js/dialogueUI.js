@@ -112,6 +112,7 @@ export class DialogueUI {
     hideBox() {
         if (this.boxElement) {
             this.boxElement.classList.add("vn-hidden");
+            this.boxElement.classList.remove("has-portrait");
         }
         if (this.portraitElement) {
             this.portraitElement.classList.add("portrait-hidden");
@@ -203,12 +204,18 @@ export class DialogueUI {
             if (this.portraitElement) {
                 this.portraitElement.classList.add("portrait-hidden");
             }
+            if (this.boxElement) {
+                this.boxElement.classList.remove("has-portrait");
+            }
             return;
         }
 
-        // NPC 说话时：立绘展示在对话框右上角！根据当前表情显示对应立绘 (遇害时展示 dead 照片)
+        // NPC 说话时：立绘展示在对话框左上角！用户明确要求：不要标注“生气/平静”等字样
         if (this.cornerAvatarElement) {
             this.cornerAvatarElement.classList.remove("portrait-hidden");
+            if (this.boxElement) {
+                this.boxElement.classList.add("has-portrait");
+            }
 
             const color = speaker.themeColor || "#38bdf8";
             const exp = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.normalizeExpression)
@@ -225,26 +232,11 @@ export class DialogueUI {
                 ? CharacterRegistry.getAvatarSvg(speaker, exp)
                 : (speaker.fallbackSvg || "");
 
-            // 表情中文名标签展示
-            const expCnMap = {
-                clam: "平静",
-                calm: "平静",
-                normal: "正常",
-                happy: "开心",
-                smile: "开心",
-                sad: "悲伤",
-                angry: "生气",
-                doubt: "疑惑",
-                shock: "震惊",
-                dead: "已遇害"
-            };
             const isDead = (exp === "dead");
             const borderColor = isDead ? "#ef4444" : color;
             const shadowGlow = isDead
                 ? "0 0 24px rgba(239, 68, 68, 0.95), inset 0 0 16px rgba(239, 68, 68, 0.6)"
                 : `0 0 16px ${color}80, inset 0 0 12px ${color}40`;
-            const tagBg = isDead ? "#dc2626" : color;
-            const expLabel = isDead ? "已遇害 💀" : (expCnMap[exp] || exp);
 
             const primaryUrl = candidates[0] || fallbackSvg;
             const candidatesAttr = JSON.stringify(candidates).replace(/"/g, '&quot;');
@@ -254,15 +246,15 @@ export class DialogueUI {
                      data-candidates="${candidatesAttr}"
                      data-index="0"
                      data-fallback="${fallbackSvg}"
-                     alt="${speaker.name} - ${expLabel}"
+                     alt="${speaker.name}"
                      class="corner-portrait-img ${isDead ? 'dead-portrait-img' : ''}"
                      onerror="window.handlePortraitError && window.handlePortraitError(this)">
             `;
 
+            // 用户要求：立绘位于左上角，无需任何“生气/平静”标签文字
             this.cornerAvatarElement.innerHTML = `
                 <div class="corner-avatar-frame ${isDead ? 'avatar-frame-dead' : ''}" style="border-color:${borderColor}; box-shadow:${shadowGlow};">
                     ${imgHtml}
-                    <div class="corner-avatar-tag" style="background:${tagBg};">${speaker.name} · ${expLabel}</div>
                 </div>
             `;
         }
