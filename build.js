@@ -9,6 +9,7 @@ const files = [
     'config.js',
     'audio.js',
     'characters.js',
+    'spaceshipMasterMap.js',
     'generatedLevels.js',
     'levels.js',
     'dialogueUI.js',

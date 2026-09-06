@@ -2,6 +2,253 @@ function easeInOutCubic(t) {
     return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
+/**
+ * 根据房间形态绘制轮廓路径
+ */
+function drawShapePath(ctx, shape, x, y, w, h) {
+    ctx.beginPath();
+    switch (shape) {
+        case "octagon": {
+            // 八角切角舱室 (反应堆/主控)
+            const c = Math.floor(Math.min(w, h) * 0.25);
+            ctx.moveTo(x + c, y);
+            ctx.lineTo(x + w - c, y);
+            ctx.lineTo(x + w, y + c);
+            ctx.lineTo(x + w, y + h - c);
+            ctx.lineTo(x + w - c, y + h);
+            ctx.lineTo(x + c, y + h);
+            ctx.lineTo(x, y + h - c);
+            ctx.lineTo(x, y + c);
+            ctx.closePath();
+            break;
+        }
+        case "bridge": {
+            // 梯形前突舰桥 (顶窄底宽)
+            const cut = Math.floor(w * 0.22);
+            ctx.moveTo(x + cut, y);
+            ctx.lineTo(x + w - cut, y);
+            ctx.lineTo(x + w, y + h);
+            ctx.lineTo(x, y + h);
+            ctx.closePath();
+            break;
+        }
+        case "reactor": {
+            // 核反应堆重型舱 (大角度外切八角)
+            const c = Math.floor(Math.min(w, h) * 0.32);
+            ctx.moveTo(x + c, y);
+            ctx.lineTo(x + w - c, y);
+            ctx.lineTo(x + w, y + c);
+            ctx.lineTo(x + w, y + h - c);
+            ctx.lineTo(x + w - c, y + h);
+            ctx.lineTo(x + c, y + h);
+            ctx.lineTo(x, y + h - c);
+            ctx.lineTo(x, y + c);
+            ctx.closePath();
+            break;
+        }
+        case "airlock": {
+            // 双向防爆气闸舱 (两侧切角内凹)
+            const c = Math.floor(Math.min(w, h) * 0.18);
+            ctx.moveTo(x, y + c);
+            ctx.lineTo(x + c, y);
+            ctx.lineTo(x + w - c, y);
+            ctx.lineTo(x + w, y + c);
+            ctx.lineTo(x + w - c, y + h / 2);
+            ctx.lineTo(x + w, y + h - c);
+            ctx.lineTo(x + w - c, y + h);
+            ctx.lineTo(x + c, y + h);
+            ctx.lineTo(x, y + h - c);
+            ctx.lineTo(x + c, y + h / 2);
+            ctx.closePath();
+            break;
+        }
+        case "corridor_h": {
+            // 横向长条过渡回廊
+            const insetY = Math.floor(h * 0.15);
+            const my = y + insetY;
+            const mh = h - insetY * 2;
+            if (ctx.roundRect) ctx.roundRect(x - 2, my, w + 4, mh, 4);
+            else ctx.rect(x - 2, my, w + 4, mh);
+            break;
+        }
+        case "corridor_v": {
+            // 纵向长条通风回廊
+            const insetX = Math.floor(w * 0.15);
+            const mx = x + insetX;
+            const mw = w - insetX * 2;
+            if (ctx.roundRect) ctx.roundRect(mx, y - 2, mw, h + 4, 4);
+            else ctx.rect(mx, y - 2, mw, h + 4);
+            break;
+        }
+        case "medical": {
+            // 医疗急救舱 (圆角十字微弧)
+            if (ctx.roundRect) ctx.roundRect(x, y, w, h, Math.floor(Math.min(w, h) * 0.28));
+            else ctx.rect(x, y, w, h);
+            break;
+        }
+        case "quarters": {
+            // 乘组起居生活舱 (平滑倒角矩形)
+            if (ctx.roundRect) ctx.roundRect(x, y, w, h, 8);
+            else ctx.rect(x, y, w, h);
+            break;
+        }
+        case "storage": {
+            // 仓储货库 (上下切角六边形)
+            const c = Math.floor(Math.min(w, h) * 0.2);
+            ctx.moveTo(x + c, y);
+            ctx.lineTo(x + w - c, y);
+            ctx.lineTo(x + w, y + c);
+            ctx.lineTo(x + w, y + h - c);
+            ctx.lineTo(x + w - c, y + h);
+            ctx.lineTo(x + c, y + h);
+            ctx.lineTo(x, y + h - c);
+            ctx.lineTo(x, y + c);
+            ctx.closePath();
+            break;
+        }
+        case "lab": {
+            // 科学实验室 (侧切六棱多面体)
+            const cutX = Math.floor(w * 0.22);
+            ctx.moveTo(x + cutX, y);
+            ctx.lineTo(x + w - cutX, y);
+            ctx.lineTo(x + w, y + h / 2);
+            ctx.lineTo(x + w - cutX, y + h);
+            ctx.lineTo(x + cutX, y + h);
+            ctx.lineTo(x, y + h / 2);
+            ctx.closePath();
+            break;
+        }
+        case "rect":
+        default: {
+            if (ctx.roundRect) ctx.roundRect(x, y, w, h, 4);
+            else ctx.rect(x, y, w, h);
+            break;
+        }
+    }
+}
+
+/**
+ * 绘制舱内极简高科技蓝图微缩设备线条
+ */
+function drawEquipmentBlueprint(ctx, equipment, cx, cy, boxSize) {
+    if (!equipment) return;
+    ctx.save();
+    ctx.lineWidth = 1;
+    const r = boxSize * 0.35;
+
+    switch (equipment) {
+        case "energy_ring": {
+            ctx.strokeStyle = "rgba(56, 189, 248, 0.45)";
+            ctx.beginPath(); ctx.arc(cx, cy, r * 0.85, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(cx, cy, r * 0.45, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy);
+            ctx.moveTo(cx, cy - r); ctx.lineTo(cx, cy + r);
+            ctx.stroke();
+            break;
+        }
+        case "bridge_console":
+        case "console": {
+            ctx.strokeStyle = "rgba(56, 189, 248, 0.4)";
+            ctx.beginPath();
+            ctx.arc(cx, cy + r * 0.25, r * 0.7, Math.PI * 1.15, Math.PI * 1.85);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(cx - r * 0.5, cy + r * 0.35);
+            ctx.lineTo(cx + r * 0.5, cy + r * 0.35);
+            ctx.stroke();
+            break;
+        }
+        case "medical_bed": {
+            ctx.strokeStyle = "rgba(244, 63, 94, 0.45)";
+            ctx.strokeRect(cx - r * 0.6, cy - r * 0.35, r * 1.2, r * 0.7);
+            ctx.beginPath();
+            ctx.moveTo(cx - r * 0.4, cy);
+            ctx.lineTo(cx - r * 0.15, cy);
+            ctx.lineTo(cx - r * 0.05, cy - r * 0.25);
+            ctx.lineTo(cx + r * 0.05, cy + r * 0.25);
+            ctx.lineTo(cx + r * 0.15, cy);
+            ctx.lineTo(cx + r * 0.4, cy);
+            ctx.stroke();
+            break;
+        }
+        case "cryo_pods": {
+            ctx.strokeStyle = "rgba(168, 85, 247, 0.45)";
+            const pw = r * 0.42;
+            const ph = r * 0.85;
+            ctx.strokeRect(cx - r * 0.65, cy - ph / 2, pw, ph);
+            ctx.strokeRect(cx + r * 0.23, cy - ph / 2, pw, ph);
+            break;
+        }
+        case "cargo_grid": {
+            ctx.strokeStyle = "rgba(245, 158, 11, 0.45)";
+            const bw = r * 0.5;
+            ctx.strokeRect(cx - r * 0.6, cy - r * 0.45, bw, bw);
+            ctx.strokeRect(cx + r * 0.1, cy - r * 0.45, bw, bw);
+            ctx.strokeRect(cx - r * 0.25, cy + r * 0.1, bw, bw * 0.75);
+            break;
+        }
+        case "workshop_tools": {
+            ctx.strokeStyle = "rgba(148, 163, 184, 0.4)";
+            ctx.beginPath();
+            ctx.moveTo(cx - r * 0.6, cy - r * 0.4); ctx.lineTo(cx + r * 0.6, cy + r * 0.4);
+            ctx.moveTo(cx - r * 0.6, cy + r * 0.4); ctx.lineTo(cx + r * 0.6, cy - r * 0.4);
+            ctx.stroke();
+            break;
+        }
+        case "hydroponics": {
+            ctx.strokeStyle = "rgba(74, 222, 128, 0.45)";
+            ctx.beginPath();
+            ctx.moveTo(cx - r * 0.6, cy - r * 0.3); ctx.lineTo(cx + r * 0.6, cy - r * 0.3);
+            ctx.moveTo(cx - r * 0.6, cy + r * 0.3); ctx.lineTo(cx + r * 0.6, cy + r * 0.3);
+            ctx.arc(cx, cy, r * 0.3, 0, Math.PI);
+            ctx.stroke();
+            break;
+        }
+        case "star_lens": {
+            ctx.strokeStyle = "rgba(56, 189, 248, 0.45)";
+            ctx.beginPath(); ctx.arc(cx, cy, r * 0.65, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(cx, cy, r * 0.3, 0, Math.PI * 2); ctx.stroke();
+            break;
+        }
+        case "shield_generator": {
+            ctx.strokeStyle = "rgba(34, 211, 238, 0.45)";
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - r * 0.7);
+            ctx.lineTo(cx + r * 0.6, cy);
+            ctx.lineTo(cx, cy + r * 0.7);
+            ctx.lineTo(cx - r * 0.6, cy);
+            ctx.closePath();
+            ctx.stroke();
+            break;
+        }
+        case "thruster_nozzle": {
+            ctx.strokeStyle = "rgba(239, 68, 68, 0.45)";
+            ctx.beginPath();
+            ctx.moveTo(cx - r * 0.4, cy - r * 0.6);
+            ctx.lineTo(cx + r * 0.4, cy - r * 0.6);
+            ctx.lineTo(cx + r * 0.6, cy + r * 0.6);
+            ctx.lineTo(cx - r * 0.6, cy + r * 0.6);
+            ctx.closePath();
+            ctx.stroke();
+            break;
+        }
+        case "armory_racks": {
+            ctx.strokeStyle = "rgba(234, 179, 8, 0.45)";
+            for (let i = -2; i <= 2; i++) {
+                ctx.beginPath();
+                ctx.moveTo(cx + i * (r * 0.25), cy - r * 0.5);
+                ctx.lineTo(cx + i * (r * 0.25), cy + r * 0.5);
+                ctx.stroke();
+            }
+            break;
+        }
+        default:
+            break;
+    }
+    ctx.restore();
+}
+
 export class MapRenderer {
     constructor(canvasElement) {
         this.canvas = canvasElement;
@@ -9,9 +256,54 @@ export class MapRenderer {
         this.animating = false;
         this.animationFrameId = null;
         this.skipAnimation = null;
+        this.viewMode = "focus"; // "focus" (智能扇区聚焦) | "full" (母舰全舰全景)
+    }
+
+    /**
+     * 在【🔭 扇区聚焦】与【🌌 全舰全景】之间一键切换
+     */
+    toggleViewMode() {
+        this.viewMode = this.viewMode === "focus" ? "full" : "focus";
+        return this.viewMode;
     }
 
     getLayout() {
+        const width = 720;
+        const height = 480;
+
+        // 全舰全景模式：完整 9 列 x 7 行母舰蓝图
+        if (this.viewMode === "full") {
+            const minX = 0, maxX = 8;
+            const minY = 0, maxY = 6;
+            const cols = 9;
+            const rows = 7;
+            const paddingX = 42;
+            const paddingY = 40;
+            const availW = width - paddingX * 2;
+            const availH = height - paddingY * 2;
+            const cellW = Math.floor(availW / (cols - 1));
+            const cellH = Math.floor(availH / (rows - 1));
+            const boxSize = 36;
+            const totalGridW = (cols - 1) * cellW;
+            const totalGridH = (rows - 1) * cellH;
+            const originX = Math.round((width - totalGridW) / 2);
+            const originY = Math.round((height - totalGridH) / 2);
+            return {
+                originX,
+                originY,
+                cellW,
+                cellH,
+                boxSize,
+                width,
+                height,
+                minX,
+                minY,
+                maxX,
+                maxY
+            };
+        }
+
+        // 扇区聚焦模式：自适应当前关卡开放区域的边界矩形
         let minX = 0, maxX = 4, minY = 1, maxY = 3;
         if (this.currentLevelMap && this.currentLevelMap.nodes) {
             const coords = Object.values(this.currentLevelMap.nodes).map(n => n.coord || { x: 0, y: 1 });
@@ -27,7 +319,7 @@ export class MapRenderer {
         const rows = Math.max(maxY - minY + 1, 1);
 
         // 第一关兼容
-        if (cols <= 5 && rows <= 3 && maxX <= 4 && maxY <= 3) {
+        if (cols <= 5 && rows <= 3 && maxX <= 4 && maxY <= 3 && minX === 0 && minY === 1) {
             return {
                 originX: 90,
                 originY: 80,
@@ -37,12 +329,14 @@ export class MapRenderer {
                 width: 680,
                 height: 460,
                 minX: 0,
-                minY: 1
+                minY: 1,
+                maxX: 4,
+                maxY: 3
             };
         }
 
         // 第二关兼容
-        if (cols <= 5 && rows <= 4 && maxY === 4 && minX === 0) {
+        if (cols <= 5 && rows <= 4 && maxY === 4 && minX === 0 && minY === 1) {
             return {
                 originX: 95,
                 originY: 52,
@@ -52,13 +346,13 @@ export class MapRenderer {
                 width: 680,
                 height: 460,
                 minX: 0,
-                minY: 1
+                minY: 1,
+                maxX: 4,
+                maxY: 4
             };
         }
 
-        // 梯级 1~4 自适应计算 (720x480)
-        const width = 720;
-        const height = 480;
+        // 梯级 1~5 自适应计算 (720x480)
         const paddingX = 55;
         const paddingY = 48;
         const availW = width - paddingX * 2;
@@ -68,8 +362,8 @@ export class MapRenderer {
         const cellH = rows > 1 ? Math.floor(availH / (rows - 1)) : availH;
 
         let boxSize = Math.floor(Math.min(cellW, cellH) * 0.72);
-        if (boxSize > 52) boxSize = 52;
-        if (boxSize < 28) boxSize = 28;
+        if (boxSize > 54) boxSize = 54;
+        if (boxSize < 30) boxSize = 30;
 
         const totalGridW = (cols - 1) * cellW;
         const totalGridH = (rows - 1) * cellH;
@@ -86,7 +380,9 @@ export class MapRenderer {
             width,
             height,
             minX,
-            minY
+            minY,
+            maxX,
+            maxY
         };
     }
 
@@ -133,10 +429,10 @@ export class MapRenderer {
         ctx.fillStyle = "#060913";
         ctx.fillRect(0, 0, width, height);
 
-        // 绘制微弱背景网格
-        ctx.strokeStyle = "rgba(56, 189, 248, 0.05)";
+        // 绘制星空深空微弱网格
+        ctx.strokeStyle = "rgba(56, 189, 248, 0.04)";
         ctx.lineWidth = 1;
-        const gridSize = 25;
+        const gridSize = 24;
         for (let x = 0; x < width; x += gridSize) {
             ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
         }
@@ -148,7 +444,6 @@ export class MapRenderer {
         const visitedSet = new Set(visitedNodes || []);
         if (currentNodeId) visitedSet.add(currentNodeId);
 
-        // 动效中支持起点与终点预热
         if (animatedMarker) {
             if (animatedMarker.fromId) visitedSet.add(animatedMarker.fromId);
             if (animatedMarker.progress >= 0.7 && animatedMarker.toId) {
@@ -173,8 +468,113 @@ export class MapRenderer {
 
         const boxSize = layout.boxSize;
         const nodes = levelMap.nodes;
+        const masterShip = levelMap.masterShip;
 
-        // 2. 绘制双线通道 (Double-line Corridors)
+        // 2. 母舰全舰轮廓与远端迷雾/未开放房间底模绘制 (当包含 masterShip 数据时)
+        if (masterShip) {
+            const allRooms = masterShip.allRooms || {};
+            const lockedRooms = masterShip.lockedRooms || {};
+            const fogRooms = masterShip.fogRooms || {};
+
+            // 2.1 若在全景模式下，先绘制母舰全部连通通道骨架
+            if (this.viewMode === "full" && masterShip.allConnections) {
+                ctx.save();
+                ctx.strokeStyle = "rgba(30, 58, 138, 0.22)";
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([3, 3]);
+                masterShip.allConnections.forEach(([rA, rB]) => {
+                    const defA = allRooms[rA];
+                    const defB = allRooms[rB];
+                    if (defA && defB) {
+                        const pA = this.getNodeCenter(defA);
+                        const pB = this.getNodeCenter(defB);
+                        ctx.beginPath();
+                        ctx.moveTo(pA.x, pA.y);
+                        ctx.lineTo(pB.x, pB.y);
+                        ctx.stroke();
+                    }
+                });
+                ctx.setLineDash([]);
+                ctx.restore();
+            }
+
+            // 2.2 绘制 B 类【深空星云迷雾房间】(远端未开放，仅在全景模式下渲染轮廓)
+            if (this.viewMode === "full") {
+                Object.values(fogRooms).forEach(fog => {
+                    const def = allRooms[fog.id];
+                    if (!def) return;
+                    const p = this.getNodeCenter(def);
+                    const shape = def.shape || "rect";
+                    const x = p.x - boxSize / 2;
+                    const y = p.y - boxSize / 2;
+
+                    ctx.save();
+                    ctx.fillStyle = "rgba(15, 23, 42, 0.35)";
+                    ctx.strokeStyle = "rgba(100, 116, 139, 0.18)";
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([2, 3]);
+
+                    drawShapePath(ctx, shape, x, y, boxSize, boxSize);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // 微弱深空迷雾字符
+                    ctx.fillStyle = "rgba(100, 116, 139, 0.35)";
+                    ctx.font = `bold ${Math.max(9, Math.floor(boxSize * 0.28))}px monospace`;
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText("░", p.x, p.y);
+                    ctx.restore();
+                });
+            }
+
+            // 2.3 绘制 A 类【邻近防爆锁闭房间】(有通道相邻但被安全气闸锁死 🔒)
+            // 在全景模式，或扇区聚焦模式且该锁闭房间位于当前视野范围内时渲染
+            Object.values(lockedRooms).forEach(locked => {
+                const def = allRooms[locked.id];
+                if (!def) return;
+                const p = this.getNodeCenter(def);
+
+                // 在聚焦模式下，只绘制坐标落在当前视野视窗内的邻近锁闭房间
+                if (this.viewMode === "focus") {
+                    if (p.x < 10 || p.x > width - 10 || p.y < 10 || p.y > height - 30) {
+                        return;
+                    }
+                }
+
+                const shape = def.shape || "rect";
+                const x = p.x - boxSize / 2;
+                const y = p.y - boxSize / 2;
+
+                ctx.save();
+                ctx.fillStyle = "rgba(69, 10, 10, 0.45)";
+                ctx.strokeStyle = "rgba(239, 68, 68, 0.65)";
+                ctx.lineWidth = 1.6;
+                ctx.setLineDash([4, 2]);
+
+                drawShapePath(ctx, shape, x, y, boxSize, boxSize);
+                ctx.fill();
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // 绘制红色防爆安全门锁 🔒
+                const lockFontSize = Math.max(10, Math.floor(boxSize * 0.38));
+                ctx.font = `${lockFontSize}px sans-serif`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = "#ef4444";
+                ctx.fillText("🔒", p.x, p.y - (boxSize >= 42 ? 5 : 0));
+
+                if (boxSize >= 42) {
+                    ctx.font = "bold 8px 'PingFang SC', sans-serif";
+                    ctx.fillStyle = "rgba(248, 113, 113, 0.85)";
+                    ctx.fillText("安全锁死", p.x, p.y + 11);
+                }
+                ctx.restore();
+            });
+        }
+
+        // 3. 绘制开放房间双线通道 (Double-line Corridors)
         const drawnEdges = new Set();
 
         Object.values(nodes).forEach(node => {
@@ -185,7 +585,6 @@ export class MapRenderer {
 
             Object.entries(conns).forEach(([dir, targetId]) => {
                 if (!revealedSet.has(targetId)) return;
-
                 if (!visitedSet.has(node.id) && !visitedSet.has(targetId)) return;
 
                 const edgeKey = [node.id, targetId].sort().join("<->");
@@ -204,11 +603,11 @@ export class MapRenderer {
 
                 const nx = -dy / len;
                 const ny = dx / len;
-                const gap = 5; // 双线间距的一半
+                const gap = Math.max(3, Math.min(5, Math.floor(boxSize * 0.08)));
 
                 const bothVisited = visitedSet.has(node.id) && visitedSet.has(targetId);
 
-                // 正在平移动画通行的走廊，施加动态高亮光晕
+                // 行进动画通道高亮
                 const isTraversingEdge = animatedMarker && (
                     (animatedMarker.fromId === node.id && animatedMarker.toId === targetId) ||
                     (animatedMarker.fromId === targetId && animatedMarker.toId === node.id)
@@ -216,29 +615,29 @@ export class MapRenderer {
 
                 if (isTraversingEdge) {
                     ctx.strokeStyle = "#38bdf8";
-                    ctx.lineWidth = 3;
+                    ctx.lineWidth = 3.2;
                     ctx.shadowColor = "#38bdf8";
                     ctx.shadowBlur = 12;
                     ctx.setLineDash([]);
                 } else if (bothVisited) {
-                    ctx.strokeStyle = "rgba(56, 189, 248, 0.65)";
+                    ctx.strokeStyle = "rgba(56, 189, 248, 0.7)";
                     ctx.lineWidth = 2;
                     ctx.shadowBlur = 0;
                     ctx.setLineDash([]);
                 } else {
                     ctx.strokeStyle = "rgba(56, 189, 248, 0.3)";
-                    ctx.lineWidth = 2;
+                    ctx.lineWidth = 1.8;
                     ctx.shadowBlur = 0;
                     ctx.setLineDash([4, 4]);
                 }
 
-                // 第一条平行线
+                // 第一条平行通道线
                 ctx.beginPath();
                 ctx.moveTo(p1.x + nx * gap, p1.y + ny * gap);
                 ctx.lineTo(p2.x + nx * gap, p2.y + ny * gap);
                 ctx.stroke();
 
-                // 第二条平行线
+                // 第二条平行通道线
                 ctx.beginPath();
                 ctx.moveTo(p1.x - nx * gap, p1.y - ny * gap);
                 ctx.lineTo(p2.x - nx * gap, p2.y - ny * gap);
@@ -249,7 +648,7 @@ export class MapRenderer {
             });
         });
 
-        // 2.0 若处于多节点路径快速往返中，绘制全局预备光轨
+        // 3.1 若处于多节点路径快速往返中，绘制全局预备光轨
         if (animatedMarker && animatedMarker.path && animatedMarker.path.length > 1) {
             ctx.save();
             ctx.strokeStyle = "rgba(74, 222, 128, 0.4)";
@@ -267,7 +666,7 @@ export class MapRenderer {
             ctx.restore();
         }
 
-        // 2.1 平移动画进行中：绘制行进激光尾迹
+        // 3.2 平移动画进行中：绘制行进激光尾迹
         if (animatedMarker && animatedMarker.progress > 0 && animatedMarker.fromId) {
             const startP = this.getNodeCenter(nodes[animatedMarker.fromId]);
             ctx.save();
@@ -282,7 +681,7 @@ export class MapRenderer {
             ctx.restore();
         }
 
-        // 3. 绘制各个房间方块 (仅绘制在 revealedSet 内的房间)
+        // 4. 绘制各个房间多边形造型与内部微缩蓝图设备
         Object.values(nodes).forEach(node => {
             if (!revealedSet.has(node.id)) {
                 return;
@@ -293,6 +692,8 @@ export class MapRenderer {
             const isDestination = animatedMarker && (node.id === animatedMarker.toId);
             const isVisited = visitedSet.has(node.id);
             const isHovered = options.hoveredNodeId === node.id;
+            const shape = node.shape || "rect";
+            const equipment = node.equipment;
 
             const x = p.x - boxSize / 2;
             const y = p.y - boxSize / 2;
@@ -310,7 +711,7 @@ export class MapRenderer {
                 ctx.lineWidth = 3;
                 ctx.setLineDash([]);
             } else if (isVisited) {
-                // 已完全探索过的房间 (若在悬停状态下加强高亮)
+                // 已完全探索过的房间
                 if (isHovered && options.canFastTravel) {
                     ctx.fillStyle = "rgba(16, 185, 129, 0.3)";
                     ctx.strokeStyle = "#4ade80";
@@ -322,25 +723,31 @@ export class MapRenderer {
                 }
                 ctx.setLineDash([]);
             } else {
-                // 周围一格但尚未踏入的迷雾边缘房间
-                ctx.fillStyle = "rgba(15, 23, 42, 0.5)";
+                // 周围一格但尚未踏入的边缘房间
+                ctx.fillStyle = "rgba(15, 23, 42, 0.55)";
                 ctx.strokeStyle = "rgba(148, 163, 184, 0.4)";
                 ctx.lineWidth = 1.5;
                 ctx.setLineDash([4, 3]);
             }
 
-            ctx.beginPath();
-            ctx.rect(x, y, boxSize, boxSize);
+            // 绘制个性化房间多边形
+            drawShapePath(ctx, shape, x, y, boxSize, boxSize);
             ctx.fill();
             ctx.stroke();
             ctx.setLineDash([]);
+
+            // 绘制内部极简蓝图设备线条 (仅在已探索或当前目标时展现)
+            if (isVisited || isDestination || isCurrent) {
+                drawEquipmentBlueprint(ctx, equipment, p.x, p.y, boxSize);
+            }
 
             // 当前或目标房间光晕特效
             if (isCurrent || isDestination) {
                 ctx.shadowColor = isDestination ? "#4ade80" : "#38bdf8";
                 ctx.shadowBlur = 16;
                 ctx.strokeStyle = isDestination ? "#4ade80" : "#ffffff";
-                ctx.strokeRect(x - 2, y - 2, boxSize + 4, boxSize + 4);
+                drawShapePath(ctx, shape, x - 2, y - 2, boxSize + 4, boxSize + 4);
+                ctx.stroke();
                 ctx.shadowBlur = 0;
             }
 
@@ -369,7 +776,10 @@ export class MapRenderer {
                 } else if (node.event && node.event.type === "npc") {
                     label = "NPC"; subLabel = showSub ? (node.event.npcId || "同伴") : ""; tagColor = "#c084fc";
                 } else {
-                    label = "走廊"; tagColor = "#94a3b8";
+                    // 若有房间名，显示前2~3个字符
+                    const cleanName = (node.name || "").replace(/【.*?】/, "");
+                    label = cleanName ? cleanName.slice(0, 3) : "走廊";
+                    tagColor = "#94a3b8";
                 }
             } else {
                 label = "？";
@@ -377,7 +787,7 @@ export class MapRenderer {
                 tagColor = "rgba(148, 163, 184, 0.75)";
             }
 
-            const mainFontSize = Math.max(Math.min(Math.floor(boxSize * 0.28), 13), 10);
+            const mainFontSize = Math.max(Math.min(Math.floor(boxSize * 0.28), 13), 9);
             const subFontSize = Math.max(mainFontSize - 2, 8);
 
             ctx.font = `bold ${mainFontSize}px 'PingFang SC', sans-serif`;
@@ -399,7 +809,6 @@ export class MapRenderer {
                 ctx.font = `bold ${hereFontSize}px 'Orbitron', monospace`;
                 ctx.fillText(boxSize >= 36 ? "📍HERE" : "📍", p.x, p.y - boxSize / 2 - 6);
             } else if (options.canFastTravel && isVisited && !animatedMarker) {
-                // 可快速往返房间角标提示
                 const isHover = options.hoveredNodeId === node.id;
                 ctx.fillStyle = isHover ? "#4ade80" : "rgba(74, 222, 128, 0.85)";
                 const travelFontSize = Math.max(Math.min(Math.floor(boxSize * 0.18), 9), 8);
@@ -408,14 +817,14 @@ export class MapRenderer {
             }
         });
 
-        // 4. 类似 Unity DoTween 平移动画光标渲染 (平滑穿梭于两点之间)
+        // 5. 行进动画光标渲染
         if (animatedMarker) {
             const curX = animatedMarker.x;
             const curY = animatedMarker.y;
 
             ctx.save();
 
-            // 4.1 抵达时的扩张脉冲冲击波
+            // 5.1 抵达冲击波
             if (arrivalPulse > 0) {
                 const pulseR = 16 + arrivalPulse * 38;
                 const alpha = Math.max(0, 1 - arrivalPulse);
@@ -426,7 +835,7 @@ export class MapRenderer {
                 ctx.stroke();
             }
 
-            // 4.2 雷达扫描扩散外环
+            // 5.2 雷达波纹
             const now = Date.now();
             const ring1 = 18 + 5 * Math.sin(now / 140);
             ctx.strokeStyle = "rgba(56, 189, 248, 0.55)";
@@ -435,14 +844,7 @@ export class MapRenderer {
             ctx.arc(curX, curY, ring1, 0, Math.PI * 2);
             ctx.stroke();
 
-            const ring2 = 25 + 4 * Math.cos(now / 190);
-            ctx.strokeStyle = "rgba(56, 189, 248, 0.25)";
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.arc(curX, curY, ring2, 0, Math.PI * 2);
-            ctx.stroke();
-
-            // 4.3 核心玩家小球标记 (发光徽章)
+            // 5.3 核心玩家小球标记
             ctx.shadowColor = "#38bdf8";
             ctx.shadowBlur = 18;
             ctx.fillStyle = arrivalPulse > 0 ? "#10b981" : "#0284c7";
@@ -455,14 +857,13 @@ export class MapRenderer {
             ctx.stroke();
             ctx.shadowBlur = 0;
 
-            // 核心标记文字
             ctx.fillStyle = "#ffffff";
             ctx.font = "bold 12px sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText("📍", curX, curY - 1);
 
-            // 4.4 悬浮名字标签
+            // 5.4 悬浮名字标签
             const tagText = arrivalPulse > 0 ? "抵达" : "L.P.H";
             ctx.font = "bold 10px 'Orbitron', monospace";
             const tagW = ctx.measureText(tagText).width + 12;
@@ -478,8 +879,8 @@ export class MapRenderer {
             ctx.restore();
         }
 
-        // 底部图例
-        ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+        // 6. 底部科技图例条
+        ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
         ctx.fillRect(10, height - 34, width - 20, 28);
         ctx.strokeStyle = "rgba(56, 189, 248, 0.3)";
         ctx.strokeRect(10, height - 34, width - 20, 28);
@@ -487,21 +888,17 @@ export class MapRenderer {
         ctx.font = "12px 'PingFang SC', sans-serif";
         ctx.textAlign = "left";
         ctx.fillStyle = "#cbd5e1";
+
+        const modeBadge = this.viewMode === "focus" ? "[🔭 扇区聚焦]" : "[🌌 全舰全景]";
         if (options.canFastTravel) {
-            ctx.fillText("💡 白昼探索机制：直接点击地图上已探索的方块，即可【快速往返】穿梭（不计入面临选择次数）", 18, height - 16);
+            ctx.fillText(`${modeBadge} 点击已探索房间可【快速往返】 ｜ 🔒 气闸防爆隔离 ｜ ░ 远端深空迷雾`, 18, height - 16);
         } else {
-            ctx.fillText("迷雾探索机制：已探索区域(实线明亮) ｜ 周围一格待探明(虚线？) ｜ 快速往返仅限白天探索可用", 18, height - 16);
+            ctx.fillText(`${modeBadge} 当前区域清晰透视 ｜ 🔒 气闸锁死隔离 ｜ 点击上方按钮切换全舰全景`, 18, height - 16);
         }
     }
 
     /**
-     * 类似 Unity DoTween 的平滑位移动画 (单段)
-     * @param {Object} levelMap 关卡地图配置
-     * @param {string} fromNodeId 出发房间ID
-     * @param {string} toNodeId 目标房间ID
-     * @param {Set|Array} visitedNodes 已探索房间集合
-     * @param {Array} teamMembers 队伍列表
-     * @param {Function} onComplete 动画完成回调
+     * 单段平滑位移动画
      */
     animateMove(levelMap, fromNodeId, toNodeId, visitedNodes, teamMembers, onComplete) {
         if (this.animating && this.skipAnimation) {
@@ -523,7 +920,6 @@ export class MapRenderer {
             return;
         }
 
-        // 兼容非浏览器或无 requestAnimationFrame 环境 (如 Node.js 模拟环境)
         if (typeof requestAnimationFrame === "undefined") {
             this.render(levelMap, toNodeId, visitedNodes, teamMembers);
             if (onComplete) onComplete();
@@ -533,8 +929,8 @@ export class MapRenderer {
         this.animating = true;
         this.currentLevelMap = levelMap;
         let finished = false;
-        const moveDuration = 720; // 阶段1: 720ms 平滑位移
-        const holdDuration = 380; // 阶段2: 380ms 抵达脉冲光晕
+        const moveDuration = 720;
+        const holdDuration = 380;
         const startTime = performance.now();
 
         const finish = () => {
@@ -596,13 +992,7 @@ export class MapRenderer {
     }
 
     /**
-     * 多节点连续平滑穿梭路径动画 (用于地图快速往返)
-     * @param {Object} levelMap 关卡地图配置
-     * @param {Array<string>} pathNodeIds 完整节点ID序列 [startId, n1, n2, ..., destId]
-     * @param {Set|Array} visitedNodes 已探索房间集合
-     * @param {Array} teamMembers 队伍列表
-     * @param {Function} onSegmentStep 每一个新区段开始时的回调 (segIndex, fromId, toId)
-     * @param {Function} onComplete 路径穿梭完全结束的回调
+     * 多节点连续平滑穿梭路径动画
      */
     animatePath(levelMap, pathNodeIds, visitedNodes, teamMembers, onSegmentStep, onComplete) {
         if (this.animating && this.skipAnimation) {
@@ -619,7 +1009,6 @@ export class MapRenderer {
 
         const destId = pathNodeIds[pathNodeIds.length - 1];
 
-        // 兼容非浏览器或无 requestAnimationFrame 环境
         if (typeof requestAnimationFrame === "undefined") {
             if (onSegmentStep) {
                 for (let i = 0; i < pathNodeIds.length - 1; i++) {
@@ -636,10 +1025,9 @@ export class MapRenderer {
         let finished = false;
 
         const numSegments = pathNodeIds.length - 1;
-        // 单段行进时间：平滑适中 (根据节点数弹性调整 280ms ~ 420ms)
         const segmentDuration = Math.max(260, Math.min(420, 1600 / numSegments));
         const totalMoveDuration = segmentDuration * numSegments;
-        const holdDuration = 360; // 抵达目标时的光晕脉冲保持时间
+        const holdDuration = 360;
         const startTime = performance.now();
 
         let lastTriggeredSegment = 0;
@@ -669,7 +1057,6 @@ export class MapRenderer {
             if (elapsed < totalMoveDuration) {
                 const curSegIdx = Math.min(numSegments - 1, Math.floor(elapsed / segmentDuration));
                 
-                // 每迈入一个新区段，触发脚步音效和区段回调
                 if (curSegIdx !== lastTriggeredSegment) {
                     lastTriggeredSegment = curSegIdx;
                     if (onSegmentStep) {
@@ -699,7 +1086,6 @@ export class MapRenderer {
 
                 this.animationFrameId = requestAnimationFrame(step);
             } else if (elapsed < totalMoveDuration + holdDuration) {
-                // 抵达目标房间脉冲
                 const holdElapsed = elapsed - totalMoveDuration;
                 const pulseProgress = holdElapsed / holdDuration;
                 const destNode = nodes[destId];
@@ -724,8 +1110,7 @@ export class MapRenderer {
     }
 
     /**
-     * 绘制主界面右上角高科技微型雷达 (Mini-map Radar)
-     * 以 currentNodeId 为中心，聚焦当前房间与周边相邻连通房间 (局部视口)
+     * 绘制微型战术雷达 (Mini-map Radar)
      */
     renderMiniRadar(canvas, levelMap, currentNodeId, visitedNodes, isNearMimic = false) {
         if (!canvas || !levelMap || !levelMap.nodes) return;
@@ -735,11 +1120,9 @@ export class MapRenderer {
         const w = canvas.width = 140;
         const h = canvas.height = 140;
 
-        // 深邃雷达底色
         ctx.fillStyle = "#050914";
         ctx.fillRect(0, 0, w, h);
 
-        // 绘制雷达扫描圆环与十字线
         const cx = w / 2;
         const cy = h / 2;
 
@@ -766,7 +1149,6 @@ export class MapRenderer {
             right: { dx: 38, dy: 0 }
         };
 
-        // 绘制连接线与邻接房间
         Object.entries(conns).forEach(([dir, neighborId]) => {
             const offset = dirOffsets[dir];
             if (!offset) return;
@@ -824,7 +1206,6 @@ export class MapRenderer {
             ctx.restore();
         });
 
-        // 绘制中心当前节点
         const cSize = 26;
         ctx.save();
         ctx.fillStyle = isNearMimic ? "rgba(234, 179, 8, 0.35)" : "rgba(14, 165, 233, 0.35)";
@@ -842,7 +1223,6 @@ export class MapRenderer {
         ctx.fillText("📍", cx, cy);
         ctx.restore();
 
-        // 邵可欣被动高熵预警
         if (isNearMimic) {
             ctx.save();
             ctx.fillStyle = "#eab308";
@@ -853,4 +1233,3 @@ export class MapRenderer {
         }
     }
 }
-

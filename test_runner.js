@@ -1118,12 +1118,13 @@ if (!allRegLevels || allRegLevels.length < 25) {
     throw new Error('LevelRegistry 关卡总数不足 25 关！当前数量: ' + (allRegLevels ? allRegLevels.length : 0));
 }
 
-// 梯级配置规则
+// 梯级配置规则 (按用户五档规格: 1-5, 6-10, 11-15, 16-20, 21-25)
 const tierRules = [
-    { minLvl: 1, maxLvl: 5, target: 13, minRooms: 9, maxRooms: 16, tierName: '梯级1 (1-5关，3x5网格)' },
-    { minLvl: 6, maxLvl: 10, target: 24, minRooms: 20, maxRooms: 27, tierName: '梯级2 (6-10关，5x6网格)' },
-    { minLvl: 11, maxLvl: 20, target: 40, minRooms: 36, maxRooms: 43, tierName: '梯级3 (11-20关，7x7网格)' },
-    { minLvl: 21, maxLvl: 25, target: 54, minRooms: 50, maxRooms: 57, tierName: '梯级4 (21-25关，8x8网格)' }
+    { minLvl: 1, maxLvl: 5, target: 13, minRooms: 9, maxRooms: 16, tierName: '梯级1 (1-5关，基础甲板)' },
+    { minLvl: 6, maxLvl: 10, target: 24, minRooms: 20, maxRooms: 27, tierName: '梯级2 (6-10关，扩展扇区)' },
+    { minLvl: 11, maxLvl: 15, target: 39, minRooms: 35, maxRooms: 43, tierName: '梯级3 (11-15关，深潜区域)' },
+    { minLvl: 16, maxLvl: 20, target: 47, minRooms: 44, maxRooms: 53, tierName: '梯级4 (16-20关，前沿中枢)' },
+    { minLvl: 21, maxLvl: 25, target: 54, minRooms: 52, maxRooms: 58, tierName: '梯级5 (21-25关，全舰决战)' }
 ];
 
 const levelFingerprints = new Set();

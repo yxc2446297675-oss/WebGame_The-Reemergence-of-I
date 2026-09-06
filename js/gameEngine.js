@@ -200,6 +200,7 @@ export class GameEngine {
         // 地图 Tab 模式切换
         const tabLive = document.getElementById("btn-tab-live-map");
         const tabSketch = document.getElementById("btn-tab-sketch-map");
+        const btnToggleFocus = document.getElementById("btn-toggle-map-focus");
         const viewLive = document.getElementById("map-live-view");
         const viewSketch = document.getElementById("map-sketch-view");
 
@@ -216,6 +217,14 @@ export class GameEngine {
             tabLive?.classList.remove("active");
             viewSketch?.classList.remove("hidden");
             viewLive?.classList.add("hidden");
+        });
+
+        btnToggleFocus?.addEventListener("click", () => {
+            if (this.mapRenderer) {
+                const newMode = this.mapRenderer.toggleViewMode();
+                btnToggleFocus.textContent = newMode === "full" ? "🌌 全舰全景" : "🔭 扇区聚焦";
+                this.renderLiveMap();
+            }
         });
 
         // 实时地图 Canvas 点击与悬浮快速往返交互
@@ -2103,6 +2112,11 @@ export class GameEngine {
             if (canvas) {
                 this.mapRenderer = new MapRenderer(canvas);
             }
+        }
+
+        const btnToggleFocus = document.getElementById("btn-toggle-map-focus");
+        if (btnToggleFocus && this.mapRenderer) {
+            btnToggleFocus.textContent = this.mapRenderer.viewMode === "full" ? "🌌 全舰全景" : "🔭 扇区聚焦";
         }
 
         if (this.mapRenderer && this.currentLevel && this.currentLevel.map) {
