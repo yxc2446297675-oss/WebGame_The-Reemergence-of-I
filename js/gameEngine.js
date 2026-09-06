@@ -252,23 +252,30 @@ export class GameEngine {
 
             if (task.type === "audio") {
                 if (typeof Sound !== "undefined" && Sound.preloadAudio) {
-                    Sound.preloadAudio(task.url);
-                }
-                try {
-                    const a = new Audio(encodeURI(task.url));
-                    a.preload = "auto";
-                    const doneAudio = () => { clearTimeout(timer); onDone(); };
-                    if (typeof a.addEventListener === "function") {
-                        a.addEventListener("canplaythrough", doneAudio, { once: true });
-                        a.addEventListener("loadeddata", doneAudio, { once: true });
-                        a.addEventListener("error", doneAudio, { once: true });
-                    } else {
-                        doneAudio();
+                    Sound.preloadAudio(task.url).then(() => {
+                        clearTimeout(timer);
+                        onDone();
+                    }).catch(() => {
+                        clearTimeout(timer);
+                        onDone();
+                    });
+                } else {
+                    try {
+                        const a = new Audio(encodeURI(task.url));
+                        a.preload = "auto";
+                        const doneAudio = () => { clearTimeout(timer); onDone(); };
+                        if (typeof a.addEventListener === "function") {
+                            a.addEventListener("canplaythrough", doneAudio, { once: true });
+                            a.addEventListener("loadeddata", doneAudio, { once: true });
+                            a.addEventListener("error", doneAudio, { once: true });
+                        } else {
+                            doneAudio();
+                        }
+                        if (a.load) a.load();
+                    } catch (e) {
+                        clearTimeout(timer);
+                        onDone();
                     }
-                    if (a.load) a.load();
-                } catch (e) {
-                    clearTimeout(timer);
-                    onDone();
                 }
             } else if (task.type === "image") {
                 if (typeof CharacterRegistry !== "undefined" && CharacterRegistry.preloadImage) {

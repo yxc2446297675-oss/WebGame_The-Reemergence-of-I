@@ -193,45 +193,66 @@ class SoundEngine {
 
     // 异步预加载音频文件到缓存池 (同时支持 HTML5 Audio 实例预热与 Web Audio API 内存直接解码)
     preloadAudio(primaryUrl) {
-        if (!primaryUrl) return;
+        if (!primaryUrl) return Promise.resolve(null);
+        if (this.audioBuffers && this.audioBuffers.has(primaryUrl)) {
+            return Promise.resolve(this.audioBuffers.get(primaryUrl));
+        }
 
-        // 1. HTML5 Audio 实例预热与 load() 调用 (确保移动端浏览器立刻发起音频数据缓冲)
-        if (typeof Audio !== "undefined" && !this.audioCache.has(primaryUrl)) {
-            try {
-                const safeUrl = encodeURI(primaryUrl);
-                const audio = new Audio(safeUrl);
-                audio.preload = "auto";
-                if (typeof audio.load === "function") {
-                    audio.load();
+        return new Promise((resolve) => {
+            let resolved = false;
+            const done = () => {
+                if (!resolved) {
+                    resolved = true;
+                    resolve(null);
                 }
-                this.audioCache.set(primaryUrl, audio);
-            } catch (e) {
-                // ignore
-            }
-        }
+            };
 
-        // 2. 若 Web Audio 上下文可用，异步抓取二进制并解码至物理内存 AudioBuffer (极速 0ms 硬件发声)
-        if (this.ctx && typeof fetch === "function" && !this.audioBuffers.has(primaryUrl)) {
-            try {
-                const safeUrl = encodeURI(primaryUrl);
-                fetch(safeUrl)
-                    .then(res => (res.ok ? res.arrayBuffer() : null))
-                    .then(arrayBuffer => {
-                        if (arrayBuffer && this.ctx && typeof this.ctx.decodeAudioData === "function") {
-                            return this.ctx.decodeAudioData(arrayBuffer);
-                        }
-                        return null;
-                    })
-                    .then(decodedBuffer => {
-                        if (decodedBuffer) {
-                            this.audioBuffers.set(primaryUrl, decodedBuffer);
-                        }
-                    })
-                    .catch(() => {});
-            } catch (e) {
-                // ignore
+            // 1. HTML5 Audio 实例预热与 load() 调用 (确保移动端浏览器立刻发起音频数据缓冲)
+            if (typeof Audio !== "undefined" && !this.audioCache.has(primaryUrl)) {
+                try {
+                    const safeUrl = encodeURI(primaryUrl);
+                    const audio = new Audio(safeUrl);
+                    audio.preload = "auto";
+                    if (typeof audio.addEventListener === "function") {
+                        audio.addEventListener("canplaythrough", done, { once: true });
+                        audio.addEventListener("loadeddata", done, { once: true });
+                        audio.addEventListener("error", done, { once: true });
+                    }
+                    if (typeof audio.load === "function") {
+                        audio.load();
+                    }
+                    this.audioCache.set(primaryUrl, audio);
+                } catch (e) {
+                    done();
+                }
             }
-        }
+
+            // 2. 若 Web Audio 上下文可用，异步抓取二进制并解码至物理内存 AudioBuffer (极速 0ms 硬件发声)
+            if (this.ctx && typeof fetch === "function") {
+                try {
+                    const safeUrl = encodeURI(primaryUrl);
+                    fetch(safeUrl)
+                        .then(res => (res.ok ? res.arrayBuffer() : null))
+                        .then(arrayBuffer => {
+                            if (arrayBuffer && this.ctx && typeof this.ctx.decodeAudioData === "function") {
+                                return this.ctx.decodeAudioData(arrayBuffer);
+                            }
+                            return null;
+                        })
+                        .then(decodedBuffer => {
+                            if (decodedBuffer) {
+                                this.audioBuffers.set(primaryUrl, decodedBuffer);
+                            }
+                            done();
+                        })
+                        .catch(() => done());
+                } catch (e) {
+                    done();
+                }
+            } else {
+                setTimeout(done, 150);
+            }
+        });
     }
 
     // 预热加载游戏核心外置音效
