@@ -12,14 +12,18 @@ import { ExplorationEngine } from "./exploration.js";
 import { SaveSystem } from "./saveSystem.js";
 import { MapRenderer } from "./mapRenderer.js";
 import { UnlockEvaluator } from "./unlockEvaluator.js";
+import { DiaryUI } from "./diaryUI.js";
+import { getNpcRoomDefs, getRelativeDirection, buildSpaceshipLevelMap } from "./spaceshipMasterMap.js";
 
 export class GameEngine {
     constructor() {
         this.saveSystem = new SaveSystem();
         this.dialogueUI = new DialogueUI();
+        this.diaryUI = new DiaryUI();
         this.explorationEngine = new ExplorationEngine(this);
         this.mapRenderer = null;
         this.hoveredMapNodeId = null;
+        this.unlockedNpcRooms = new Set();
 
         // 核心游戏状态
         this.currentLevel = null;
@@ -893,7 +897,10 @@ export class GameEngine {
     // =========================================================================
     startNewGame(levelId = 1) {
         const levelConfig = LevelRegistry.find(l => l.levelId === levelId) || LevelRegistry[0];
-        this.currentLevel = levelConfig;
+        const freshMap = (typeof buildSpaceshipLevelMap === "function" && levelConfig.levelId >= 1 && levelConfig.levelId <= 25)
+            ? buildSpaceshipLevelMap(levelConfig.levelId)
+            : JSON.parse(JSON.stringify(levelConfig.map));
+        this.currentLevel = { ...levelConfig, map: freshMap };
 
         // 初始化主角
         this.protagonist = {
@@ -917,7 +924,8 @@ export class GameEngine {
         this.logAction(`【开始新循环】启动关卡：${levelConfig.title}。主角 L.P.H 身份：${WorldviewConfig.roleNames[this.protagonist.role].name}`);
 
         // 初始化地图
-        this.explorationEngine.initLevelMap(levelConfig.map);
+        this.explorationEngine.initLevelMap(this.currentLevel.map);
+        this.checkAndUnlockNpcRooms();
 
         // 异步预加载游戏核心音效与角色表情立绘资源，保证后续走图、触发事件与NPC交互零卡顿零延迟
         if (typeof Sound !== "undefined" && Sound.preloadDefaults) {
@@ -1075,6 +1083,7 @@ export class GameEngine {
     // =========================================================================
     enterQ3Exploration() {
         this.phase = "q3_explore";
+        this.checkAndUnlockNpcRooms();
         this.updateHeaderUI();
         this.renderExplorationControls();
 
@@ -1150,6 +1159,7 @@ export class GameEngine {
             this.teamMembers.push(npc);
             this.logAction(`【营救同伴】救醒了 [${npc.name}]，加入队伍！当前队伍人数: ${this.getAliveTeamMembers().length} 人`);
             this.updateHeaderUI();
+            this.checkAndUnlockNpcRooms();
 
             // 触发人物图鉴历练检定 (如邵可欣救援入队)
             this.checkPersonaSecretUnlocks("suffer_fate", { charId: npc.id, type: "rescued" });
@@ -2039,7 +2049,8 @@ export class GameEngine {
                 role: npc.role,
                 status: npc.status,
                 inquiryCount: npc.inquiryCount
-            }))
+            })),
+            unlockedNpcRooms: Array.from(this.unlockedNpcRooms || [])
         };
 
         const success = this.saveSystem.saveGame(state);
@@ -2103,6 +2114,8 @@ export class GameEngine {
         this.explorationEngine.choiceCount = data.choiceCount || 0;
         this.explorationEngine.visitedNodes = new Set(data.visitedNodes || []);
         this.explorationEngine.consumedEvents = new Set(data.consumedEvents || []);
+        this.unlockedNpcRooms = new Set(data.unlockedNpcRooms || []);
+        this.checkAndUnlockNpcRooms();
 
         this.screenMenu.classList.add("hidden");
         this.screenBlack.classList.add("hidden");
@@ -2130,6 +2143,84 @@ export class GameEngine {
     // 获取当前在队伍中且存活的NPC同伴（不含主角）
     getAliveNpcTeamMembers() {
         return this.teamMembers.filter(m => !m.isProtagonist && m.status === "active");
+    }
+
+    /**
+     * 检定并解锁队伍中成员的专属私人舱室 (支持主角+11个NPC扩展)
+     * 规则：只要队伍中带有该NPC（或主角L.P.H），即解锁对应专属房间并注入地图。
+     * 一旦解锁后永久可用（即便后续NPC死亡或离队也不再锁回）。
+     */
+    checkAndUnlockNpcRooms() {
+        if (!this.currentLevel || !this.currentLevel.map || !this.currentLevel.map.nodes) return;
+        const allNpcRooms = getNpcRoomDefs();
+        const aliveMembers = this.getAliveTeamMembers();
+
+        allNpcRooms.forEach(roomDef => {
+            // 必须当前关卡包含该私人舱室的物理连接门户，才可在此关卡接入拓扑！
+            if (!this.currentLevel.map.nodes[roomDef.connectsTo]) return;
+
+            const isAlreadyUnlocked = this.unlockedNpcRooms.has(roomDef.id);
+            const isNpcInTeam = roomDef.isProtagonistRoom || roomDef.npcOwnerId === "lph"
+                || aliveMembers.some(m => m.id === roomDef.npcOwnerId);
+
+            if (isAlreadyUnlocked || isNpcInTeam) {
+                if (!isAlreadyUnlocked) {
+                    this.unlockedNpcRooms.add(roomDef.id);
+                    const ownerNames = { lph: "指挥官", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+                    const ownerName = ownerNames[roomDef.npcOwnerId] || (this.allNpcMap.get(roomDef.npcOwnerId)?.name || roomDef.npcOwnerId);
+                    this.logAction(`【舱室解锁】[${roomDef.name}] 经过乘员 [${ownerName}] 信标授权，气闸锁已开启！`);
+                    this.showStageToast(`🔓 [${roomDef.name}] 气密锁已授权解除！`);
+                }
+
+                this.injectNpcRoomToMap(roomDef);
+            }
+        });
+    }
+
+    /**
+     * 将专属私人舱室节点动态接入当前地图拓扑网络
+     */
+    injectNpcRoomToMap(roomDef) {
+        if (!this.currentLevel || !this.currentLevel.map || !this.currentLevel.map.nodes) return;
+        const levelMap = this.currentLevel.map;
+        if (levelMap.nodes[roomDef.id]) return; // 已注入
+
+        const node = {
+            id: roomDef.id,
+            name: roomDef.name,
+            desc: roomDef.desc,
+            zone: roomDef.zone,
+            coord: { x: roomDef.coord.x, y: roomDef.coord.y },
+            shape: roomDef.shape || "quarters",
+            equipment: roomDef.equipment || null,
+            isNpcRoom: true,
+            npcOwnerId: roomDef.npcOwnerId,
+            diary: roomDef.diary,
+            connectsTo: roomDef.connectsTo,
+            connections: {}
+        };
+
+        // 建立与邻接房间的双向物理气闸连接
+        if (roomDef.connectsTo) {
+            const neighborNode = levelMap.nodes[roomDef.connectsTo];
+            if (neighborNode) {
+                const dirToNeighbor = getRelativeDirection(node.coord, neighborNode.coord);
+                const dirFromNeighbor = getRelativeDirection(neighborNode.coord, node.coord);
+                node.connections[dirToNeighbor] = roomDef.connectsTo;
+                neighborNode.connections[dirFromNeighbor] = node.id;
+            }
+        }
+
+        levelMap.nodes[roomDef.id] = node;
+
+        if (levelMap.masterShip && levelMap.masterShip.lockedRooms) {
+            delete levelMap.masterShip.lockedRooms[roomDef.id];
+        }
+        if (levelMap.masterShip && levelMap.masterShip.openRoomIds) {
+            if (!levelMap.masterShip.openRoomIds.includes(roomDef.id)) {
+                levelMap.masterShip.openRoomIds.push(roomDef.id);
+            }
+        }
     }
 
     updateHeaderUI() {
@@ -2533,6 +2624,31 @@ export class GameEngine {
         if (node.id === this.explorationEngine.currentNodeId) {
             this.showStageToast(`📍 当前已在 [${node.name}]`);
             return;
+        }
+
+        // 2b. 锁闭状态判定与NPC专属舱室解锁交互
+        if (node.isLocked) {
+            if (node.isNpcRoom) {
+                const ownerNames = { lph: "指挥官", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+                const ownerName = ownerNames[node.npcOwnerId] || "乘员";
+                const isNpcInTeam = node.isProtagonistRoom || node.npcOwnerId === "lph"
+                    || this.getAliveTeamMembers().some(m => m.id === node.npcOwnerId);
+
+                if (isNpcInTeam) {
+                    this.checkAndUnlockNpcRooms();
+                    this.renderStageMap();
+                    this.showStageToast(`🔓 [${node.name}] 经过 [${ownerName}] 授权已解锁！再次点击即可通行。`);
+                    return;
+                } else {
+                    this.showStageToast(`🔒 [${node.name}] 属于私人专属舱室，需 [${ownerName}] 随行才能授权进入！`);
+                    if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
+                    return;
+                }
+            } else {
+                this.showStageToast(`🔒 [${node.name}] 防爆气闸已断电锁死，本区域暂不可通行。`);
+                if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
+                return;
+            }
         }
 
         // 3. 检查是否为相邻连通房间 (用户要求：直接点击相邻未探索或已探索房间即可移动)

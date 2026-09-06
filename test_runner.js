@@ -87,7 +87,7 @@ function createMockElement(id, tag = 'div') {
                 fillRect() {}, strokeRect() {}, fillText() {}, beginPath() {},
                 moveTo() {}, lineTo() {}, stroke() {}, fill() {}, rect() {},
                 arc() {}, closePath() {}, save() {}, restore() {},
-                setLineDash() {}, clearRect() {},
+                setLineDash() {}, clearRect() {}, clip() {},
                 translate() {}, scale() {}, rotate() {}, roundRect() {},
                 createLinearGradient() { return { addColorStop() {} }; },
                 createRadialGradient() { return { addColorStop() {} }; },
@@ -1686,5 +1686,210 @@ console.log("\n32. 验证长文本对话框滑动、黑夜/裁决/傍晚阶段�
     console.log(`   【已验证】傍晚、裁决、黑夜全阶段地图比例绝对恒定 (scale=${initialScale})，零形变零跳变！`);
 }
 
-console.log('\n====== [TEST PASSED] 全部 32 项核心流程、母舰蓝图 1:1 等比保真、移动端双层顶栏与长文本滑动测试成功！ ======');
+// =============================================================================
+// 33. 验证 NPC 专属私人舱室规格（预留12个结构、单向连通、彼此不紧挨、默认上锁）
+// =============================================================================
+console.log('\n33. 验证 NPC 专属私人舱室规格（预留12个房间结构，当前激活4个，单向连接，彼此不紧挨，默认锁定）...');
+{
+    const { MASTER_ROOM_DEFS, MASTER_CONNECTIONS, getNpcRoomDefs, buildSpaceshipLevelMap } = window;
+
+    const npcRooms = getNpcRoomDefs();
+    if (!Array.isArray(npcRooms) || npcRooms.length < 4) {
+        throw new Error(`getNpcRoomDefs 必须返回至少 4 个专属私人舱室定义！当前数量: ${npcRooms ? npcRooms.length : 0}`);
+    }
+
+    const expectedOwners = ["lph", "kaze", "shaokexin", "mode"];
+    expectedOwners.forEach(owner => {
+        const found = npcRooms.find(r => r.npcOwnerId === owner);
+        if (!found) {
+            throw new Error(`未找到乘员 [${owner}] 的专属私人舱室！`);
+        }
+        if (!found.diary || !Array.isArray(found.diary) || found.diary.length === 0) {
+            throw new Error(`乘员 [${owner}] 的专属私人舱室缺少日记数据 (diary)！`);
+        }
+        found.diary.forEach((p, pIdx) => {
+            if (!p.title || !p.content) {
+                throw new Error(`乘员 [${owner}] 日记第 ${pIdx + 1} 页缺少标题或正文！`);
+            }
+        });
+    });
+    console.log(`   【已验证】4个专属私人舱室 (L.P.H/卡泽/邵可欣/莫德) 均已配置完整日记篇目！`);
+
+    // 验证规则：每个 NPC 房间只能与一个普通房间相连（单向连接）
+    npcRooms.forEach(room => {
+        const edges = MASTER_CONNECTIONS.filter(([a, b]) => a === room.id || b === room.id);
+        if (edges.length !== 1) {
+            throw new Error(`NPC专属舱室 [${room.id}] 连线数量必须严格为 1 条！当前连线数: ${edges.length} (${JSON.stringify(edges)})`);
+        }
+    });
+    console.log(`   【已验证】每个 NPC 专属房间在母舰拓扑中严格仅与 1 间相邻房间单向相连！`);
+
+    // 验证规则：NPC 房间之间尽量不要紧挨在一起 (曼哈顿距离 > 1)
+    for (let i = 0; i < npcRooms.length; i++) {
+        for (let j = i + 1; j < npcRooms.length; j++) {
+            const rA = npcRooms[i];
+            const rB = npcRooms[j];
+            const dist = Math.abs(rA.coord.x - rB.coord.x) + Math.abs(rA.coord.y - rB.coord.y);
+            if (dist <= 1) {
+                throw new Error(`NPC房间 [${rA.id}] 与 [${rB.id}] 紧挨在一起 (距离=${dist})，违背布局规则！`);
+            }
+        }
+    }
+    console.log(`   【已验证】所有 NPC 专属私人舱室分布在星舰不同方位角，彼此绝无紧邻！`);
+
+    // 验证规则：默认上锁，不出现在初始 openRoomIds 中
+    const lvl1Map = buildSpaceshipLevelMap(1);
+    npcRooms.forEach(room => {
+        if (lvl1Map.nodes[room.id]) {
+            throw new Error(`NPC专属舱室 [${room.id}] 不应默认出现在初始关卡开放节点列表中！`);
+        }
+    });
+    console.log(`   【已验证】全部 NPC 专属私人舱室初始默认处于锁定状态！测试通过！`);
+}
+
+// =============================================================================
+// 34. 验证 NPC 专属房间随行解锁机制与永久通行规则
+// =============================================================================
+console.log('\n34. 验证 NPC 专属房间随行解锁机制与永久通行规则...');
+{
+    // 重启第一关测试
+    app.startNewGame(1);
+
+    // 主角 L.P.H 随行，room_npc_lph 连接的 room_west_end 在第一关中存在
+    if (!app.unlockedNpcRooms.has("room_npc_lph")) {
+        throw new Error("主角私人舱室 room_npc_lph 应当随指挥官在队而自动解锁！");
+    }
+    if (!app.currentLevel.map.nodes["room_npc_lph"]) {
+        throw new Error("已解锁的 room_npc_lph 未成功注入当前关卡地图节点表！");
+    }
+    console.log(`   【已验证】指挥官常驻随行，主角私人舱 [room_npc_lph] 成功自动授权解锁并注入地图！`);
+
+    // 卡泽不在队内时，卡泽房间不可解锁
+    if (app.unlockedNpcRooms.has("room_npc_kaze")) {
+        throw new Error("卡泽尚未入队，其私人舱室 room_npc_kaze 不得提前解锁！");
+    }
+
+    // 进入第三关 (包含 room_tactical_plan，卡泽整备室的连接门户)
+    app.startNewGame(3);
+    const kazeNpc = app.getNpcById("kaze");
+    kazeNpc.status = "active";
+    app.teamMembers.push(kazeNpc);
+    app.checkAndUnlockNpcRooms();
+
+    if (!app.unlockedNpcRooms.has("room_npc_kaze")) {
+        throw new Error("卡泽入队后，其专属备勤室 room_npc_kaze 应当被成功解锁！");
+    }
+    if (!app.currentLevel.map.nodes["room_npc_kaze"]) {
+        throw new Error("已解锁的 room_npc_kaze 未成功注入第三关地图节点表中！");
+    }
+    const kazeNode = app.currentLevel.map.nodes["room_npc_kaze"];
+    if (!kazeNode.connections || !Object.values(kazeNode.connections).includes("room_tactical_plan")) {
+        throw new Error("room_npc_kaze 必须与 room_tactical_plan 建立双向气闸连通！");
+    }
+    console.log(`   【已验证】卡泽随行在队，[room_npc_kaze] 成功完成验证授权并建立双向气闸通路！`);
+
+    // 核心规则：一旦解锁后续不需要再有这名NPC了也可以经过（例如该NPC牺牲遇害）
+    kazeNpc.status = "dead";
+    app.checkAndUnlockNpcRooms();
+
+    if (!app.unlockedNpcRooms.has("room_npc_kaze")) {
+        throw new Error("卡泽遇害后，已解锁的 room_npc_kaze 不得被重新锁死！");
+    }
+    if (!app.currentLevel.map.nodes["room_npc_kaze"]) {
+        throw new Error("卡泽遇害后，room_npc_kaze 必须依然常驻在地图节点表中，支持全队安全通行！");
+    }
+    console.log(`   【已验证】即使 NPC 之后遇害离队，已解锁的专属舱室依然保持开放可通行！测试全部通过！`);
+}
+
+// =============================================================================
+// 35. 验证生化检测室伪人数量精准播报、舱室内装饰与NPC日记翻页弹窗
+// =============================================================================
+console.log('\n35. 验证生化检测室伪人播报、舱室装饰绘制与NPC日记独立翻页弹窗...');
+{
+    // A. 生化检测室伪人数量精准播报
+    app.startNewGame(2); // 第二关包含 room_med_surgery (生化检测室)
+    const surgeryNode = app.currentLevel.map.nodes["room_med_surgery"];
+    if (!surgeryNode || !surgeryNode.isDetectionRoom) {
+        throw new Error("第二关中的 room_med_surgery 必须携带 isDetectionRoom: true 标识！");
+    }
+
+    // 设置队伍成员：主角(seer) + 邵可欣(villager) + 莫德(wolf) -> 共1名伪人
+    const shaokexin = app.getNpcById("shaokexin");
+    const mode = app.getNpcById("mode");
+    shaokexin.status = "active";
+    shaokexin.role = "villager";
+    mode.status = "active";
+    mode.role = "wolf";
+    app.teamMembers = [app.protagonist, shaokexin, mode];
+
+    // 模拟踏入生化检测室
+    app.explorationEngine.handleNodeEvents(surgeryNode, false);
+
+    const latestLogs = app.actionLogs.slice(-3).map(l => l.text).join(' ');
+    if (!latestLogs.includes("【生化检测】") || !latestLogs.includes("1 名伪人拟态体")) {
+        throw new Error(`生化检测室未能精准播报 1 名伪人！当前日志: ${latestLogs}`);
+    }
+    console.log(`   【已验证】走入生化检测室成功在文字框与日志中精准播报队伍潜伏的伪人数量 (检出 1 名)！`);
+
+    // B. NPC日记独立翻页弹窗 (非普通文字框)
+    const modalDiary = document.getElementById("modal-npc-diary");
+    if (!modalDiary) {
+        throw new Error("DOM 中缺少 #modal-npc-diary 独立日记弹窗容器！");
+    }
+
+    const diaryPages = [
+        { title: "前哨纪要 · 第一页", content: "第一页正文测试内容，讲述任务起源。" },
+        { title: "前哨纪要 · 第二页", content: "第二页正文测试内容，讲述遭遇拟态。" },
+        { title: "前哨纪要 · 第三页", content: "第三页正文测试内容，讲述破局希望。" }
+    ];
+
+    app.diaryUI.open("卡泽", "#38bdf8", diaryPages);
+    if (modalDiary.classList.contains("hidden")) {
+        throw new Error("diaryUI.open 后日记弹窗未移除 hidden 显式展现！");
+    }
+
+    const elTitle = document.getElementById("diary-page-title");
+    const elContent = document.getElementById("diary-page-content");
+    const elIndicator = document.getElementById("diary-page-indicator");
+    const btnPrev = document.getElementById("btn-diary-prev");
+    const btnNext = document.getElementById("btn-diary-next");
+
+    if (elTitle.textContent !== "前哨纪要 · 第一页" || !elContent.innerHTML.includes("第一页正文测试内容")) {
+        throw new Error(`日记第一页内容显示不正确！title=${elTitle.textContent}`);
+    }
+    if (!btnPrev.disabled) {
+        throw new Error("第一页时【上一页】按钮必须处于 disabled 状态！");
+    }
+    if (btnNext.disabled) {
+        throw new Error("第一页时【下一页】按钮不得处于 disabled 状态！");
+    }
+    console.log(`   【已验证】日记弹窗成功打开，第一页标题、正文与翻页按钮状态正确！`);
+
+    // 翻页到第二页
+    btnNext.click();
+    if (elTitle.textContent !== "前哨纪要 · 第二页" || !elContent.innerHTML.includes("第二页正文测试内容")) {
+        throw new Error(`翻页后第二页内容显示不正确！title=${elTitle.textContent}`);
+    }
+    if (btnPrev.disabled) {
+        throw new Error("第二页时【上一页】按钮必须解除 disabled！");
+    }
+    console.log(`   【已验证】点击【下一页 ▶】成功平滑翻页至第 2 页！`);
+
+    // 翻页到第三页
+    btnNext.click();
+    if (!btnNext.disabled) {
+        throw new Error("尾页时【下一页】按钮必须自动变为 disabled！");
+    }
+    console.log(`   【已验证】翻页至尾页时【下一页 ▶】按钮智能禁用！`);
+
+    // 关闭日记弹窗
+    const btnClose = document.getElementById("btn-close-diary");
+    btnClose.click();
+    if (!modalDiary.classList.contains("hidden")) {
+        throw new Error("点击关闭按钮后日记弹窗未成功隐藏！");
+    }
+    console.log(`   【已验证】日记弹窗关闭功能正常，完全独立于视觉小说文字框！测试全部通过！`);
+}
+
+console.log('\n====== [TEST PASSED] 全部 35 项核心流程、NPC专属房间、生化检测室与日记弹窗测试 100% 成功！ ======');
 

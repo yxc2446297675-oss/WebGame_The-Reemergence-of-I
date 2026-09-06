@@ -141,6 +141,34 @@ export class ExplorationEngine {
             return;
         }
 
+        // B. 特殊生化检测室判定 (获知当前队伍里有几名伪人)
+        if (node.isDetectionRoom) {
+            const aliveTeam = this.gameEngine.getAliveTeamMembers();
+            const wolfCount = aliveTeam.filter(m => m.role === "wolf").length;
+            this.gameEngine.logAction(
+                `【生化检测】在 [${node.name}] 终端完成基因测序：当前随行 ${aliveTeam.length} 人，检出 ${wolfCount} 名伪人拟态体！`
+            );
+            this.gameEngine.dialogueUI.say(
+                { name: "生化检测终端", themeColor: "#34d399" },
+                `【生化检测报告】全队生命体征扫描完毕。当前随行队伍共 ${aliveTeam.length} 人，检测到潜伏着 ${wolfCount} 名异质伪装体（伪人）！`
+            );
+        }
+
+        // C. NPC 专属私人舱室日记读取 (独立翻页弹窗)
+        if (node.isNpcRoom && node.diary && Array.isArray(node.diary) && node.diary.length > 0) {
+            const ownerNames = { lph: "L.P.H", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+            const ownerColors = { lph: "#38bdf8", kaze: "#38bdf8", shaokexin: "#f43f5e", mode: "#a855f7" };
+            const ownerName = ownerNames[node.npcOwnerId] || node.name;
+            const ownerColor = ownerColors[node.npcOwnerId] || "#38bdf8";
+
+            this.gameEngine.logAction(`【翻阅日志】在 [${node.name}] 发现了一份私人记录本（${ownerName}）。`);
+            if (this.gameEngine.diaryUI) {
+                setTimeout(() => {
+                    this.gameEngine.diaryUI.open(ownerName, ownerColor, node.diary);
+                }, 200);
+            }
+        }
+
         // 检查该节点的事件是否已被触发过
         const eventKey = `${node.id}_event`;
         if (node.event && !this.consumedEvents.has(eventKey)) {

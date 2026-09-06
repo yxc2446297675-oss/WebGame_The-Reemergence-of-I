@@ -10,7 +10,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>潜伏危机：循环伪装体 (视觉小说·肉鸽探索·AI伪人杀)</title>
-    <link rel="stylesheet" href="./style.css?v=1788687272893">
+    <link rel="stylesheet" href="./style.css?v=1788694064849">
 </head>
 <body>
 
@@ -525,8 +525,31 @@
     <!-- 悬浮横屏旋转快捷切换按钮 (仅在移动端显示，随时可按) -->
     <button id="btn-toggle-landscape" class="btn-float-rotate" title="旋转屏幕方向">🔄</button>
 
+    <!-- NPC 日记翻页阅读弹窗 (Diary Reading Modal) -->
+    <div id="modal-npc-diary" class="modal-backdrop hidden">
+        <div class="modal-box diary-modal-box">
+            <div class="modal-header diary-modal-header">
+                <div class="diary-header-info">
+                    <span id="diary-npc-name" class="diary-npc-name">日记</span>
+                    <span id="diary-page-indicator" class="diary-page-indicator">第 1 页 / 共 1 页</span>
+                </div>
+                <button id="btn-close-diary" class="modal-close-btn">✕</button>
+            </div>
+            <div class="modal-body diary-body">
+                <div id="diary-page-title" class="diary-page-title">第一页</div>
+                <div id="diary-page-content" class="diary-page-content">
+                    <!-- 动态注入日记内容 -->
+                </div>
+            </div>
+            <div class="diary-footer">
+                <button id="btn-diary-prev" class="diary-nav-btn" disabled>◀ 上一页</button>
+                <button id="btn-diary-next" class="diary-nav-btn">下一页 ▶</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 游戏启动引导脚本 (单文件普通JS，彻底规避file://协议CORS限制，双击即可直接畅玩) -->
-    <script src="js/app.bundle.js?v=1788687272893"></script>
+    <script src="js/app.bundle.js?v=1788694064849"></script>
 </body>
 </html>
 

@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-06T09:34:32.881Z
+ * 自动生成于 2026-09-06T11:27:44.832Z
  */
 (function() {
     'use strict';
@@ -1369,6 +1369,12 @@ if (typeof window !== "undefined") {
  * 宇宙飞船基地母蓝图系统 (Spaceship Master Map Blueprint)
  * 包含整舰 58 间功能舱室的完整几何拓扑、房间外观类型、透视微缩机械设备，
  * 以及支持 5 个梯级（1~5, 6~10, 11~15, 16~20, 21~25）的子区域解锁裁剪机制。
+ *
+ * NPC 专属私人舱室系统 (NPC Private Quarters System)
+ * 每个 NPC (包括主角) 拥有一个专属私人舱室，默认上锁，仅当本局队伍中带有该 NPC 时才解锁。
+ * 一旦解锁，后续即便该 NPC 死亡或离队也可通行。
+ * 每个 NPC 房间仅与一个普通房间相连（单向连接），且彼此不相邻。
+ * 代码结构预留 12 个 NPC 房间槽位 (getNpcRoomDefs)，当前激活 4 个（主角+3个NPC）。
  */
 
 const MASTER_ROOM_DEFS = {
@@ -1493,12 +1499,13 @@ const MASTER_ROOM_DEFS = {
     },
     "room_med_surgery": {
         id: "room_med_surgery",
-        name: "【纳米手术舱】全自动急救台",
+        name: "【纳米手术舱 · 生化检测室】全自动急救台",
         zone: "medical",
         coord: { x: 5, y: 1 },
         shape: "medical",
         equipment: "medical_bed",
-        desc: "悬吊的纳米机械臂保持着待机姿态，无影灯在手术台上投下清冷光晕。"
+        isDetectionRoom: true, // 特殊：进入时触发伪人数量检测播报
+        desc: "悬吊的纳米机械臂保持着待机姿态，生化检测终端在手术台上投下清冷光晕。"
     },
     "room_cryo_stasis": {
         id: "room_cryo_stasis",
@@ -1938,7 +1945,148 @@ const MASTER_ROOM_DEFS = {
     }
 };
 
+// =========================================================================
+// NPC 专属私人舱室定义表 (NPC Private Quarters Registry)
+// 格式：预留 12 个槽位（主角+11个NPC），当前激活 4 个（主角+3NPC）。
+// 每个 NPC 房间：仅与一个普通房间相连（单向连接），且彼此不相邻，默认锁定。
+// 布局约束：使用 MASTER_ROOM_DEFS 之外的坐标，不与已有节点重叠。
+// =========================================================================
+const NPC_PRIVATE_QUARTERS = [
+    // ── 槽位 01：主角 L.P.H（舰体西端，x=-1,y=3，连接到 room_west_end）──
+    {
+        id: "room_npc_lph",
+        name: "【指挥官私人舱】L.P.H 的指挥席",
+        zone: "hub",
+        coord: { x: -1, y: 3 },
+        shape: "quarters",
+        equipment: "bridge_console",
+        isNpcRoom: true,
+        npcOwnerId: "lph",         // 主角ID
+        isProtagonistRoom: true,
+        connectsTo: "room_west_end",  // 唯一连接点
+        desc: "指挥官的专属私人舱室，墙上钉着战略地图与巡逻路线分析表。",
+        diary: [
+            {
+                title: "循环记录 · 第一章",
+                content: "我不知道自己已经经历了多少次轮回。每次从冷冻舱苏醒，回廊里的焦糊气味和金属地面的冰凉感都如此熟悉，却又如此陌生。\n\n唯一能确定的是：队伍里有伪人潜伏。它们能完美复制人类的声音、表情、甚至眼中的恐惧——但在极度压力下，细微的破绽总会暴露。\n\n我必须找到它。在时钟归零之前。"
+            },
+            {
+                title: "循环记录 · 第二章",
+                content: "在某个早已忘记是第几次的循环里，我犯了一个错误——我开始信任所有人。\n\n结果当然是惨败。伪人从容不迫地在夜幕中割断了我的喉咙，带着满意的微笑合上了舱门。\n\n从那之后，我学会了一件事：在这个回廊里，情感是奢侈品，而怀疑是生存的基石。但我也学会了另一件事——过度的怀疑，会让你亲手推开真正的盟友。"
+            },
+            {
+                title: "循环记录 · 第三章",
+                content: "卡泽、邵可欣、莫德——他们每一个人，在某个循环里，曾经救过我，也曾经杀过我。\n\n伪人是随机分配的，没有固定身份，只有这一局的命运。所以我不恨任何一个人。\n\n我只是在寻找这一次——这一次——哪个是真正的人类，站在光明的那一侧。"
+            }
+        ]
+    },
+    // ── 槽位 02：卡泽（舰艏偏西，x=2,y=-1，连接到 room_tactical_plan）──
+    {
+        id: "room_npc_kaze",
+        name: "【前锋战术备勤间】卡泽的整备室",
+        zone: "bow",
+        coord: { x: 2, y: -1 },
+        shape: "workshop",
+        equipment: "workshop_tools",
+        isNpcRoom: true,
+        npcOwnerId: "kaze",
+        connectsTo: "room_tactical_plan",
+        desc: "气密门上划着战术标记，地板上散落着弹夹和战术手套。一股淡淡的机油与汗水混合的气味。",
+        diary: [
+            {
+                title: "战斗日志 · Entry 01",
+                content: "今天又有人在怀疑我。\n\n我懒得解释，解释从来没用。在这种鬼地方，只有行动才能证明一切——而我的行动，全在战果上。\n\n不过……那个指挥官，眼神跟其他人不一样。不是那种满是恐惧的软弱眼神，而是在评估，在计算。\n\n也许这个循环，会有所不同。"
+            },
+            {
+                title: "战斗日志 · Entry 02",
+                content: "左臂的伤口又开裂了。\n\n是在第07巡逻区那次留下的，那天我用身体挡住了一颗高熵爆破弹，让新兵撤退。那个新兵……已经在上一个循环里被伪人抹杀了。\n\n我不信命，但我信一件事：只要我还站着，防线就不会倒。\n\n就算这个循环里的'我'是个伪人，那个真正的我，也会在某个地方做同样的事。"
+            },
+            {
+                title: "战斗日志 · Entry 03",
+                content: "有时候我想：如果伪人能完美复制我的记忆和情感，那我和它之间的区别是什么？\n\n也许根本没区别。\n\n也许区别在于：我知道自己是人，而它不需要知道。\n\n……这是我在某个深夜独自坐在这个整备间里，想明白的事。外面走廊里有脚步声，我抓紧了刀柄。警戒状态，永不解除。"
+            }
+        ]
+    },
+    // ── 槽位 03：邵可欣（东侧舰外，x=8,y=1，连接到 room_decon_airlock）──
+    {
+        id: "room_npc_shaokexin",
+        name: "【观测员记录舱】邵可欣的小窝",
+        zone: "living",
+        coord: { x: 8, y: 1 },
+        shape: "quarters",
+        equipment: "star_lens",
+        isNpcRoom: true,
+        npcOwnerId: "shaokexin",
+        connectsTo: "room_decon_airlock",
+        desc: "舱室角落摆着几株手工培育的小型植物，灯光温暖橘黄，与冰冷的金属走廊形成鲜明对比。",
+        diary: [
+            {
+                title: "私人日记 · 第一页",
+                content: "我在这里找到了一支旧钢笔和半本空白本子。\n\n基地爆炸时我正在做记录，爆炸声响起的瞬间，我第一反应是……保护这本本子。不是逃跑，是保护这本本子。\n\n我想这很能说明我是个什么样的人。\n\n妹妹说过，记录是对抗遗忘的唯一方式。她走的那天，我把她所有的话都写下来了。现在腕上这条缎带，就是从那本本子上剪下来的。"
+            },
+            {
+                title: "私人日记 · 第二页",
+                content: "队伍里有人是伪人，这我知道。\n\n但我不擅长怀疑别人，每次看到大家疲惫而紧张的眼神，我就舍不得投出那一票。\n\n可我有一个秘密：我能感觉到。\n\n不是看出来的，是感觉到的。靠近某些人时，心跳会加速，皮肤会起鸡皮疙瘩，像是在靠近一团没有温度的冰——穿着人皮的冰。\n\n我一直没敢说，因为我怕说错，也怕……说对了。"
+            },
+            {
+                title: "私人日记 · 第三页",
+                content: "队长，如果你看到这本日记——\n\n我希望这个循环里的你，能记住我。不是作为一个需要被保护的软弱姑娘，而是作为一个，真的很努力在这个黑暗里找到光的人。\n\n我来过，我存在过，我爱过这个世界。\n\n不管这一次的我，是不是能活着走出这片走廊。"
+            }
+        ]
+    },
+    // ── 槽位 04：莫德（底层西南，x=-1,y=5，连接到 room_shields_emitter）──
+    {
+        id: "room_npc_mode",
+        name: "【防爆坚守站】莫德的据点",
+        zone: "engineering",
+        coord: { x: -1, y: 5 },
+        shape: "storage",
+        equipment: "shield_coil",
+        isNpcRoom: true,
+        npcOwnerId: "mode",
+        connectsTo: "room_shields_emitter",
+        desc: "厚重的防爆盾靠在角落，地上划着手绘的防御阵型图，还有几行晦涩难懂的符号。",
+        diary: [
+            {
+                title: "观察记录 · 第一则",
+                content: "这不是我第一次执行秘密侦察任务，但这是我第一次……感到不确定。\n\n通常情况下，目标清晰，行动有序，结果可预测。但这次任务里有个变量——那个叫L.P.H的指挥官。\n\n他/她的决策方式与我预测的完全不同。在某个循环里，他/她放弃了明显有利的位置，只为救出一个对任务几乎没有价值的成员。\n\n这让我开始重新评估什么叫做'正确的判断'。"
+            },
+            {
+                title: "观察记录 · 第二则",
+                content: "有时候我会想，如果伪人其实也有意识，也在某种程度上'感受'着——那这场猎杀游戏，对它们来说是什么？\n\n是恐惧？是困惑？还是……使命？\n\n我不是在为它们辩护。我只是在思考一个问题：判断善恶的标准，是行为，还是意识？\n\n在这个回廊里，也许这个问题从来没有答案。"
+            },
+            {
+                title: "观察记录 · 第三则",
+                content: "防爆盾的重量，是一种踏实感。\n\n很多人觉得我沉默寡言，难以接近。其实不是的。我只是在观察，在评估，在等待一个合适的时机，说出真正有价值的话。\n\n在某个循环里，我挡在了队长和死亡之间。我不后悔——不管那一局里我是人类还是伪人，那一刻，我做的是正确的事。\n\n这就够了。"
+            }
+        ]
+    }
+    // ── 槽位 05~12：预留（用户后续自行扩展，按上面格式添加即可）──
+    // { id: "room_npc_npc5", npcOwnerId: "npc5_id", connectsTo: "room_xxx", ... },
+    // { id: "room_npc_npc6", npcOwnerId: "npc6_id", connectsTo: "room_xxx", ... },
+    // ...
+];
+
+// 将激活的 NPC 专属房间统一合并注入 MASTER_ROOM_DEFS，确保全局拓扑一致性
+NPC_PRIVATE_QUARTERS.forEach(room => {
+    MASTER_ROOM_DEFS[room.id] = room;
+});
+
+/**
+ * 获取当前已激活的NPC专属房间定义列表
+ * 可扩展：后续添加NPC后只需在 NPC_PRIVATE_QUARTERS 数组中追加条目即可
+ * @returns {Array} NPC专属房间定义数组
+ */
+function getNpcRoomDefs() {
+    return NPC_PRIVATE_QUARTERS;
+}
+
 const MASTER_CONNECTIONS = [
+    // NPC 专属私人舱室连接（每个房间仅与一个房间相连，单向通达）
+    ["room_npc_lph", "room_west_end"],
+    ["room_npc_kaze", "room_tactical_plan"],
+    ["room_npc_shaokexin", "room_decon_airlock"],
+    ["room_npc_mode", "room_shields_emitter"],
     // 舰艏 Y=0 横向干线
     ["room_sensor_array", "room_tactical_plan"],
     ["room_tactical_plan", "room_bridge_sub"],
@@ -2485,7 +2633,7 @@ const LEVEL_SECTOR_SPECS = {
         subtitle: "全舰 53 舱室大开放 · 仅少数严重损毁区锁闭",
         startNodeId: "room_start",
         exitNodeId: "room_singularity_gate",
-        openRoomIds: Object.keys(MASTER_ROOM_DEFS).filter(id => id !== "room_salvage_bay" && id !== "room_east_observation" && id !== "room_escape_pod_w" && id !== "room_escape_pod_e" && id !== "room_starboard_dock"),
+        openRoomIds: Object.keys(MASTER_ROOM_DEFS).filter(id => !MASTER_ROOM_DEFS[id].isNpcRoom && id !== "room_salvage_bay" && id !== "room_east_observation" && id !== "room_escape_pod_w" && id !== "room_escape_pod_e" && id !== "room_starboard_dock"),
         npcPlacements: {
             "room_npc1": "kaze",
             "room_npc2": "shaokexin",
@@ -2498,7 +2646,7 @@ const LEVEL_SECTOR_SPECS = {
         subtitle: "全舰 55 舱室开放 · 舰首至舰尾全线贯通",
         startNodeId: "room_start",
         exitNodeId: "room_singularity_gate",
-        openRoomIds: Object.keys(MASTER_ROOM_DEFS).filter(id => id !== "room_salvage_bay" && id !== "room_escape_pod_w" && id !== "room_starboard_dock"),
+        openRoomIds: Object.keys(MASTER_ROOM_DEFS).filter(id => !MASTER_ROOM_DEFS[id].isNpcRoom && id !== "room_salvage_bay" && id !== "room_escape_pod_w" && id !== "room_starboard_dock"),
         npcPlacements: {
             "room_bridge_main": "kaze",
             "room_med_surgery": "shaokexin",
@@ -2511,7 +2659,7 @@ const LEVEL_SECTOR_SPECS = {
         subtitle: "全舰 54 舱室开放 · 穿梭双侧逃生机库",
         startNodeId: "room_bridge_main",
         exitNodeId: "room_singularity_gate",
-        openRoomIds: Object.keys(MASTER_ROOM_DEFS).filter(id => id !== "room_salvage_bay" && id !== "room_east_airlock" && id !== "room_starboard_dock" && id !== "room_specimen_vault"),
+        openRoomIds: Object.keys(MASTER_ROOM_DEFS).filter(id => !MASTER_ROOM_DEFS[id].isNpcRoom && id !== "room_salvage_bay" && id !== "room_east_airlock" && id !== "room_starboard_dock" && id !== "room_specimen_vault"),
         npcPlacements: {
             "room_tactical_plan": "kaze",
             "room_npc2": "shaokexin",
@@ -2524,7 +2672,7 @@ const LEVEL_SECTOR_SPECS = {
         subtitle: "全舰 56 舱室大决战 · 拟态狂潮全面爆发",
         startNodeId: "room_start",
         exitNodeId: "room_singularity_gate",
-        openRoomIds: Object.keys(MASTER_ROOM_DEFS).filter(id => id !== "room_salvage_bay" && id !== "room_starboard_dock"),
+        openRoomIds: Object.keys(MASTER_ROOM_DEFS).filter(id => !MASTER_ROOM_DEFS[id].isNpcRoom && id !== "room_salvage_bay" && id !== "room_starboard_dock"),
         npcPlacements: {
             "room_bridge_main": "kaze",
             "room_hydro_garden": "shaokexin",
@@ -2537,7 +2685,7 @@ const LEVEL_SECTOR_SPECS = {
         subtitle: "全舰全境大开放 · 终极星舰脱出决战",
         startNodeId: "room_bridge_main",
         exitNodeId: "room_singularity_gate",
-        openRoomIds: Object.keys(MASTER_ROOM_DEFS),
+        openRoomIds: Object.keys(MASTER_ROOM_DEFS).filter(id => !MASTER_ROOM_DEFS[id].isNpcRoom),
         npcPlacements: {
             "room_tactical_plan": "kaze",
             "room_med_surgery": "shaokexin",
@@ -2549,10 +2697,11 @@ const LEVEL_SECTOR_SPECS = {
 
 function buildSpaceshipLevelMap(levelId) {
     const spec = LEVEL_SECTOR_SPECS[levelId] || LEVEL_SECTOR_SPECS[1];
-    const openSet = new Set(spec.openRoomIds);
+    const openRoomIds = [...(spec.openRoomIds || [])];
+    const openSet = new Set(openRoomIds);
     const nodes = {};
 
-    spec.openRoomIds.forEach(id => {
+    openRoomIds.forEach(id => {
         const baseDef = MASTER_ROOM_DEFS[id];
         if (!baseDef) return;
 
@@ -2565,6 +2714,11 @@ function buildSpaceshipLevelMap(levelId) {
             coord: { x: baseDef.coord.x, y: baseDef.coord.y },
             shape: mutated.shape || baseDef.shape || "rect",
             equipment: mutated.equipment || baseDef.equipment || null,
+            isDetectionRoom: !!baseDef.isDetectionRoom,
+            isNpcRoom: !!baseDef.isNpcRoom,
+            npcOwnerId: baseDef.npcOwnerId,
+            diary: baseDef.diary,
+            connectsTo: baseDef.connectsTo,
             connections: {}
         };
 
@@ -2630,8 +2784,12 @@ function buildSpaceshipLevelMap(levelId) {
                 coord: { x: def.coord.x, y: def.coord.y },
                 shape: def.shape,
                 equipment: def.equipment,
-                state: "locked",
-                lockReason: "防爆安全气闸锁死 · 供电切断"
+                isNpcRoom: !!def.isNpcRoom,
+                npcOwnerId: def.npcOwnerId,
+                diary: def.diary,
+                connectsTo: def.connectsTo,
+                state: def.isNpcRoom ? "npc_locked" : "locked",
+                lockReason: def.isNpcRoom ? `专属舱室上锁 · 需该乘员随行` : "防爆安全气闸锁死 · 供电切断"
             };
         } else {
             fogRooms[id] = {
@@ -2649,7 +2807,7 @@ function buildSpaceshipLevelMap(levelId) {
         masterShip: {
             allRooms: MASTER_ROOM_DEFS,
             allConnections: MASTER_CONNECTIONS,
-            openRoomIds: spec.openRoomIds,
+            openRoomIds: openRoomIds,
             lockedRooms,
             fogRooms
         }
@@ -3468,6 +3626,136 @@ class DialogueUI {
 
 
     // =========================================================================
+    // 模块: diaryUI.js
+    // =========================================================================
+﻿/**
+ * NPC 日记翻页弹窗控制器 (Diary Modal UI)
+ * 独立弹窗（非文字框），支持翻页阅读，代码完全解耦、高扩展性。
+ * 用法：diaryUI.open(npcName, themeColor, pages, onClose?)
+ */
+
+class DiaryUI {
+    constructor() {
+        this.currentPage = 0;
+        this.pages = [];
+        this.npcName = "";
+        this.themeColor = "#38bdf8";
+        this.onCloseCallback = null;
+        this._bound = false;
+    }
+
+    /**
+     * 初始化 DOM 引用并绑定按钮事件（懒初始化，只执行一次）
+     */
+    _initDom() {
+        if (this._bound) return;
+        this.backdrop     = document.getElementById("modal-npc-diary");
+        this.elNpcName    = document.getElementById("diary-npc-name");
+        this.elIndicator  = document.getElementById("diary-page-indicator");
+        this.elTitle      = document.getElementById("diary-page-title");
+        this.elContent    = document.getElementById("diary-page-content");
+        this.btnPrev      = document.getElementById("btn-diary-prev");
+        this.btnNext      = document.getElementById("btn-diary-next");
+        this.btnClose     = document.getElementById("btn-close-diary");
+
+        if (!this.backdrop) return; // 测试环境兜底
+
+        this.btnPrev?.addEventListener("click", () => this.goToPage(this.currentPage - 1));
+        this.btnNext?.addEventListener("click", () => this.goToPage(this.currentPage + 1));
+        this.btnClose?.addEventListener("click", () => this.close());
+
+        // 点击遮罩层外侧关闭
+        this.backdrop.addEventListener("click", (e) => {
+            if (e.target === this.backdrop) this.close();
+        });
+
+        this._bound = true;
+    }
+
+    /**
+     * 打开日记弹窗
+     * @param {string} npcName - NPC 名称（显示于标题）
+     * @param {string} themeColor - 主题色（边框 + 标题）
+     * @param {Array<{title:string, content:string}>} pages - 日记页数组
+     * @param {Function} [onClose] - 关闭回调（可选）
+     */
+    open(npcName, themeColor, pages, onClose = null) {
+        this._initDom();
+        if (!this.backdrop || !pages || pages.length === 0) return;
+
+        this.npcName = npcName;
+        this.themeColor = themeColor || "#38bdf8";
+        this.pages = pages;
+        this.currentPage = 0;
+        this.onCloseCallback = onClose;
+
+        // 应用主题色到弹窗边框
+        const box = this.backdrop.querySelector(".diary-modal-box");
+        if (box) box.style.borderColor = this.themeColor;
+
+        if (this.elNpcName) {
+            this.elNpcName.textContent = `${npcName} 的日记`;
+            this.elNpcName.style.color = this.themeColor;
+        }
+
+        this.goToPage(0);
+        this.backdrop.classList.remove("hidden");
+    }
+
+    /**
+     * 跳转到指定页
+     * @param {number} idx - 页码（0-indexed）
+     */
+    goToPage(idx) {
+        if (!this.pages || this.pages.length === 0) return;
+        idx = Math.max(0, Math.min(this.pages.length - 1, idx));
+        this.currentPage = idx;
+
+        const page = this.pages[idx];
+
+        if (this.elIndicator) {
+            this.elIndicator.textContent = `第 ${idx + 1} 页 / 共 ${this.pages.length} 页`;
+        }
+        if (this.elTitle) {
+            this.elTitle.textContent = page.title || `第 ${idx + 1} 页`;
+        }
+        if (this.elContent) {
+            // 将换行符转成 HTML 换行
+            this.elContent.innerHTML = (page.content || "").replace(/\n/g, "<br>");
+            // 每次翻页滚动回顶部
+            this.elContent.scrollTop = 0;
+        }
+
+        // 按钮状态
+        if (this.btnPrev) this.btnPrev.disabled = (idx === 0);
+        if (this.btnNext) this.btnNext.disabled = (idx >= this.pages.length - 1);
+    }
+
+    /**
+     * 关闭日记弹窗
+     */
+    close() {
+        this._initDom();
+        if (!this.backdrop) return;
+        this.backdrop.classList.add("hidden");
+        if (this.onCloseCallback) {
+            const cb = this.onCloseCallback;
+            this.onCloseCallback = null;
+            cb();
+        }
+    }
+
+    /**
+     * 当前弹窗是否处于打开状态
+     */
+    isOpen() {
+        this._initDom();
+        return this.backdrop && !this.backdrop.classList.contains("hidden");
+    }
+}
+
+
+    // =========================================================================
     // 模块: saveSystem.js
     // =========================================================================
 /**
@@ -4008,6 +4296,131 @@ function drawEquipmentBlueprint(ctx, equipment, cx, cy, boxSize) {
 }
 
 /**
+ * 绘制舱室内部装饰图案：警戒斑马线、机械管线、NPC专属纹理
+ * 仅在房间已探索后调用（isVisited === true）
+ */
+function drawRoomDecoration(ctx, node, x, y, boxSize, theme) {
+    if (!node) return;
+    ctx.save();
+
+    const zone = node.zone || "hub";
+    const isNpcRoom = !!(node.isNpcRoom);
+
+    // ── NPC 专属房间：对角纹理+专属色晕 ──
+    if (isNpcRoom) {
+        const npcColors = {
+            "lph":        "#38bdf8",
+            "kaze":       "#38bdf8",
+            "shaokexin":  "#f43f5e",
+            "mode":       "#a855f7"
+        };
+        const roomColor = npcColors[node.npcOwnerId] || "#4ade80";
+        const s = boxSize;
+        const stripeW = Math.max(5, Math.floor(s * 0.12));
+
+        ctx.strokeStyle = `${roomColor}33`; // 20% 透明
+        ctx.lineWidth = stripeW;
+        ctx.setLineDash([]);
+
+        // 斜线纹理（右上→左下方向）
+        for (let off = -s; off < s * 2; off += stripeW * 2.6) {
+            ctx.beginPath();
+            ctx.moveTo(x + off, y);
+            ctx.lineTo(x + off + s, y + s);
+            ctx.stroke();
+        }
+
+        // NPC 专属光圈
+        ctx.shadowColor = roomColor;
+        ctx.shadowBlur = 8;
+        ctx.strokeStyle = `${roomColor}55`;
+        ctx.lineWidth = 1.5;
+        const cx = x + s / 2, cy = y + s / 2;
+        const r = s * 0.18;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        ctx.restore();
+        return;
+    }
+
+    // ── Security / Hub 区域：警戒斑马线（边角黄黑斜纹） ──
+    if (zone === "security" || zone === "hub") {
+        const stripeW = Math.max(3, Math.floor(boxSize * 0.08));
+        ctx.lineWidth = stripeW;
+        const cornerSize = Math.floor(boxSize * 0.35);
+
+        // 绘制在房间四角的小斑马线片段
+        const corners = [
+            { ox: x,                       oy: y,                        },  // 左上
+            { ox: x + boxSize - cornerSize, oy: y,                        },  // 右上
+            { ox: x,                       oy: y + boxSize - cornerSize, },  // 左下
+            { ox: x + boxSize - cornerSize, oy: y + boxSize - cornerSize, },  // 右下
+        ];
+
+        corners.forEach(({ ox, oy }) => {
+            ctx.save();
+            ctx.rect(ox, oy, cornerSize, cornerSize);
+            if (ctx.clip) ctx.clip();
+            for (let off = -cornerSize; off < cornerSize * 2; off += stripeW * 2.2) {
+                ctx.strokeStyle = (Math.floor(off / stripeW) % 2 === 0)
+                    ? "rgba(245,158,11,0.35)"
+                    : "rgba(30,30,30,0.25)";
+                ctx.beginPath();
+                ctx.moveTo(ox + off, oy);
+                ctx.lineTo(ox + off + cornerSize, oy + cornerSize);
+                ctx.stroke();
+            }
+            ctx.restore();
+        });
+    }
+
+    // ── Engineering / Propulsion：舱壁管道机械图案 ──
+    if (zone === "engineering" || zone === "propulsion" || zone === "stern") {
+        const lw = Math.max(1, Math.floor(boxSize * 0.06));
+        ctx.strokeStyle = "rgba(248,113,113,0.22)";
+        ctx.lineWidth = lw;
+
+        const cx = x + boxSize / 2;
+        const cy = y + boxSize / 2;
+        const len = boxSize * 0.32;
+
+        // 十字管道
+        ctx.beginPath();
+        ctx.moveTo(cx - len, cy); ctx.lineTo(cx + len, cy);
+        ctx.moveTo(cx, cy - len); ctx.lineTo(cx, cy + len);
+        ctx.stroke();
+
+        // 四角小矩形接头
+        const jr = lw * 2;
+        [[cx - len, cy], [cx + len, cy], [cx, cy - len], [cx, cy + len]].forEach(([jx, jy]) => {
+            ctx.strokeRect(jx - jr, jy - jr, jr * 2, jr * 2);
+        });
+    }
+
+    // ── Medical：心电图装饰线 ──
+    if (zone === "medical") {
+        ctx.strokeStyle = "rgba(244,63,94,0.28)";
+        ctx.lineWidth = Math.max(1, Math.floor(boxSize * 0.05));
+        const cy = y + boxSize * 0.72;
+        const w = boxSize * 0.7;
+        const ox = x + boxSize * 0.15;
+        ctx.beginPath();
+        ctx.moveTo(ox, cy);
+        ctx.lineTo(ox + w * 0.25, cy);
+        ctx.lineTo(ox + w * 0.35, cy - boxSize * 0.22);
+        ctx.lineTo(ox + w * 0.45, cy + boxSize * 0.14);
+        ctx.lineTo(ox + w * 0.55, cy);
+        ctx.lineTo(ox + w, cy);
+        ctx.stroke();
+    }
+
+    ctx.restore();
+}
+
+/**
  * 在舱室外壁绘制物理气闸出入门户 (Airlock Portal / 连接点)
  */
 function drawAirlockDoorway(ctx, cx, cy, boxSize, dir, isTraversed = false, isLocked = false) {
@@ -4369,11 +4782,11 @@ class MapRenderer {
         const cellDist = 115;
         const boxSize = 58;
 
-        // 母舰世界坐标总范围 (以 9x7 网格为基准)
-        const shipWorldW = 8 * cellDist + boxSize * 2;
-        const shipWorldH = 6 * cellDist + boxSize * 2;
-        const originX = boxSize;
-        const originY = boxSize;
+        // 母舰世界坐标总范围 (以 11x9 物理网格为基准，包容 x=-1~9, y=-1~6 的扩展NPC专属舱室)
+        const shipWorldW = 10 * cellDist + boxSize * 2;
+        const shipWorldH = 8 * cellDist + boxSize * 2;
+        const originX = boxSize + cellDist;
+        const originY = boxSize + cellDist;
 
         return {
             originX,
@@ -4385,9 +4798,9 @@ class MapRenderer {
             height: displayH,
             shipWorldW,
             shipWorldH,
-            minX: 0,
-            minY: 0,
-            maxX: 8,
+            minX: -1,
+            minY: -1,
+            maxX: 9,
             maxY: 6
         };
     }
@@ -4432,6 +4845,17 @@ class MapRenderer {
             const p = this.getNodeCenter(node);
             if (Math.abs(worldX - p.x) <= half && Math.abs(worldY - p.y) <= half) {
                 return node;
+            }
+        }
+
+        // 支持点击靠近揭示的防爆锁闭/NPC专属舱室进行状态反馈与解锁
+        if (levelMap.masterShip && levelMap.masterShip.lockedRooms) {
+            for (const locked of Object.values(levelMap.masterShip.lockedRooms)) {
+                const def = (levelMap.masterShip.allRooms && levelMap.masterShip.allRooms[locked.id]) || locked;
+                const p = this.getNodeCenter(def);
+                if (Math.abs(worldX - p.x) <= half && Math.abs(worldY - p.y) <= half) {
+                    return { ...def, ...locked, isLocked: true };
+                }
             }
         }
         return null;
@@ -4674,7 +5098,7 @@ class MapRenderer {
             });
         }
 
-        // 5. 绘制【靠近揭示的防爆锁闭房间】(仅在靠近时展现)
+        // 5. 绘制【靠近揭示的防爆锁闭房间】(仅在靠近时展现，支持NPC专属房间特殊视觉主题)
         Object.values(visibleLockedRooms).forEach(locked => {
             const def = masterShip.allRooms[locked.id];
             if (!def) return;
@@ -4683,28 +5107,39 @@ class MapRenderer {
             const x = p.x - boxSize / 2;
             const y = p.y - boxSize / 2;
 
+            const isNpc = !!(def.isNpcRoom || locked.isNpcRoom);
+            const npcOwnerId = def.npcOwnerId || locked.npcOwnerId;
+            const npcColors = {
+                lph: "#38bdf8",
+                kaze: "#38bdf8",
+                shaokexin: "#f43f5e",
+                mode: "#a855f7"
+            };
+            const ownerNames = { lph: "指挥官", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+            const strokeColor = isNpc ? (npcColors[npcOwnerId] || "#38bdf8") : "#ef4444";
+            const ownerName = ownerNames[npcOwnerId] || "乘员";
+
             ctx.save();
-            // 厚重黑色外装甲壁
-            ctx.fillStyle = "#150404";
-            ctx.strokeStyle = "#ef4444";
+            ctx.fillStyle = isNpc ? "rgba(10, 20, 35, 0.95)" : "#150404";
+            ctx.strokeStyle = strokeColor;
             ctx.lineWidth = 2.2;
-            ctx.setLineDash([4, 2]);
+            ctx.setLineDash(isNpc ? [3, 2] : [4, 2]);
 
             drawRoomPolygon(ctx, shape, x, y, boxSize, boxSize);
             ctx.fill();
             ctx.stroke();
 
-            // 红色防爆隔离门锁 🔒
-            ctx.fillStyle = "#ef4444";
-            ctx.font = `${Math.max(11, Math.floor(boxSize * 0.36))}px sans-serif`;
+            // 门锁图标 🔒
+            ctx.fillStyle = strokeColor;
+            ctx.font = `${Math.max(11, Math.floor(boxSize * 0.34))}px sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText("🔒", p.x, p.y - (boxSize >= 42 ? 4 : 0));
+            ctx.fillText("🔒", p.x, p.y - (boxSize >= 42 ? 6 : 0));
 
             if (boxSize >= 42) {
                 ctx.font = "bold 8px 'PingFang SC', sans-serif";
-                ctx.fillStyle = "rgba(248, 113, 113, 0.9)";
-                ctx.fillText("气闸锁死", p.x, p.y + 11);
+                ctx.fillStyle = strokeColor;
+                ctx.fillText(isNpc ? `${ownerName}专属` : "气闸锁死", p.x, p.y + 11);
             }
             ctx.restore();
         });
@@ -4805,6 +5240,10 @@ class MapRenderer {
             // 6.4 绘制内部蓝图微缩设备 (点亮探索后清晰展现)
             if (isVisited || isDestination || isCurrent) {
                 drawEquipmentBlueprint(ctx, equipment, p.x, p.y, boxSize);
+                // 6.4b 绘制舱室内部装饰图案（斑马线/机械管线/NPC专属纹理）
+                if (isVisited) {
+                    drawRoomDecoration(ctx, node, x, y, boxSize, theme);
+                }
             }
 
             // 6.5 当前房间/行进目标发光光晕
@@ -4880,6 +5319,14 @@ class MapRenderer {
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 成员` : "同伴") : "";
                     tagColor = "#c084fc";
                     subTagColor = adjacentDir ? "#c084fc" : "#e9d5ff";
+                } else if (node.isNpcRoom) {
+                    const ownerNames = { lph: "L.P.H", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+                    const ownerColors = { lph: "#38bdf8", kaze: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc" };
+                    const oName = ownerNames[node.npcOwnerId] || "专属";
+                    label = `${oName}舱`;
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 私人舱` : "私人舱") : "";
+                    tagColor = ownerColors[node.npcOwnerId] || "#38bdf8";
+                    subTagColor = adjacentDir ? "#38bdf8" : "#94a3b8";
                 } else {
                     label = cleanName;
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 已探明` : "已探明") : "";
@@ -4888,8 +5335,15 @@ class MapRenderer {
                 }
             } else {
                 // 未探索房间：直接显示房间名称，并清晰标注 [未探索] 或 [方向 · 未探索]
-                label = cleanName;
-                subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 未探索` : "未探索") : "";
+                if (node.isNpcRoom) {
+                    const ownerNames = { lph: "L.P.H", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+                    const oName = ownerNames[node.npcOwnerId] || "专属";
+                    label = `${oName}舱`;
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 私人舱` : "私人舱") : "";
+                } else {
+                    label = cleanName;
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 未探索` : "未探索") : "";
+                }
                 if (adjacentDir) {
                     tagColor = "#ffffff";
                     subTagColor = "#38bdf8"; // 高亮青色，提示用户点击即可行进
@@ -5613,6 +6067,34 @@ class ExplorationEngine {
             return;
         }
 
+        // B. 特殊生化检测室判定 (获知当前队伍里有几名伪人)
+        if (node.isDetectionRoom) {
+            const aliveTeam = this.gameEngine.getAliveTeamMembers();
+            const wolfCount = aliveTeam.filter(m => m.role === "wolf").length;
+            this.gameEngine.logAction(
+                `【生化检测】在 [${node.name}] 终端完成基因测序：当前随行 ${aliveTeam.length} 人，检出 ${wolfCount} 名伪人拟态体！`
+            );
+            this.gameEngine.dialogueUI.say(
+                { name: "生化检测终端", themeColor: "#34d399" },
+                `【生化检测报告】全队生命体征扫描完毕。当前随行队伍共 ${aliveTeam.length} 人，检测到潜伏着 ${wolfCount} 名异质伪装体（伪人）！`
+            );
+        }
+
+        // C. NPC 专属私人舱室日记读取 (独立翻页弹窗)
+        if (node.isNpcRoom && node.diary && Array.isArray(node.diary) && node.diary.length > 0) {
+            const ownerNames = { lph: "L.P.H", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+            const ownerColors = { lph: "#38bdf8", kaze: "#38bdf8", shaokexin: "#f43f5e", mode: "#a855f7" };
+            const ownerName = ownerNames[node.npcOwnerId] || node.name;
+            const ownerColor = ownerColors[node.npcOwnerId] || "#38bdf8";
+
+            this.gameEngine.logAction(`【翻阅日志】在 [${node.name}] 发现了一份私人记录本（${ownerName}）。`);
+            if (this.gameEngine.diaryUI) {
+                setTimeout(() => {
+                    this.gameEngine.diaryUI.open(ownerName, ownerColor, node.diary);
+                }, 200);
+            }
+        }
+
         // 检查该节点的事件是否已被触发过
         const eventKey = `${node.id}_event`;
         if (node.event && !this.consumedEvents.has(eventKey)) {
@@ -5870,13 +6352,17 @@ class ExplorationEngine {
 
 
 
+
+
 class GameEngine {
     constructor() {
         this.saveSystem = new SaveSystem();
         this.dialogueUI = new DialogueUI();
+        this.diaryUI = new DiaryUI();
         this.explorationEngine = new ExplorationEngine(this);
         this.mapRenderer = null;
         this.hoveredMapNodeId = null;
+        this.unlockedNpcRooms = new Set();
 
         // 核心游戏状态
         this.currentLevel = null;
@@ -6750,7 +7236,10 @@ class GameEngine {
     // =========================================================================
     startNewGame(levelId = 1) {
         const levelConfig = LevelRegistry.find(l => l.levelId === levelId) || LevelRegistry[0];
-        this.currentLevel = levelConfig;
+        const freshMap = (typeof buildSpaceshipLevelMap === "function" && levelConfig.levelId >= 1 && levelConfig.levelId <= 25)
+            ? buildSpaceshipLevelMap(levelConfig.levelId)
+            : JSON.parse(JSON.stringify(levelConfig.map));
+        this.currentLevel = { ...levelConfig, map: freshMap };
 
         // 初始化主角
         this.protagonist = {
@@ -6774,7 +7263,8 @@ class GameEngine {
         this.logAction(`【开始新循环】启动关卡：${levelConfig.title}。主角 L.P.H 身份：${WorldviewConfig.roleNames[this.protagonist.role].name}`);
 
         // 初始化地图
-        this.explorationEngine.initLevelMap(levelConfig.map);
+        this.explorationEngine.initLevelMap(this.currentLevel.map);
+        this.checkAndUnlockNpcRooms();
 
         // 异步预加载游戏核心音效与角色表情立绘资源，保证后续走图、触发事件与NPC交互零卡顿零延迟
         if (typeof Sound !== "undefined" && Sound.preloadDefaults) {
@@ -6932,6 +7422,7 @@ class GameEngine {
     // =========================================================================
     enterQ3Exploration() {
         this.phase = "q3_explore";
+        this.checkAndUnlockNpcRooms();
         this.updateHeaderUI();
         this.renderExplorationControls();
 
@@ -7007,6 +7498,7 @@ class GameEngine {
             this.teamMembers.push(npc);
             this.logAction(`【营救同伴】救醒了 [${npc.name}]，加入队伍！当前队伍人数: ${this.getAliveTeamMembers().length} 人`);
             this.updateHeaderUI();
+            this.checkAndUnlockNpcRooms();
 
             // 触发人物图鉴历练检定 (如邵可欣救援入队)
             this.checkPersonaSecretUnlocks("suffer_fate", { charId: npc.id, type: "rescued" });
@@ -7896,7 +8388,8 @@ class GameEngine {
                 role: npc.role,
                 status: npc.status,
                 inquiryCount: npc.inquiryCount
-            }))
+            })),
+            unlockedNpcRooms: Array.from(this.unlockedNpcRooms || [])
         };
 
         const success = this.saveSystem.saveGame(state);
@@ -7960,6 +8453,8 @@ class GameEngine {
         this.explorationEngine.choiceCount = data.choiceCount || 0;
         this.explorationEngine.visitedNodes = new Set(data.visitedNodes || []);
         this.explorationEngine.consumedEvents = new Set(data.consumedEvents || []);
+        this.unlockedNpcRooms = new Set(data.unlockedNpcRooms || []);
+        this.checkAndUnlockNpcRooms();
 
         this.screenMenu.classList.add("hidden");
         this.screenBlack.classList.add("hidden");
@@ -7987,6 +8482,84 @@ class GameEngine {
     // 获取当前在队伍中且存活的NPC同伴（不含主角）
     getAliveNpcTeamMembers() {
         return this.teamMembers.filter(m => !m.isProtagonist && m.status === "active");
+    }
+
+    /**
+     * 检定并解锁队伍中成员的专属私人舱室 (支持主角+11个NPC扩展)
+     * 规则：只要队伍中带有该NPC（或主角L.P.H），即解锁对应专属房间并注入地图。
+     * 一旦解锁后永久可用（即便后续NPC死亡或离队也不再锁回）。
+     */
+    checkAndUnlockNpcRooms() {
+        if (!this.currentLevel || !this.currentLevel.map || !this.currentLevel.map.nodes) return;
+        const allNpcRooms = getNpcRoomDefs();
+        const aliveMembers = this.getAliveTeamMembers();
+
+        allNpcRooms.forEach(roomDef => {
+            // 必须当前关卡包含该私人舱室的物理连接门户，才可在此关卡接入拓扑！
+            if (!this.currentLevel.map.nodes[roomDef.connectsTo]) return;
+
+            const isAlreadyUnlocked = this.unlockedNpcRooms.has(roomDef.id);
+            const isNpcInTeam = roomDef.isProtagonistRoom || roomDef.npcOwnerId === "lph"
+                || aliveMembers.some(m => m.id === roomDef.npcOwnerId);
+
+            if (isAlreadyUnlocked || isNpcInTeam) {
+                if (!isAlreadyUnlocked) {
+                    this.unlockedNpcRooms.add(roomDef.id);
+                    const ownerNames = { lph: "指挥官", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+                    const ownerName = ownerNames[roomDef.npcOwnerId] || (this.allNpcMap.get(roomDef.npcOwnerId)?.name || roomDef.npcOwnerId);
+                    this.logAction(`【舱室解锁】[${roomDef.name}] 经过乘员 [${ownerName}] 信标授权，气闸锁已开启！`);
+                    this.showStageToast(`🔓 [${roomDef.name}] 气密锁已授权解除！`);
+                }
+
+                this.injectNpcRoomToMap(roomDef);
+            }
+        });
+    }
+
+    /**
+     * 将专属私人舱室节点动态接入当前地图拓扑网络
+     */
+    injectNpcRoomToMap(roomDef) {
+        if (!this.currentLevel || !this.currentLevel.map || !this.currentLevel.map.nodes) return;
+        const levelMap = this.currentLevel.map;
+        if (levelMap.nodes[roomDef.id]) return; // 已注入
+
+        const node = {
+            id: roomDef.id,
+            name: roomDef.name,
+            desc: roomDef.desc,
+            zone: roomDef.zone,
+            coord: { x: roomDef.coord.x, y: roomDef.coord.y },
+            shape: roomDef.shape || "quarters",
+            equipment: roomDef.equipment || null,
+            isNpcRoom: true,
+            npcOwnerId: roomDef.npcOwnerId,
+            diary: roomDef.diary,
+            connectsTo: roomDef.connectsTo,
+            connections: {}
+        };
+
+        // 建立与邻接房间的双向物理气闸连接
+        if (roomDef.connectsTo) {
+            const neighborNode = levelMap.nodes[roomDef.connectsTo];
+            if (neighborNode) {
+                const dirToNeighbor = getRelativeDirection(node.coord, neighborNode.coord);
+                const dirFromNeighbor = getRelativeDirection(neighborNode.coord, node.coord);
+                node.connections[dirToNeighbor] = roomDef.connectsTo;
+                neighborNode.connections[dirFromNeighbor] = node.id;
+            }
+        }
+
+        levelMap.nodes[roomDef.id] = node;
+
+        if (levelMap.masterShip && levelMap.masterShip.lockedRooms) {
+            delete levelMap.masterShip.lockedRooms[roomDef.id];
+        }
+        if (levelMap.masterShip && levelMap.masterShip.openRoomIds) {
+            if (!levelMap.masterShip.openRoomIds.includes(roomDef.id)) {
+                levelMap.masterShip.openRoomIds.push(roomDef.id);
+            }
+        }
     }
 
     updateHeaderUI() {
@@ -8390,6 +8963,31 @@ class GameEngine {
         if (node.id === this.explorationEngine.currentNodeId) {
             this.showStageToast(`📍 当前已在 [${node.name}]`);
             return;
+        }
+
+        // 2b. 锁闭状态判定与NPC专属舱室解锁交互
+        if (node.isLocked) {
+            if (node.isNpcRoom) {
+                const ownerNames = { lph: "指挥官", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+                const ownerName = ownerNames[node.npcOwnerId] || "乘员";
+                const isNpcInTeam = node.isProtagonistRoom || node.npcOwnerId === "lph"
+                    || this.getAliveTeamMembers().some(m => m.id === node.npcOwnerId);
+
+                if (isNpcInTeam) {
+                    this.checkAndUnlockNpcRooms();
+                    this.renderStageMap();
+                    this.showStageToast(`🔓 [${node.name}] 经过 [${ownerName}] 授权已解锁！再次点击即可通行。`);
+                    return;
+                } else {
+                    this.showStageToast(`🔒 [${node.name}] 属于私人专属舱室，需 [${ownerName}] 随行才能授权进入！`);
+                    if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
+                    return;
+                }
+            } else {
+                this.showStageToast(`🔒 [${node.name}] 防爆气闸已断电锁死，本区域暂不可通行。`);
+                if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
+                return;
+            }
         }
 
         // 3. 检查是否为相邻连通房间 (用户要求：直接点击相邻未探索或已探索房间即可移动)
@@ -8869,6 +9467,11 @@ class GameEngine {
     window.AudioConfig = AudioConfig;
     window.Sound = Sound;
     window.UnlockEvaluator = UnlockEvaluator;
+    window.DiaryUI = DiaryUI;
+    window.MASTER_ROOM_DEFS = MASTER_ROOM_DEFS;
+    window.MASTER_CONNECTIONS = MASTER_CONNECTIONS;
+    window.getNpcRoomDefs = getNpcRoomDefs;
+    window.buildSpaceshipLevelMap = buildSpaceshipLevelMap;
 
     function bootstrap() {
         if (!window.gameApp) {

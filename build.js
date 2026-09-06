@@ -13,6 +13,7 @@ const files = [
     'generatedLevels.js',
     'levels.js',
     'dialogueUI.js',
+    'diaryUI.js',
     'saveSystem.js',
     'mapRenderer.js',
     'unlockEvaluator.js',
@@ -57,6 +58,11 @@ bundleContent += `    // 挂载全局对象以便于调试和扩展
     window.AudioConfig = AudioConfig;
     window.Sound = Sound;
     window.UnlockEvaluator = UnlockEvaluator;
+    window.DiaryUI = DiaryUI;
+    window.MASTER_ROOM_DEFS = MASTER_ROOM_DEFS;
+    window.MASTER_CONNECTIONS = MASTER_CONNECTIONS;
+    window.getNpcRoomDefs = getNpcRoomDefs;
+    window.buildSpaceshipLevelMap = buildSpaceshipLevelMap;
 
     function bootstrap() {
         if (!window.gameApp) {

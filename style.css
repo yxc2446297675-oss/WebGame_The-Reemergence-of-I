@@ -1257,6 +1257,123 @@ html, body {
     color: #ffffff;
 }
 
+/* ==========================================================================
+   5b. NPC 日记翻页弹窗 (Diary Reading Modal)
+   ========================================================================== */
+.diary-modal-box {
+    max-width: 480px;
+    border-color: #38bdf8; /* 动态被JS覆盖为NPC主题色 */
+    box-shadow: 0 0 30px rgba(56, 189, 248, 0.3), 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
+.diary-modal-header {
+    gap: 10px;
+}
+
+.diary-header-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.diary-npc-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #38bdf8;
+    letter-spacing: 0.03em;
+}
+
+.diary-page-indicator {
+    font-size: 0.78rem;
+    color: #64748b;
+}
+
+.diary-body {
+    padding: 0 2px;
+}
+
+.diary-page-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+    letter-spacing: 0.04em;
+}
+
+.diary-page-content {
+    font-size: 0.9rem;
+    color: #cbd5e1;
+    line-height: 1.85;
+    max-height: 240px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-right: 4px;
+    white-space: pre-wrap;
+    /* 青色细滚动条 */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(56, 189, 248, 0.5) transparent;
+}
+
+.diary-page-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.diary-page-content::-webkit-scrollbar-thumb {
+    background: rgba(56, 189, 248, 0.5);
+    border-radius: 2px;
+}
+
+.diary-footer {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(56, 189, 248, 0.18);
+    padding-top: 10px;
+    margin-top: 10px;
+    gap: 10px;
+}
+
+.diary-nav-btn {
+    background: rgba(14, 165, 233, 0.15);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    border-radius: 6px;
+    color: #93c5fd;
+    font-size: 0.88rem;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: background 0.18s, color 0.18s;
+    flex: 1;
+}
+
+.diary-nav-btn:hover:not(:disabled) {
+    background: rgba(14, 165, 233, 0.3);
+    color: #ffffff;
+}
+
+.diary-nav-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+    .diary-modal-box {
+        max-width: 100%;
+    }
+    .diary-page-content {
+        max-height: 180px;
+    }
+    .diary-nav-btn {
+        font-size: 0.82rem;
+        padding: 6px 10px;
+    }
+
+}
+
+
 .modal-intro {
     font-size: 0.92rem;
     color: var(--text-muted);

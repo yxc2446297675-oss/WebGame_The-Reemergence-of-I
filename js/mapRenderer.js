@@ -302,6 +302,131 @@ function drawEquipmentBlueprint(ctx, equipment, cx, cy, boxSize) {
 }
 
 /**
+ * 绘制舱室内部装饰图案：警戒斑马线、机械管线、NPC专属纹理
+ * 仅在房间已探索后调用（isVisited === true）
+ */
+function drawRoomDecoration(ctx, node, x, y, boxSize, theme) {
+    if (!node) return;
+    ctx.save();
+
+    const zone = node.zone || "hub";
+    const isNpcRoom = !!(node.isNpcRoom);
+
+    // ── NPC 专属房间：对角纹理+专属色晕 ──
+    if (isNpcRoom) {
+        const npcColors = {
+            "lph":        "#38bdf8",
+            "kaze":       "#38bdf8",
+            "shaokexin":  "#f43f5e",
+            "mode":       "#a855f7"
+        };
+        const roomColor = npcColors[node.npcOwnerId] || "#4ade80";
+        const s = boxSize;
+        const stripeW = Math.max(5, Math.floor(s * 0.12));
+
+        ctx.strokeStyle = `${roomColor}33`; // 20% 透明
+        ctx.lineWidth = stripeW;
+        ctx.setLineDash([]);
+
+        // 斜线纹理（右上→左下方向）
+        for (let off = -s; off < s * 2; off += stripeW * 2.6) {
+            ctx.beginPath();
+            ctx.moveTo(x + off, y);
+            ctx.lineTo(x + off + s, y + s);
+            ctx.stroke();
+        }
+
+        // NPC 专属光圈
+        ctx.shadowColor = roomColor;
+        ctx.shadowBlur = 8;
+        ctx.strokeStyle = `${roomColor}55`;
+        ctx.lineWidth = 1.5;
+        const cx = x + s / 2, cy = y + s / 2;
+        const r = s * 0.18;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        ctx.restore();
+        return;
+    }
+
+    // ── Security / Hub 区域：警戒斑马线（边角黄黑斜纹） ──
+    if (zone === "security" || zone === "hub") {
+        const stripeW = Math.max(3, Math.floor(boxSize * 0.08));
+        ctx.lineWidth = stripeW;
+        const cornerSize = Math.floor(boxSize * 0.35);
+
+        // 绘制在房间四角的小斑马线片段
+        const corners = [
+            { ox: x,                       oy: y,                        },  // 左上
+            { ox: x + boxSize - cornerSize, oy: y,                        },  // 右上
+            { ox: x,                       oy: y + boxSize - cornerSize, },  // 左下
+            { ox: x + boxSize - cornerSize, oy: y + boxSize - cornerSize, },  // 右下
+        ];
+
+        corners.forEach(({ ox, oy }) => {
+            ctx.save();
+            ctx.rect(ox, oy, cornerSize, cornerSize);
+            if (ctx.clip) ctx.clip();
+            for (let off = -cornerSize; off < cornerSize * 2; off += stripeW * 2.2) {
+                ctx.strokeStyle = (Math.floor(off / stripeW) % 2 === 0)
+                    ? "rgba(245,158,11,0.35)"
+                    : "rgba(30,30,30,0.25)";
+                ctx.beginPath();
+                ctx.moveTo(ox + off, oy);
+                ctx.lineTo(ox + off + cornerSize, oy + cornerSize);
+                ctx.stroke();
+            }
+            ctx.restore();
+        });
+    }
+
+    // ── Engineering / Propulsion：舱壁管道机械图案 ──
+    if (zone === "engineering" || zone === "propulsion" || zone === "stern") {
+        const lw = Math.max(1, Math.floor(boxSize * 0.06));
+        ctx.strokeStyle = "rgba(248,113,113,0.22)";
+        ctx.lineWidth = lw;
+
+        const cx = x + boxSize / 2;
+        const cy = y + boxSize / 2;
+        const len = boxSize * 0.32;
+
+        // 十字管道
+        ctx.beginPath();
+        ctx.moveTo(cx - len, cy); ctx.lineTo(cx + len, cy);
+        ctx.moveTo(cx, cy - len); ctx.lineTo(cx, cy + len);
+        ctx.stroke();
+
+        // 四角小矩形接头
+        const jr = lw * 2;
+        [[cx - len, cy], [cx + len, cy], [cx, cy - len], [cx, cy + len]].forEach(([jx, jy]) => {
+            ctx.strokeRect(jx - jr, jy - jr, jr * 2, jr * 2);
+        });
+    }
+
+    // ── Medical：心电图装饰线 ──
+    if (zone === "medical") {
+        ctx.strokeStyle = "rgba(244,63,94,0.28)";
+        ctx.lineWidth = Math.max(1, Math.floor(boxSize * 0.05));
+        const cy = y + boxSize * 0.72;
+        const w = boxSize * 0.7;
+        const ox = x + boxSize * 0.15;
+        ctx.beginPath();
+        ctx.moveTo(ox, cy);
+        ctx.lineTo(ox + w * 0.25, cy);
+        ctx.lineTo(ox + w * 0.35, cy - boxSize * 0.22);
+        ctx.lineTo(ox + w * 0.45, cy + boxSize * 0.14);
+        ctx.lineTo(ox + w * 0.55, cy);
+        ctx.lineTo(ox + w, cy);
+        ctx.stroke();
+    }
+
+    ctx.restore();
+}
+
+/**
  * 在舱室外壁绘制物理气闸出入门户 (Airlock Portal / 连接点)
  */
 function drawAirlockDoorway(ctx, cx, cy, boxSize, dir, isTraversed = false, isLocked = false) {
@@ -663,11 +788,11 @@ export class MapRenderer {
         const cellDist = 115;
         const boxSize = 58;
 
-        // 母舰世界坐标总范围 (以 9x7 网格为基准)
-        const shipWorldW = 8 * cellDist + boxSize * 2;
-        const shipWorldH = 6 * cellDist + boxSize * 2;
-        const originX = boxSize;
-        const originY = boxSize;
+        // 母舰世界坐标总范围 (以 11x9 物理网格为基准，包容 x=-1~9, y=-1~6 的扩展NPC专属舱室)
+        const shipWorldW = 10 * cellDist + boxSize * 2;
+        const shipWorldH = 8 * cellDist + boxSize * 2;
+        const originX = boxSize + cellDist;
+        const originY = boxSize + cellDist;
 
         return {
             originX,
@@ -679,9 +804,9 @@ export class MapRenderer {
             height: displayH,
             shipWorldW,
             shipWorldH,
-            minX: 0,
-            minY: 0,
-            maxX: 8,
+            minX: -1,
+            minY: -1,
+            maxX: 9,
             maxY: 6
         };
     }
@@ -726,6 +851,17 @@ export class MapRenderer {
             const p = this.getNodeCenter(node);
             if (Math.abs(worldX - p.x) <= half && Math.abs(worldY - p.y) <= half) {
                 return node;
+            }
+        }
+
+        // 支持点击靠近揭示的防爆锁闭/NPC专属舱室进行状态反馈与解锁
+        if (levelMap.masterShip && levelMap.masterShip.lockedRooms) {
+            for (const locked of Object.values(levelMap.masterShip.lockedRooms)) {
+                const def = (levelMap.masterShip.allRooms && levelMap.masterShip.allRooms[locked.id]) || locked;
+                const p = this.getNodeCenter(def);
+                if (Math.abs(worldX - p.x) <= half && Math.abs(worldY - p.y) <= half) {
+                    return { ...def, ...locked, isLocked: true };
+                }
             }
         }
         return null;
@@ -968,7 +1104,7 @@ export class MapRenderer {
             });
         }
 
-        // 5. 绘制【靠近揭示的防爆锁闭房间】(仅在靠近时展现)
+        // 5. 绘制【靠近揭示的防爆锁闭房间】(仅在靠近时展现，支持NPC专属房间特殊视觉主题)
         Object.values(visibleLockedRooms).forEach(locked => {
             const def = masterShip.allRooms[locked.id];
             if (!def) return;
@@ -977,28 +1113,39 @@ export class MapRenderer {
             const x = p.x - boxSize / 2;
             const y = p.y - boxSize / 2;
 
+            const isNpc = !!(def.isNpcRoom || locked.isNpcRoom);
+            const npcOwnerId = def.npcOwnerId || locked.npcOwnerId;
+            const npcColors = {
+                lph: "#38bdf8",
+                kaze: "#38bdf8",
+                shaokexin: "#f43f5e",
+                mode: "#a855f7"
+            };
+            const ownerNames = { lph: "指挥官", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+            const strokeColor = isNpc ? (npcColors[npcOwnerId] || "#38bdf8") : "#ef4444";
+            const ownerName = ownerNames[npcOwnerId] || "乘员";
+
             ctx.save();
-            // 厚重黑色外装甲壁
-            ctx.fillStyle = "#150404";
-            ctx.strokeStyle = "#ef4444";
+            ctx.fillStyle = isNpc ? "rgba(10, 20, 35, 0.95)" : "#150404";
+            ctx.strokeStyle = strokeColor;
             ctx.lineWidth = 2.2;
-            ctx.setLineDash([4, 2]);
+            ctx.setLineDash(isNpc ? [3, 2] : [4, 2]);
 
             drawRoomPolygon(ctx, shape, x, y, boxSize, boxSize);
             ctx.fill();
             ctx.stroke();
 
-            // 红色防爆隔离门锁 🔒
-            ctx.fillStyle = "#ef4444";
-            ctx.font = `${Math.max(11, Math.floor(boxSize * 0.36))}px sans-serif`;
+            // 门锁图标 🔒
+            ctx.fillStyle = strokeColor;
+            ctx.font = `${Math.max(11, Math.floor(boxSize * 0.34))}px sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText("🔒", p.x, p.y - (boxSize >= 42 ? 4 : 0));
+            ctx.fillText("🔒", p.x, p.y - (boxSize >= 42 ? 6 : 0));
 
             if (boxSize >= 42) {
                 ctx.font = "bold 8px 'PingFang SC', sans-serif";
-                ctx.fillStyle = "rgba(248, 113, 113, 0.9)";
-                ctx.fillText("气闸锁死", p.x, p.y + 11);
+                ctx.fillStyle = strokeColor;
+                ctx.fillText(isNpc ? `${ownerName}专属` : "气闸锁死", p.x, p.y + 11);
             }
             ctx.restore();
         });
@@ -1099,6 +1246,10 @@ export class MapRenderer {
             // 6.4 绘制内部蓝图微缩设备 (点亮探索后清晰展现)
             if (isVisited || isDestination || isCurrent) {
                 drawEquipmentBlueprint(ctx, equipment, p.x, p.y, boxSize);
+                // 6.4b 绘制舱室内部装饰图案（斑马线/机械管线/NPC专属纹理）
+                if (isVisited) {
+                    drawRoomDecoration(ctx, node, x, y, boxSize, theme);
+                }
             }
 
             // 6.5 当前房间/行进目标发光光晕
@@ -1174,6 +1325,14 @@ export class MapRenderer {
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 成员` : "同伴") : "";
                     tagColor = "#c084fc";
                     subTagColor = adjacentDir ? "#c084fc" : "#e9d5ff";
+                } else if (node.isNpcRoom) {
+                    const ownerNames = { lph: "L.P.H", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+                    const ownerColors = { lph: "#38bdf8", kaze: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc" };
+                    const oName = ownerNames[node.npcOwnerId] || "专属";
+                    label = `${oName}舱`;
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 私人舱` : "私人舱") : "";
+                    tagColor = ownerColors[node.npcOwnerId] || "#38bdf8";
+                    subTagColor = adjacentDir ? "#38bdf8" : "#94a3b8";
                 } else {
                     label = cleanName;
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 已探明` : "已探明") : "";
@@ -1182,8 +1341,15 @@ export class MapRenderer {
                 }
             } else {
                 // 未探索房间：直接显示房间名称，并清晰标注 [未探索] 或 [方向 · 未探索]
-                label = cleanName;
-                subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 未探索` : "未探索") : "";
+                if (node.isNpcRoom) {
+                    const ownerNames = { lph: "L.P.H", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+                    const oName = ownerNames[node.npcOwnerId] || "专属";
+                    label = `${oName}舱`;
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 私人舱` : "私人舱") : "";
+                } else {
+                    label = cleanName;
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 未探索` : "未探索") : "";
+                }
                 if (adjacentDir) {
                     tagColor = "#ffffff";
                     subTagColor = "#38bdf8"; // 高亮青色，提示用户点击即可行进
