@@ -61,11 +61,46 @@ export class DialogueUI {
     }
 
     bindEvents() {
-        if (this.boxElement) {
-            this.boxElement.addEventListener("click", () => {
-                this.handleClick();
-            });
-        }
+        if (!this.boxElement) return;
+
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let isTouchDrag = false;
+        let lastTouchDragTime = 0;
+
+        this.boxElement.addEventListener("touchstart", (e) => {
+            if (e.touches && e.touches.length > 0) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                isTouchDrag = false;
+            }
+        }, { passive: true });
+
+        this.boxElement.addEventListener("touchmove", (e) => {
+            if (e.touches && e.touches.length > 0) {
+                const dx = e.touches[0].clientX - touchStartX;
+                const dy = e.touches[0].clientY - touchStartY;
+                if (Math.hypot(dx, dy) > 8) {
+                    isTouchDrag = true;
+                    lastTouchDragTime = Date.now();
+                }
+            }
+        }, { passive: true });
+
+        this.boxElement.addEventListener("touchend", () => {
+            if (isTouchDrag) {
+                lastTouchDragTime = Date.now();
+            }
+        }, { passive: true });
+
+        this.boxElement.addEventListener("click", () => {
+            // 如果用户正在手指滑动查看长文本，不触发推进
+            if (isTouchDrag || (Date.now() - lastTouchDragTime < 300)) {
+                isTouchDrag = false;
+                return;
+            }
+            this.handleClick();
+        });
     }
 
     /**
@@ -269,6 +304,9 @@ export class DialogueUI {
 
         this.isTyping = true;
         this.textElement.textContent = "";
+        if (this.textElement) {
+            this.textElement.scrollTop = 0;
+        }
         if (this.advanceIndicator) {
             this.advanceIndicator.classList.add("indicator-hidden");
         }
@@ -280,6 +318,9 @@ export class DialogueUI {
             if (charIdx < text.length) {
                 this.textElement.textContent += text.charAt(charIdx);
                 charIdx++;
+                if (this.textElement) {
+                    this.textElement.scrollTop = this.textElement.scrollHeight;
+                }
             } else {
                 this.finishTyping();
             }
@@ -293,6 +334,9 @@ export class DialogueUI {
         }
         this.isTyping = false;
         this.textElement.textContent = this.fullTextOfCurrentLine;
+        if (this.textElement) {
+            this.textElement.scrollTop = this.textElement.scrollHeight;
+        }
         if (this.advanceIndicator) {
             this.advanceIndicator.classList.remove("indicator-hidden");
         }

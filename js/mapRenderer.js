@@ -532,11 +532,26 @@ export class MapRenderer {
     }
 
     /**
-     * 安全获取画布视口几何边界 (兼容浏览器运行与 Node.js 自动化测试环境)
+     * 安全获取画布视口几何边界 (兼容浏览器运行与 Node.js 自动化测试环境，记忆有效尺寸杜绝阶段切换时坍塌)
      */
     getCanvasRect() {
         if (this.canvas && typeof this.canvas.getBoundingClientRect === "function") {
-            return this.canvas.getBoundingClientRect();
+            const r = this.canvas.getBoundingClientRect();
+            if (r.width > 0 && r.height > 0) {
+                this.lastValidRect = { width: r.width, height: r.height, left: r.left, top: r.top };
+                return r;
+            }
+        }
+        if (this.canvas && this.canvas.parentElement) {
+            const pw = this.canvas.parentElement.clientWidth;
+            const ph = this.canvas.parentElement.clientHeight;
+            if (pw > 0 && ph > 0) {
+                this.lastValidRect = { width: pw, height: ph, left: 0, top: 0 };
+                return { width: pw, height: ph, left: 0, top: 0 };
+            }
+        }
+        if (this.lastValidRect) {
+            return { width: this.lastValidRect.width, height: this.lastValidRect.height, left: 0, top: 0 };
         }
         return {
             left: 0,

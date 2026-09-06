@@ -1193,8 +1193,7 @@ export class GameEngine {
         this.eveningInquiryCount = 0;
         this.updateHeaderUI();
 
-        // 切换至全黑屏转场视口
-        this.screenGame.classList.add("hidden");
+        // 切换至全黑屏转场视口 (浮层全屏覆盖，保留底层主舞台DOM杜绝地图缩放形变)
         this.screenEveningBlack?.classList.remove("hidden");
     }
 
@@ -1202,7 +1201,7 @@ export class GameEngine {
         if (this.phase !== "evening_black") return;
         this.phase = "q4_inquiry";
         this.screenEveningBlack?.classList.add("hidden");
-        this.screenGame.classList.remove("hidden");
+        this.renderStageMap();
 
         this.dialogueUI.say(
             { id: "broadcast", isBroadcast: true, name: "全员集结", themeColor: "#f59e0b" },
@@ -1308,6 +1307,7 @@ export class GameEngine {
     enterQ5Judgement() {
         this.phase = "q5_judgement";
         this.modalInquiry.classList.add("hidden");
+        this.renderStageMap();
 
         this.dialogueUI.say(
             { name: "全员审决", themeColor: "#ef4444" },
@@ -1432,6 +1432,7 @@ export class GameEngine {
         this.phase = "q6_night";
         this.nightProtectedNpcId = null;
         this.witchSaved = false;
+        this.renderStageMap();
 
         // 先预计算伪人的拟袭击目标 (用于歌咏者女巫感知)
         this.calculateNightWolfPlan();
@@ -1661,7 +1662,7 @@ export class GameEngine {
         contentContainer?.classList.remove("death-content-revealed");
         contentContainer?.classList.add("death-content-hidden");
 
-        this.screenGame?.classList.add("hidden");
+        // 覆盖全屏黑幕，保留主游戏舞台DOM稳定杜绝地图形变
         this.screenDeathBlack?.classList.remove("hidden");
 
         const blackDuration = (typeof DeathRevealConfig !== "undefined" && DeathRevealConfig.blackScreenDurationMs !== undefined)
@@ -1715,7 +1716,7 @@ export class GameEngine {
         // 死者已浮现状态下，点击推进至白天对话
         this.phase = "q7_day";
         this.screenDeathBlack?.classList.add("hidden");
-        this.screenGame?.classList.remove("hidden");
+        this.renderStageMap();
 
         const cb = this.deathBlackCallback;
         this.deathBlackCallback = null;

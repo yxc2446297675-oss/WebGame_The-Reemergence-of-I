@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-06T09:16:13.728Z
+ * 自动生成于 2026-09-06T09:34:32.881Z
  */
 (function() {
     'use strict';
@@ -3158,11 +3158,46 @@ class DialogueUI {
     }
 
     bindEvents() {
-        if (this.boxElement) {
-            this.boxElement.addEventListener("click", () => {
-                this.handleClick();
-            });
-        }
+        if (!this.boxElement) return;
+
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let isTouchDrag = false;
+        let lastTouchDragTime = 0;
+
+        this.boxElement.addEventListener("touchstart", (e) => {
+            if (e.touches && e.touches.length > 0) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                isTouchDrag = false;
+            }
+        }, { passive: true });
+
+        this.boxElement.addEventListener("touchmove", (e) => {
+            if (e.touches && e.touches.length > 0) {
+                const dx = e.touches[0].clientX - touchStartX;
+                const dy = e.touches[0].clientY - touchStartY;
+                if (Math.hypot(dx, dy) > 8) {
+                    isTouchDrag = true;
+                    lastTouchDragTime = Date.now();
+                }
+            }
+        }, { passive: true });
+
+        this.boxElement.addEventListener("touchend", () => {
+            if (isTouchDrag) {
+                lastTouchDragTime = Date.now();
+            }
+        }, { passive: true });
+
+        this.boxElement.addEventListener("click", () => {
+            // 如果用户正在手指滑动查看长文本，不触发推进
+            if (isTouchDrag || (Date.now() - lastTouchDragTime < 300)) {
+                isTouchDrag = false;
+                return;
+            }
+            this.handleClick();
+        });
     }
 
     /**
@@ -3366,6 +3401,9 @@ class DialogueUI {
 
         this.isTyping = true;
         this.textElement.textContent = "";
+        if (this.textElement) {
+            this.textElement.scrollTop = 0;
+        }
         if (this.advanceIndicator) {
             this.advanceIndicator.classList.add("indicator-hidden");
         }
@@ -3377,6 +3415,9 @@ class DialogueUI {
             if (charIdx < text.length) {
                 this.textElement.textContent += text.charAt(charIdx);
                 charIdx++;
+                if (this.textElement) {
+                    this.textElement.scrollTop = this.textElement.scrollHeight;
+                }
             } else {
                 this.finishTyping();
             }
@@ -3390,6 +3431,9 @@ class DialogueUI {
         }
         this.isTyping = false;
         this.textElement.textContent = this.fullTextOfCurrentLine;
+        if (this.textElement) {
+            this.textElement.scrollTop = this.textElement.scrollHeight;
+        }
         if (this.advanceIndicator) {
             this.advanceIndicator.classList.remove("indicator-hidden");
         }
@@ -4194,11 +4238,26 @@ class MapRenderer {
     }
 
     /**
-     * 安全获取画布视口几何边界 (兼容浏览器运行与 Node.js 自动化测试环境)
+     * 安全获取画布视口几何边界 (兼容浏览器运行与 Node.js 自动化测试环境，记忆有效尺寸杜绝阶段切换时坍塌)
      */
     getCanvasRect() {
         if (this.canvas && typeof this.canvas.getBoundingClientRect === "function") {
-            return this.canvas.getBoundingClientRect();
+            const r = this.canvas.getBoundingClientRect();
+            if (r.width > 0 && r.height > 0) {
+                this.lastValidRect = { width: r.width, height: r.height, left: r.left, top: r.top };
+                return r;
+            }
+        }
+        if (this.canvas && this.canvas.parentElement) {
+            const pw = this.canvas.parentElement.clientWidth;
+            const ph = this.canvas.parentElement.clientHeight;
+            if (pw > 0 && ph > 0) {
+                this.lastValidRect = { width: pw, height: ph, left: 0, top: 0 };
+                return { width: pw, height: ph, left: 0, top: 0 };
+            }
+        }
+        if (this.lastValidRect) {
+            return { width: this.lastValidRect.width, height: this.lastValidRect.height, left: 0, top: 0 };
         }
         return {
             left: 0,
@@ -6991,8 +7050,7 @@ class GameEngine {
         this.eveningInquiryCount = 0;
         this.updateHeaderUI();
 
-        // 切换至全黑屏转场视口
-        this.screenGame.classList.add("hidden");
+        // 切换至全黑屏转场视口 (浮层全屏覆盖，保留底层主舞台DOM杜绝地图缩放形变)
         this.screenEveningBlack?.classList.remove("hidden");
     }
 
@@ -7000,7 +7058,7 @@ class GameEngine {
         if (this.phase !== "evening_black") return;
         this.phase = "q4_inquiry";
         this.screenEveningBlack?.classList.add("hidden");
-        this.screenGame.classList.remove("hidden");
+        this.renderStageMap();
 
         this.dialogueUI.say(
             { id: "broadcast", isBroadcast: true, name: "全员集结", themeColor: "#f59e0b" },
@@ -7106,6 +7164,7 @@ class GameEngine {
     enterQ5Judgement() {
         this.phase = "q5_judgement";
         this.modalInquiry.classList.add("hidden");
+        this.renderStageMap();
 
         this.dialogueUI.say(
             { name: "全员审决", themeColor: "#ef4444" },
@@ -7230,6 +7289,7 @@ class GameEngine {
         this.phase = "q6_night";
         this.nightProtectedNpcId = null;
         this.witchSaved = false;
+        this.renderStageMap();
 
         // 先预计算伪人的拟袭击目标 (用于歌咏者女巫感知)
         this.calculateNightWolfPlan();
@@ -7459,7 +7519,7 @@ class GameEngine {
         contentContainer?.classList.remove("death-content-revealed");
         contentContainer?.classList.add("death-content-hidden");
 
-        this.screenGame?.classList.add("hidden");
+        // 覆盖全屏黑幕，保留主游戏舞台DOM稳定杜绝地图形变
         this.screenDeathBlack?.classList.remove("hidden");
 
         const blackDuration = (typeof DeathRevealConfig !== "undefined" && DeathRevealConfig.blackScreenDurationMs !== undefined)
@@ -7513,7 +7573,7 @@ class GameEngine {
         // 死者已浮现状态下，点击推进至白天对话
         this.phase = "q7_day";
         this.screenDeathBlack?.classList.add("hidden");
-        this.screenGame?.classList.remove("hidden");
+        this.renderStageMap();
 
         const cb = this.deathBlackCallback;
         this.deathBlackCallback = null;

@@ -1621,5 +1621,70 @@ console.log("\n31. 验证移动端立绘光速渲染、主角指挥官SVG头像�
     console.log("   【已验证】主角 L.P.H 对话已成功挂载专属指挥官高科技头像！");
 }
 
-console.log('\n====== [TEST PASSED] 全部 31 项核心流程、母舰蓝图 1:1 等比保真、移动端双层顶栏与立绘零延迟复用测试成功！ ======');
+console.log("\n32. 验证长文本对话框滑动、黑夜/裁决/傍晚阶段地图比例稳定性与顶栏完整按钮文字...");
+{
+    // 1. 验证 index.html 中顶栏按钮全称文本显示
+    const indexHtml = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+    if (!indexHtml.includes('id="btn-save-progress" class="tool-btn">💾 存档</button>')) {
+        throw new Error("index.html 未正确显示【💾 存档】按钮！");
+    }
+    if (!indexHtml.includes('id="btn-exit-to-menu" class="tool-btn">🚪 退出</button>')) {
+        throw new Error("index.html 未正确显示【🚪 退出】按钮！");
+    }
+    console.log("   【已验证】顶栏功能操作键已正确完整展示【💾 存档】与【🚪 退出】！");
+
+    // 2. 验证对话框文本打字机自动滚动与超长文本滑块支持
+    const dialogueText = document.getElementById("vn-dialogue-text");
+    if (!dialogueText) {
+        throw new Error("vn-dialogue-text 节点不存在！");
+    }
+    dialogueText.scrollHeight = 300;
+    const longText = "这是一段非常漫长的舰内通讯记录。\n在第3区域我们遭遇了强烈的重力异常与伪人拟态反应。\n请所有队员立刻回到安全舱室进行核验！\n请队长立刻作出裁决！";
+    app.dialogueUI.say(app.protagonist, longText);
+    app.dialogueUI.finishTyping();
+    if (dialogueText.scrollTop !== 300) {
+        throw new Error("对话框长文本在打字完毕后未自动跟随滚动至底端！");
+    }
+    console.log("   【已验证】长文本对白打字完成时已自动跟随滚动至最新视口底端！");
+
+    // 3. 验证傍晚、裁决与黑夜阶段切换时地图比例绝对保真，主舞台 DOM 不坍塌
+    const stageMapCanvas = document.getElementById("stage-map-canvas");
+    if (!stageMapCanvas) {
+        throw new Error("stage-map-canvas 不存在！");
+    }
+    const screenGame = document.getElementById("screen-game");
+    screenGame.classList.remove("hidden");
+    // 初始渲染一次获取初始比例
+    app.renderStageMap();
+    const initialScale = app.stageMapRenderer ? app.stageMapRenderer.currentScale : 1.0;
+
+    // 切换至傍晚
+    app.enterEveningPhase();
+    if (screenGame.classList.contains("hidden")) {
+        throw new Error("傍晚阶段错误地给 screen-game 添加了 hidden，导致地图容器坍塌！");
+    }
+    app.handleEveningBlackClick();
+    const eveningScale = app.stageMapRenderer ? app.stageMapRenderer.currentScale : 1.0;
+    if (eveningScale !== initialScale) {
+        throw new Error(`傍晚阶段导致地图缩放比例异常跳变！初始=${initialScale}, 傍晚=${eveningScale}`);
+    }
+
+    // 切换至裁决
+    app.enterQ5Judgement();
+    const judgeScale = app.stageMapRenderer ? app.stageMapRenderer.currentScale : 1.0;
+    if (judgeScale !== initialScale) {
+        throw new Error(`裁决阶段导致地图缩放比例异常跳变！初始=${initialScale}, 裁决=${judgeScale}`);
+    }
+
+    // 切换至黑夜
+    app.enterQ6Night();
+    const nightScale = app.stageMapRenderer ? app.stageMapRenderer.currentScale : 1.0;
+    if (nightScale !== initialScale) {
+        throw new Error(`黑夜阶段导致地图缩放比例异常跳变！初始=${initialScale}, 黑夜=${nightScale}`);
+    }
+
+    console.log(`   【已验证】傍晚、裁决、黑夜全阶段地图比例绝对恒定 (scale=${initialScale})，零形变零跳变！`);
+}
+
+console.log('\n====== [TEST PASSED] 全部 32 项核心流程、母舰蓝图 1:1 等比保真、移动端双层顶栏与长文本滑动测试成功！ ======');
 
