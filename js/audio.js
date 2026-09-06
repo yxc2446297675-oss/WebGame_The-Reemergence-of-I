@@ -9,6 +9,7 @@ class SoundEngine {
         this.ctx = null;
         this.isMuted = false;
         this.initialized = false;
+        this.audioCache = new Map();
     }
 
     init() {
@@ -189,20 +190,53 @@ class SoundEngine {
         });
     }
 
-    // 通用外部音频文件播放器（支持中文路径编码与 Web Audio 合成兜底）
+    // 异步预加载音频文件到缓存池
+    preloadAudio(primaryUrl) {
+        if (typeof Audio === "undefined" || !primaryUrl || this.audioCache.has(primaryUrl)) return;
+        try {
+            const safeUrl = encodeURI(primaryUrl);
+            const audio = new Audio(safeUrl);
+            audio.preload = "auto";
+            this.audioCache.set(primaryUrl, audio);
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    // 预热加载游戏核心外置音效
+    preloadDefaults() {
+        if (typeof AudioConfig !== "undefined") {
+            [AudioConfig.moveSoundUrl, AudioConfig.foodSoundUrl, AudioConfig.alarmSoundUrl, AudioConfig.deathSoundUrl]
+                .filter(Boolean)
+                .forEach(url => this.preloadAudio(url));
+        }
+    }
+
+    // 通用外部音频文件播放器（支持中文路径编码、实例池复用与 Web Audio 合成兜底）
     playAudioFile(primaryUrl, volume, fallbackFn, label = "音频") {
         if (this.isMuted) return;
 
         if (typeof Audio !== "undefined" && primaryUrl) {
             try {
-                // 安全转义处理中文字符路径
-                const safeUrl = encodeURI(primaryUrl);
-                const audio = new Audio(safeUrl);
+                let audio = this.audioCache.get(primaryUrl);
+                if (audio) {
+                    // 若缓存实例正在播放，克隆节点实现无等待并发混音
+                    if (!audio.paused && audio.currentTime > 0) {
+                        audio = audio.cloneNode();
+                    } else {
+                        audio.currentTime = 0;
+                    }
+                } else {
+                    const safeUrl = encodeURI(primaryUrl);
+                    audio = new Audio(safeUrl);
+                    this.audioCache.set(primaryUrl, audio);
+                }
+
                 audio.volume = Math.max(0, Math.min(1, volume));
                 const playPromise = audio.play();
                 if (playPromise !== undefined) {
                     playPromise.then(() => {
-                        console.log(`[Sound] 成功播放${label}:`, primaryUrl);
+                        // 播放成功
                     }).catch(err => {
                         // 若转义路径加载失败，尝试原始URL二次加载
                         try {

@@ -1468,5 +1468,53 @@ console.log("\n28. 验证走图决策计数机制 (移动到已探索房间不�
     console.log(`   【已验证】快速往返穿梭：面临选择次数保持 ${app.explorationEngine.choiceCount} 不变！`);
 }
 
-console.log('\n====== [TEST PASSED] 全部 28 项核心流程、雷达悬浮窗、母舰背景蓝图、直点移动与免消耗折返测试全部成功！ ======');
+console.log("\n29. 验证全景蓝图画面直绘方向标牌与严格 1:1 物理等比网格...");
+{
+    // 1. 验证网格世界坐标严格等比 1:1 (cellW === cellH，杜绝任何形变拉伸)
+    const layout = app.stageMapRenderer.getLayout();
+    if (layout.cellW !== layout.cellH) {
+        throw new Error(`网格坐标系长宽比异常！cellW=${layout.cellW}, cellH=${layout.cellH}，非严格 1:1 等比！`);
+    }
+    console.log(`   【已验证】网格物理等比：cellW=${layout.cellW}px, cellH=${layout.cellH}px (严格 1:1，杜绝手机横向形变)`);
+
+    // 2. 触发一次舞台地图渲染
+    app.renderStageMap();
+
+    // 3. 验证画面上是否成功生成相邻通道的方向胶囊标牌 (directionBadges)
+    const badges = app.stageMapRenderer.directionBadges || [];
+    console.log(`   当前房间直绘方向标牌数量: ${badges.length} 个`);
+    if (badges.length === 0) {
+        throw new Error("当前房间周围存在通路，但未能成功直绘方向导航胶囊标牌！");
+    }
+
+    // 4. 验证点击/命中方向标牌坐标是否准确映射为目标房间并支持直接移动
+    const firstBadge = badges[0];
+    const scale = app.stageMapRenderer.currentScale || 1.0;
+    const cam = app.stageMapRenderer.currentCam || { x: 520, y: 410 };
+    const rect = app.stageMapRenderer.getCanvasRect();
+    const displayW = rect.width;
+    const displayH = rect.height;
+    const screenX = displayW / 2 + app.stageMapRenderer.panX + (firstBadge.cx - cam.x) * scale;
+    const screenY = displayH / 2 + app.stageMapRenderer.panY + (firstBadge.cy - cam.y) * scale;
+
+    const hitNode = app.stageMapRenderer.getNodeAtPosition(screenX, screenY, app.currentLevel.map);
+    if (!hitNode || hitNode.id !== firstBadge.targetId) {
+        throw new Error(`方向标牌热区点击坐标换算异常！预期房间 ${firstBadge.targetId}，实际命中: ${hitNode?.id}`);
+    }
+    console.log(`   【已验证】直绘标牌点击测试：成功命中标牌 [${firstBadge.dir}] -> 目标房间 [${hitNode.name}]`);
+
+    // 5. 验证工业级平移阻尼与视角复位
+    app.stageMapRenderer.panX = 99999;
+    app.stageMapRenderer.clampPan();
+    if (app.stageMapRenderer.panX === 99999) {
+        throw new Error("平移视口边界软限制失效，飞船可能被移出屏幕！");
+    }
+    app.stageMapRenderer.resetView(true);
+    if (app.stageMapRenderer.panX !== 0 || app.stageMapRenderer.panY !== 0) {
+        throw new Error("平滑复位视口状态异常！");
+    }
+    console.log("   【已验证】工业级平移阻尼边界限制与复位功能工作正常！");
+}
+
+console.log('\n====== [TEST PASSED] 全部 29 项核心流程、母舰蓝图 1:1 等比保真、画面直绘方向标牌与工业级手势全部测试成功！ ======');
 

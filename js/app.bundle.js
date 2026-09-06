@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-06T07:25:50.132Z
+ * 自动生成于 2026-09-06T07:44:38.057Z
  */
 (function() {
     'use strict';
@@ -165,6 +165,7 @@ class SoundEngine {
         this.ctx = null;
         this.isMuted = false;
         this.initialized = false;
+        this.audioCache = new Map();
     }
 
     init() {
@@ -345,20 +346,53 @@ class SoundEngine {
         });
     }
 
-    // 通用外部音频文件播放器（支持中文路径编码与 Web Audio 合成兜底）
+    // 异步预加载音频文件到缓存池
+    preloadAudio(primaryUrl) {
+        if (typeof Audio === "undefined" || !primaryUrl || this.audioCache.has(primaryUrl)) return;
+        try {
+            const safeUrl = encodeURI(primaryUrl);
+            const audio = new Audio(safeUrl);
+            audio.preload = "auto";
+            this.audioCache.set(primaryUrl, audio);
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    // 预热加载游戏核心外置音效
+    preloadDefaults() {
+        if (typeof AudioConfig !== "undefined") {
+            [AudioConfig.moveSoundUrl, AudioConfig.foodSoundUrl, AudioConfig.alarmSoundUrl, AudioConfig.deathSoundUrl]
+                .filter(Boolean)
+                .forEach(url => this.preloadAudio(url));
+        }
+    }
+
+    // 通用外部音频文件播放器（支持中文路径编码、实例池复用与 Web Audio 合成兜底）
     playAudioFile(primaryUrl, volume, fallbackFn, label = "音频") {
         if (this.isMuted) return;
 
         if (typeof Audio !== "undefined" && primaryUrl) {
             try {
-                // 安全转义处理中文字符路径
-                const safeUrl = encodeURI(primaryUrl);
-                const audio = new Audio(safeUrl);
+                let audio = this.audioCache.get(primaryUrl);
+                if (audio) {
+                    // 若缓存实例正在播放，克隆节点实现无等待并发混音
+                    if (!audio.paused && audio.currentTime > 0) {
+                        audio = audio.cloneNode();
+                    } else {
+                        audio.currentTime = 0;
+                    }
+                } else {
+                    const safeUrl = encodeURI(primaryUrl);
+                    audio = new Audio(safeUrl);
+                    this.audioCache.set(primaryUrl, audio);
+                }
+
                 audio.volume = Math.max(0, Math.min(1, volume));
                 const playPromise = audio.play();
                 if (playPromise !== undefined) {
                     playPromise.then(() => {
-                        console.log(`[Sound] 成功播放${label}:`, primaryUrl);
+                        // 播放成功
                     }).catch(err => {
                         // 若转义路径加载失败，尝试原始URL二次加载
                         try {
@@ -3819,7 +3853,7 @@ class MapRenderer {
         this.skipAnimation = null;
         this.viewMode = "focus"; // "focus" | "full"
 
-        // 交互平移与缩放引擎属性 (支持手机双指缩放、单指拖拽、电脑鼠标拖拽与滚轮缩放)
+        // 交互平移与缩放引擎属性 (工业化标准：支持手机双指锚点缩放、单指1:1平移、双击聚焦复位、滚轮光标锚点缩放)
         this.panX = 0;
         this.panY = 0;
         this.zoom = 1.0;
@@ -3828,14 +3862,43 @@ class MapRenderer {
         this.startPointer = { x: 0, y: 0 };
         this.startPan = { x: 0, y: 0 };
         this.initialPinchDist = 0;
+        this.initialPinchCenter = { x: 0, y: 0 };
         this.startZoom = 1.0;
         this.nodeClickHandler = null;
+
+        // 性能调度：按需渲染Dirty-Flag与RAF合并调度
+        this.renderRequested = false;
+        this.cameraAnimId = null;
+        this.lastTapTime = 0;
+        this.lastTapPos = { x: 0, y: 0 };
+
+        // 运行时状态缓存：世界坐标缩放与摄像机中点
+        this.currentScale = 1.0;
+        this.currentCam = { x: 520, y: 410 };
+        this.directionBadges = []; // 当前帧直绘方向标牌热区
 
         this.initInteractiveGestures();
     }
 
     /**
-     * 绑定手机手指触摸拖拽与电脑鼠标平移缩放手势
+     * 性能调度：单帧内多次手势事件合并只在下一次绘制帧触发重绘 (60/120FPS无浪费开销)
+     */
+    scheduleRender() {
+        if (this.renderRequested) return;
+        this.renderRequested = true;
+        if (typeof requestAnimationFrame !== "undefined") {
+            requestAnimationFrame(() => {
+                this.renderRequested = false;
+                this.renderCurrentState();
+            });
+        } else {
+            this.renderRequested = false;
+            this.renderCurrentState();
+        }
+    }
+
+    /**
+     * 绑定工业化标准手势 (手机双指以中点锚定无跳跃缩放、单指1:1跟手平移、滚轮光标锚定缩放、双击平滑复位)
      */
     initInteractiveGestures() {
         if (!this.canvas || typeof window === "undefined") return;
@@ -3859,7 +3922,8 @@ class MapRenderer {
                 this.isDragging = true;
                 this.panX = this.startPan.x + dx;
                 this.panY = this.startPan.y + dy;
-                this.renderCurrentState();
+                this.clampPan();
+                this.scheduleRender();
             }
         });
 
@@ -3870,24 +3934,24 @@ class MapRenderer {
             }
         });
 
-        // 鼠标滚轮自由缩放 (以鼠标光标所在点为缩放中心)
+        // 鼠标滚轮以光标所在点为缩放中心 (零偏移零跳跃)
         canvas.addEventListener("wheel", (e) => {
             e.preventDefault();
-            const factor = e.deltaY < 0 ? 1.12 : 0.89;
-            const newZoom = Math.max(0.5, Math.min(3.5, this.zoom * factor));
+            const factor = e.deltaY < 0 ? 1.15 : 0.87;
+            const newZoom = Math.max(0.45, Math.min(3.5, this.zoom * factor));
             
-            const rect = canvas.getBoundingClientRect();
+            const rect = this.getCanvasRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
 
-            // 调整 pan 偏移保持光标锚点不变
             this.panX = mouseX - (mouseX - this.panX) * (newZoom / this.zoom);
             this.panY = mouseY - (mouseY - this.panY) * (newZoom / this.zoom);
             this.zoom = newZoom;
-            this.renderCurrentState();
+            this.clampPan();
+            this.scheduleRender();
         }, { passive: false });
 
-        // 手机触摸手势 (单指拖拽 + 双指缩放)
+        // 手机触摸手势 (单指平移 + 双指以触控中点锚定自由缩放 + 双击平滑聚焦复位)
         canvas.addEventListener("touchstart", (e) => {
             if (this.animating) return;
             if (e.touches.length === 1) {
@@ -3902,41 +3966,136 @@ class MapRenderer {
                 const t1 = e.touches[0];
                 const t2 = e.touches[1];
                 this.initialPinchDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+                this.initialPinchCenter = {
+                    x: (t1.clientX + t2.clientX) / 2,
+                    y: (t1.clientY + t2.clientY) / 2
+                };
                 this.startZoom = this.zoom;
                 this.startPan = { x: this.panX, y: this.panY };
             }
-        }, { passive: true });
+        }, { passive: false });
 
         canvas.addEventListener("touchmove", (e) => {
+            if (this.animating) return;
             if (e.touches.length === 1 && this.pointerDown) {
                 const t = e.touches[0];
                 const dx = t.clientX - this.startPointer.x;
                 const dy = t.clientY - this.startPointer.y;
-                if (Math.hypot(dx, dy) > 5) {
+                if (Math.hypot(dx, dy) > 6) {
+                    if (e.cancelable) e.preventDefault();
                     this.isDragging = true;
                     this.panX = this.startPan.x + dx;
                     this.panY = this.startPan.y + dy;
-                    this.renderCurrentState();
+                    this.clampPan();
+                    this.scheduleRender();
                 }
             } else if (e.touches.length >= 2 && this.initialPinchDist > 0) {
+                if (e.cancelable) e.preventDefault();
                 const t1 = e.touches[0];
                 const t2 = e.touches[1];
                 const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-                const factor = dist / this.initialPinchDist;
-                this.zoom = Math.max(0.5, Math.min(3.2, this.startZoom * factor));
-                this.renderCurrentState();
-            }
-        }, { passive: true });
+                const curMidX = (t1.clientX + t2.clientX) / 2;
+                const curMidY = (t1.clientY + t2.clientY) / 2;
 
-        canvas.addEventListener("touchend", () => {
-            this.pointerDown = false;
-            this.initialPinchDist = 0;
+                const factor = dist / this.initialPinchDist;
+                const newZoom = Math.max(0.45, Math.min(3.5, this.startZoom * factor));
+
+                const rect = this.getCanvasRect();
+                const midX = curMidX - rect.left;
+                const midY = curMidY - rect.top;
+
+                // 严格以双指中点为锚点无跳跃缩放
+                this.panX = midX - (midX - this.startPan.x) * (newZoom / this.startZoom);
+                this.panY = midY - (midY - this.startPan.y) * (newZoom / this.startZoom);
+                this.zoom = newZoom;
+                this.clampPan();
+                this.scheduleRender();
+            }
+        }, { passive: false });
+
+        canvas.addEventListener("touchend", (e) => {
+            if (e.touches.length === 0) {
+                // 检查双击手势
+                const now = Date.now();
+                if (!this.isDragging && this.startPointer) {
+                    const distFromLast = Math.hypot(this.startPointer.x - this.lastTapPos.x, this.startPointer.y - this.lastTapPos.y);
+                    if (now - this.lastTapTime < 320 && distFromLast < 24) {
+                        // 触发双击平滑聚焦复位
+                        this.resetView();
+                    }
+                    this.lastTapTime = now;
+                    this.lastTapPos = { ...this.startPointer };
+                }
+                this.pointerDown = false;
+                this.initialPinchDist = 0;
+            }
         }, { passive: true });
 
         canvas.addEventListener("touchcancel", () => {
             this.pointerDown = false;
             this.initialPinchDist = 0;
         }, { passive: true });
+    }
+
+    /**
+     * 安全获取画布视口几何边界 (兼容浏览器运行与 Node.js 自动化测试环境)
+     */
+    getCanvasRect() {
+        if (this.canvas && typeof this.canvas.getBoundingClientRect === "function") {
+            return this.canvas.getBoundingClientRect();
+        }
+        return {
+            left: 0,
+            top: 0,
+            width: (this.canvas && this.canvas.width) || (this.canvas && this.canvas.parentElement ? this.canvas.parentElement.clientWidth : 800) || 800,
+            height: (this.canvas && this.canvas.height) || (this.canvas && this.canvas.parentElement ? this.canvas.parentElement.clientHeight : 500) || 500
+        };
+    }
+
+    /**
+     * 边界软限制，防止飞船被移出视口失踪
+     */
+    clampPan() {
+        const rect = this.getCanvasRect();
+        const w = (rect && rect.width) || 600;
+        const h = (rect && rect.height) || 400;
+        const limitX = w * 0.75;
+        const limitY = h * 0.75;
+        this.panX = Math.max(-limitX, Math.min(limitX, this.panX));
+        this.panY = Math.max(-limitY, Math.min(limitY, this.panY));
+    }
+
+    /**
+     * 摄像机平滑插值过渡动画 (用于聚焦切换与复位)
+     */
+    animateCameraTo(targetState, duration = 300) {
+        if (this.cameraAnimId) {
+            cancelAnimationFrame(this.cameraAnimId);
+            this.cameraAnimId = null;
+        }
+        const startPanX = this.panX;
+        const startPanY = this.panY;
+        const startZoom = this.zoom;
+        const targetPanX = targetState.panX !== undefined ? targetState.panX : this.panX;
+        const targetPanY = targetState.panY !== undefined ? targetState.panY : this.panY;
+        const targetZoom = targetState.zoom !== undefined ? targetState.zoom : this.zoom;
+
+        const startTime = performance.now();
+        const step = (now) => {
+            const elapsed = now - startTime;
+            const rawT = Math.min(1, elapsed / duration);
+            const t = easeInOutCubic(rawT);
+            this.panX = startPanX + (targetPanX - startPanX) * t;
+            this.panY = startPanY + (targetPanY - startPanY) * t;
+            this.zoom = startZoom + (targetZoom - startZoom) * t;
+            this.scheduleRender();
+            if (rawT < 1) {
+                this.cameraAnimId = requestAnimationFrame(step);
+            } else {
+                this.cameraAnimId = null;
+            }
+        };
+        this.cameraAnimId = requestAnimationFrame(step);
     }
 
     /**
@@ -3949,137 +4108,119 @@ class MapRenderer {
     }
 
     /**
-     * 重置平移缩放，居中当前所在位置
+     * 平滑复位并居中当前视角 (支持 immediate 参数瞬时复位)
      */
-    resetView() {
-        this.panX = 0;
-        this.panY = 0;
-        this.zoom = 1.0;
-        this.renderCurrentState();
+    resetView(immediate = false) {
+        if (immediate || typeof requestAnimationFrame === "undefined") {
+            if (this.cameraAnimId) {
+                cancelAnimationFrame(this.cameraAnimId);
+                this.cameraAnimId = null;
+            }
+            this.panX = 0;
+            this.panY = 0;
+            this.zoom = 1.0;
+            this.scheduleRender();
+        } else {
+            this.animateCameraTo({ panX: 0, panY: 0, zoom: 1.0 }, 280);
+        }
     }
 
     zoomIn() {
-        this.zoom = Math.min(3.2, this.zoom * 1.25);
-        this.renderCurrentState();
+        this.animateCameraTo({ zoom: Math.min(3.5, this.zoom * 1.3) }, 200);
     }
 
     zoomOut() {
-        this.zoom = Math.max(0.5, this.zoom * 0.8);
-        this.renderCurrentState();
+        this.animateCameraTo({ zoom: Math.max(0.45, this.zoom * 0.77) }, 200);
     }
 
     /**
-     * 在【🔭 扇区聚焦】与【🌌 全舰全景】之间切换
+     * 在【🔭 扇区聚焦】与【🌌 全舰全景】之间平滑切换
      */
     toggleViewMode() {
         this.viewMode = this.viewMode === "focus" ? "full" : "focus";
-        this.panX = 0;
-        this.panY = 0;
-        this.zoom = 1.0;
+        this.animateCameraTo({ panX: 0, panY: 0, zoom: 1.0 }, 300);
         return this.viewMode;
     }
 
+    /**
+     * 工业化标准统一世界坐标网格 (X与Y严格等比 1:1，杜绝任何形变拉伸)
+     */
     getLayout() {
-        const width = 840;
-        const height = 560;
+        const rect = this.getCanvasRect();
+        const displayW = Math.max(Math.round((rect && rect.width) || (this.canvas && this.canvas.parentElement ? this.canvas.parentElement.clientWidth : 800)), 320);
+        const displayH = Math.max(Math.round((rect && rect.height) || (this.canvas && this.canvas.parentElement ? this.canvas.parentElement.clientHeight : 500)), 240);
 
-        if (this.viewMode === "full") {
-            const minX = 0, maxX = 8;
-            const minY = 0, maxY = 6;
-            const cols = 9;
-            const rows = 7;
-            const paddingX = 48;
-            const paddingY = 44;
-            const availW = width - paddingX * 2;
-            const availH = height - paddingY * 2;
-            const cellW = Math.floor(availW / (cols - 1));
-            const cellH = Math.floor(availH / (rows - 1));
-            const boxSize = 44;
-            const totalGridW = (cols - 1) * cellW;
-            const totalGridH = (rows - 1) * cellH;
-            const originX = Math.round((width - totalGridW) / 2);
-            const originY = Math.round((height - totalGridH) / 2);
-            return { originX, originY, cellW, cellH, boxSize, width, height, minX, minY, maxX, maxY };
-        }
+        // 严格等比物理网格间距 (每个网格步长 115px，舱室尺寸 58px)
+        const cellDist = 115;
+        const boxSize = 58;
 
-        // 'focus' 模式
-        let minX = 0, maxX = 4, minY = 1, maxY = 3;
-        if (this.currentLevelMap && this.currentLevelMap.nodes) {
-            const coords = Object.values(this.currentLevelMap.nodes).map(n => n.coord || { x: 0, y: 1 });
-            if (coords.length > 0) {
-                minX = Math.min(...coords.map(c => c.x));
-                maxX = Math.max(...coords.map(c => c.x));
-                minY = Math.min(...coords.map(c => c.y));
-                maxY = Math.max(...coords.map(c => c.y));
-            }
-        }
+        // 母舰世界坐标总范围 (以 9x7 网格为基准)
+        const shipWorldW = 8 * cellDist + boxSize * 2;
+        const shipWorldH = 6 * cellDist + boxSize * 2;
+        const originX = boxSize;
+        const originY = boxSize;
 
-        const cols = Math.max(maxX - minX + 1, 1);
-        const rows = Math.max(maxY - minY + 1, 1);
-
-        // 第一关特例兼容
-        if (cols <= 5 && rows <= 3 && maxX <= 4 && maxY <= 3 && minX === 0 && minY === 1) {
-            return {
-                originX: 110,
-                originY: 100,
-                cellW: 145,
-                cellH: 125,
-                boxSize: 72,
-                width: 780,
-                height: 520,
-                minX: 0,
-                minY: 1,
-                maxX: 4,
-                maxY: 3
-            };
-        }
-
-        const paddingX = 64;
-        const paddingY = 56;
-        const availW = width - paddingX * 2;
-        const availH = height - paddingY * 2;
-
-        const cellW = cols > 1 ? Math.floor(availW / (cols - 1)) : availW;
-        const cellH = rows > 1 ? Math.floor(availH / (rows - 1)) : availH;
-
-        let boxSize = Math.floor(Math.min(cellW, cellH) * 0.72);
-        if (boxSize > 68) boxSize = 68;
-        if (boxSize < 34) boxSize = 34;
-
-        const totalGridW = (cols - 1) * cellW;
-        const totalGridH = (rows - 1) * cellH;
-
-        const originX = Math.round((width - totalGridW) / 2);
-        const originY = Math.round((height - totalGridH) / 2);
-
-        return { originX, originY, cellW, cellH, boxSize, width, height, minX, minY, maxX, maxY };
+        return {
+            originX,
+            originY,
+            cellW: cellDist,
+            cellH: cellDist,
+            boxSize,
+            width: displayW,
+            height: displayH,
+            shipWorldW,
+            shipWorldH,
+            minX: 0,
+            minY: 0,
+            maxX: 8,
+            maxY: 6
+        };
     }
 
     getNodeCenter(node) {
-        if (!node) return { x: 90, y: 80 };
+        if (!node) return { x: 120, y: 120 };
         const layout = this.getLayout();
         const coord = node.coord || { x: 0, y: 1 };
-        const minX = layout.minX !== undefined ? layout.minX : 0;
-        const minY = layout.minY !== undefined ? layout.minY : 1;
         return {
-            x: layout.originX + (coord.x - minX) * layout.cellW,
-            y: layout.originY + (coord.y - minY) * layout.cellH
+            x: layout.originX + coord.x * layout.cellW,
+            y: layout.originY + coord.y * layout.cellH
         };
     }
 
     /**
-     * 将屏幕点击/触摸坐标逆换算为世界画布坐标 (考虑 panX, panY 与 zoom 缩放)
+     * 将屏幕点击/触摸坐标逆换算为世界画布坐标 (严密配合当前 scale, pan 与 cam 锚点)
      */
     getNodeAtPosition(canvasX, canvasY, levelMap) {
         if (!levelMap || !levelMap.nodes) return null;
+        const scale = this.currentScale || 1.0;
+        const cam = this.currentCam || { x: 520, y: 410 };
+        const rect = this.getCanvasRect();
+        const displayW = (rect && rect.width) || (this.canvas && this.canvas.width) || 600;
+        const displayH = (rect && rect.height) || (this.canvas && this.canvas.height) || 400;
+
+        // 逆向变换：屏幕像素 -> 世界坐标 (自适应 CSS 像素与 DPR 物理像素)
+        let normX = canvasX;
+        let normY = canvasY;
+        if (normX > displayW * 1.05 && typeof window !== "undefined" && window.devicePixelRatio > 1) {
+            normX /= window.devicePixelRatio;
+            normY /= window.devicePixelRatio;
+        }
+        const worldX = cam.x + (normX - (displayW / 2 + this.panX)) / scale;
+        const worldY = cam.y + (normY - (displayH / 2 + this.panY)) / scale;
+
+        // 1. 优先判定点击直绘的方向胶囊标牌 (Direction Badges)
+        if (this.directionBadges && this.directionBadges.length > 0) {
+            for (const badge of this.directionBadges) {
+                if (Math.abs(worldX - badge.cx) <= badge.w / 2 && Math.abs(worldY - badge.cy) <= badge.h / 2) {
+                    return badge.targetNode;
+                }
+            }
+        }
+
+        // 2. 判定点击房间节点自身
         const layout = this.getLayout();
-
-        // 逆向变换
-        const worldX = (canvasX - this.panX) / this.zoom;
-        const worldY = (canvasY - this.panY) / this.zoom;
-
         const boxSize = layout.boxSize;
-        const half = boxSize / 2 + Math.max(Math.floor(boxSize * 0.3), 16);
+        const half = boxSize / 2 + 16;
 
         for (const node of Object.values(levelMap.nodes)) {
             const p = this.getNodeCenter(node);
@@ -4098,38 +4239,79 @@ class MapRenderer {
         const ctx = this.ctx;
         const layout = this.getLayout();
 
-        // 动态适配容器视口尺寸 (满屏高清渲染)
-        const parentW = this.canvas.parentElement ? this.canvas.parentElement.clientWidth : 0;
-        const parentH = this.canvas.parentElement ? this.canvas.parentElement.clientHeight : 0;
-        const targetW = Math.max(layout.width, parentW || 720);
-        const targetH = Math.max(layout.height, parentH || 480);
+        // 严格遵循工业级高清晰度渲染适配：动态适配真实容器像素尺寸并应用 DPR (Device Pixel Ratio)
+        const rect = this.getCanvasRect();
+        const displayW = Math.max(Math.round(rect.width || (this.canvas.parentElement ? this.canvas.parentElement.clientWidth : 360) || 360), 200);
+        const displayH = Math.max(Math.round(rect.height || (this.canvas.parentElement ? this.canvas.parentElement.clientHeight : 480) || 480), 200);
+        const dpr = Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1, 2);
 
-        if (this.canvas.width !== targetW || this.canvas.height !== targetH) {
-            this.canvas.width = targetW;
-            this.canvas.height = targetH;
+        const targetBufferW = Math.round(displayW * dpr);
+        const targetBufferH = Math.round(displayH * dpr);
+        if (this.canvas.width !== targetBufferW || this.canvas.height !== targetBufferH) {
+            this.canvas.width = targetBufferW;
+            this.canvas.height = targetBufferH;
         }
 
-        const width = targetW;
-        const height = targetH;
+        // 重设缩放矩阵确保视网膜屏幕绝对等比且极致清晰
+        if (ctx.setTransform) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        const shipCenterX = layout.originX + 4 * layout.cellW;
+        const shipCenterY = layout.originY + 3 * layout.cellH;
+
+        let targetCamX = shipCenterX;
+        let targetCamY = shipCenterY;
+        let baseScale = 1.0;
+
+        if (this.viewMode === "full") {
+            const padX = 24;
+            const padY = 24;
+            const scaleX = (displayW - padX * 2) / layout.shipWorldW;
+            const scaleY = (displayH - padY * 2) / layout.shipWorldH;
+            baseScale = Math.min(scaleX, scaleY); // 严格等比 Math.min，杜绝任何形变！
+            targetCamX = shipCenterX;
+            targetCamY = shipCenterY;
+        } else {
+            // 聚焦模式
+            const minDim = Math.min(displayW, displayH);
+            baseScale = Math.max(0.75, Math.min(1.35, minDim / 440));
+            const curN = levelMap.nodes[currentNodeId];
+            if (animatedMarker) {
+                targetCamX = animatedMarker.x;
+                targetCamY = animatedMarker.y;
+            } else if (curN) {
+                const cp = this.getNodeCenter(curN);
+                targetCamX = cp.x;
+                targetCamY = cp.y;
+            }
+        }
+
+        const uniformScale = baseScale * this.zoom;
+        this.currentScale = uniformScale;
+        this.currentCam = { x: targetCamX, y: targetCamY };
 
         // 1. 清空背景 (深邃科技黑夜背景)
         ctx.fillStyle = "#050811";
-        ctx.fillRect(0, 0, width, height);
+        ctx.fillRect(0, 0, displayW, displayH);
 
         ctx.save();
-        // 应用平移与缩放矩阵变换
-        if (ctx.translate) ctx.translate(this.panX, this.panY);
-        if (ctx.scale) ctx.scale(this.zoom, this.zoom);
+        // 应用居中锚定 + 用户平移 + 统一等比缩放矩阵变换
+        ctx.translate(displayW / 2 + this.panX, displayH / 2 + this.panY);
+        ctx.scale(uniformScale, uniformScale);
+        ctx.translate(-targetCamX, -targetCamY);
 
         // 绘制微弱背景装甲格栅
         ctx.strokeStyle = "rgba(56, 189, 248, 0.035)";
         ctx.lineWidth = 1;
-        const gridSize = 28;
-        for (let x = -width; x < width * 2; x += gridSize) {
-            ctx.beginPath(); ctx.moveTo(x, -height); ctx.lineTo(x, height * 2); ctx.stroke();
+        const gridSize = 32;
+        const gridMinX = -200;
+        const gridMaxX = layout.shipWorldW + 200;
+        const gridMinY = -200;
+        const gridMaxY = layout.shipWorldH + 200;
+        for (let x = gridMinX; x < gridMaxX; x += gridSize) {
+            ctx.beginPath(); ctx.moveTo(x, gridMinY); ctx.lineTo(x, gridMaxY); ctx.stroke();
         }
-        for (let y = -height; y < height * 2; y += gridSize) {
-            ctx.beginPath(); ctx.moveTo(-width, y); ctx.lineTo(width * 2, y); ctx.stroke();
+        for (let y = gridMinY; y < gridMaxY; y += gridSize) {
+            ctx.beginPath(); ctx.moveTo(gridMinX, y); ctx.lineTo(gridMaxX, y); ctx.stroke();
         }
 
         // 2. 计算视野迷雾：已探明房间 + 其直接相邻一格的房间
@@ -4535,20 +4717,98 @@ class MapRenderer {
             ctx.restore();
         }
 
+        // 7.5 直接在画面通路与相邻房间上渲染【前 ⬆】【后 ⬇】【左 ⬅】【右 ➡】方向与房间名科技标牌
+        this.directionBadges = [];
+
+        if (currentNodeId && nodes[currentNodeId] && !animatedMarker) {
+            const curN = nodes[currentNodeId];
+            const conns = curN.connections || {};
+            const dirMeta = {
+                forward:  { label: "前 ⬆", theme: "#38bdf8" },
+                backward: { label: "后 ⬇", theme: "#60a5fa" },
+                left:     { label: "左 ⬅", theme: "#a78bfa" },
+                right:    { label: "右 ➡", theme: "#34d399" }
+            };
+
+            const cp = this.getNodeCenter(curN);
+
+            Object.entries(conns).forEach(([dir, targetId]) => {
+                const targetN = nodes[targetId];
+                if (!targetN) return;
+                const tp = this.getNodeCenter(targetN);
+                const meta = dirMeta[dir] || { label: dir, theme: "#38bdf8" };
+
+                const isTargetVisited = visitedSet.has(targetId);
+                const targetCleanName = (targetN.name || "").replace(/【.*?】/, "");
+                const statusTag = isTargetVisited ? "(已探明)" : "(未探索)";
+
+                // 标牌位置放置在当前房间与目标房间走廊的 65% 处（偏向目标房间）
+                const badgeX = Math.round(cp.x * 0.35 + tp.x * 0.65);
+                const badgeY = Math.round(cp.y * 0.35 + tp.y * 0.65);
+
+                const badgeText = `${meta.label} ${targetCleanName || "区域"} ${statusTag}`;
+
+                ctx.save();
+                ctx.font = "bold 11px 'PingFang SC', sans-serif";
+                const textWidth = ctx.measureText(badgeText).width;
+                const badgeW = Math.max(90, textWidth + 18);
+                const badgeH = 26;
+
+                // 记录点击命中框
+                this.directionBadges.push({
+                    dir,
+                    targetId,
+                    targetNode: targetN,
+                    cx: badgeX,
+                    cy: badgeY,
+                    w: badgeW + 8,
+                    h: badgeH + 8
+                });
+
+                // 绘制高科技胶囊发光底框
+                const accentColor = isTargetVisited ? "#4ade80" : meta.theme;
+                ctx.fillStyle = "rgba(11, 19, 36, 0.94)";
+                ctx.strokeStyle = accentColor;
+                ctx.lineWidth = 1.8;
+                ctx.shadowColor = accentColor;
+                ctx.shadowBlur = 10;
+
+                const bx = badgeX - badgeW / 2;
+                const by = badgeY - badgeH / 2;
+                if (ctx.roundRect) ctx.roundRect(bx, by, badgeW, badgeH, 13);
+                else ctx.rect(bx, by, badgeW, badgeH);
+                ctx.fill();
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                // 标牌文字
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = isTargetVisited ? "#86efac" : "#ffffff";
+                ctx.fillText(badgeText, badgeX, badgeY);
+
+                ctx.restore();
+            });
+        }
+
         ctx.restore(); // 恢复变换矩阵
 
-        // 8. 绘制屏幕固定 HUD (底部提示与缩放指示)
-        ctx.fillStyle = "rgba(15, 23, 42, 0.94)";
-        ctx.fillRect(10, height - 36, width - 20, 28);
-        ctx.strokeStyle = "rgba(56, 189, 248, 0.35)";
-        ctx.strokeRect(10, height - 36, width - 20, 28);
-
-        ctx.font = "12px 'PingFang SC', sans-serif";
-        ctx.textAlign = "left";
-        ctx.fillStyle = "#cbd5e1";
+        // 8. 绘制屏幕固定 HUD (底部提示与缩放指示，自适应手机与桌面)
+        const hudH = 26;
+        ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
+        ctx.fillRect(8, displayH - hudH - 6, displayW - 16, hudH);
+        ctx.strokeStyle = "rgba(56, 189, 248, 0.3)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(8, displayH - hudH - 6, displayW - 16, hudH);
 
         const zoomPercent = Math.round(this.zoom * 100);
-        ctx.fillText(`🎮 触摸/鼠标拖拽全屏平移 ｜ 滚轮/双指缩放 [${zoomPercent}%] ｜ 🔒 气闸锁死(靠近可见) ｜ 点击已探明舱室快速往返`, 18, height - 17);
+        ctx.font = displayW < 600 ? "10px 'PingFang SC', sans-serif" : "12px 'PingFang SC', sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#cbd5e1";
+        const hudMsg = displayW < 600
+            ? `👆 直击方向标牌/房间移动 ｜ 🤏 双指缩放 [${zoomPercent}%]`
+            : `👆 点击画面上标牌或相邻房间直接移动 ｜ 🖱️/🤏 拖拽平移 & 滚轮/双指缩放 [${zoomPercent}%] ｜ ⚡ 点击已探明舱室快速往返`;
+        ctx.fillText(hudMsg, displayW / 2, displayH - hudH / 2 - 2);
     }
 
     /**
@@ -5669,12 +5929,10 @@ class GameEngine {
             if (this.stageMapRenderer && this.stageMapRenderer.isDragging) return;
 
             const rect = stageCanvas.getBoundingClientRect ? stageCanvas.getBoundingClientRect() : { left: 0, top: 0, width: 680, height: 460 };
-            const scaleX = (stageCanvas.width || 680) / (rect.width || 680 || 1);
-            const scaleY = (stageCanvas.height || 460) / (rect.height || 460 || 1);
             const clientX = e.clientX !== undefined ? e.clientX : ((e.x || 0) + (rect.left || 0));
             const clientY = e.clientY !== undefined ? e.clientY : ((e.y || 0) + (rect.top || 0));
-            const clickX = (clientX - (rect.left || 0)) * scaleX;
-            const clickY = (clientY - (rect.top || 0)) * scaleY;
+            const clickX = clientX - (rect.left || 0);
+            const clickY = clientY - (rect.top || 0);
 
             if (this.stageMapRenderer) {
                 const clickedNode = this.stageMapRenderer.getNodeAtPosition(clickX, clickY, this.currentLevel?.map);
@@ -5692,12 +5950,10 @@ class GameEngine {
             if (this.mapRenderer && this.mapRenderer.isDragging) return;
 
             const rect = liveCanvas.getBoundingClientRect ? liveCanvas.getBoundingClientRect() : { left: 0, top: 0, width: 680, height: 460 };
-            const scaleX = (liveCanvas.width || 680) / (rect.width || 680 || 1);
-            const scaleY = (liveCanvas.height || 460) / (rect.height || 460 || 1);
             const clientX = e.clientX !== undefined ? e.clientX : ((e.x || 0) + (rect.left || 0));
             const clientY = e.clientY !== undefined ? e.clientY : ((e.y || 0) + (rect.top || 0));
-            const clickX = (clientX - (rect.left || 0)) * scaleX;
-            const clickY = (clientY - (rect.top || 0)) * scaleY;
+            const clickX = clientX - (rect.left || 0);
+            const clickY = clientY - (rect.top || 0);
 
             if (this.mapRenderer) {
                 const clickedNode = this.mapRenderer.getNodeAtPosition(clickX, clickY, this.currentLevel?.map);
@@ -6098,6 +6354,11 @@ class GameEngine {
 
         // 初始化地图
         this.explorationEngine.initLevelMap(levelConfig.map);
+
+        // 异步预加载游戏核心音效资源，保证后续走图与触发事件零卡顿零延迟
+        if (typeof Sound !== "undefined" && Sound.preloadDefaults) {
+            Sound.preloadDefaults();
+        }
 
         // 进入 q1: 黑屏白字
         this.enterQ1BlackScreen();

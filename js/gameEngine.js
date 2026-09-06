@@ -280,12 +280,10 @@ export class GameEngine {
             if (this.stageMapRenderer && this.stageMapRenderer.isDragging) return;
 
             const rect = stageCanvas.getBoundingClientRect ? stageCanvas.getBoundingClientRect() : { left: 0, top: 0, width: 680, height: 460 };
-            const scaleX = (stageCanvas.width || 680) / (rect.width || 680 || 1);
-            const scaleY = (stageCanvas.height || 460) / (rect.height || 460 || 1);
             const clientX = e.clientX !== undefined ? e.clientX : ((e.x || 0) + (rect.left || 0));
             const clientY = e.clientY !== undefined ? e.clientY : ((e.y || 0) + (rect.top || 0));
-            const clickX = (clientX - (rect.left || 0)) * scaleX;
-            const clickY = (clientY - (rect.top || 0)) * scaleY;
+            const clickX = clientX - (rect.left || 0);
+            const clickY = clientY - (rect.top || 0);
 
             if (this.stageMapRenderer) {
                 const clickedNode = this.stageMapRenderer.getNodeAtPosition(clickX, clickY, this.currentLevel?.map);
@@ -303,12 +301,10 @@ export class GameEngine {
             if (this.mapRenderer && this.mapRenderer.isDragging) return;
 
             const rect = liveCanvas.getBoundingClientRect ? liveCanvas.getBoundingClientRect() : { left: 0, top: 0, width: 680, height: 460 };
-            const scaleX = (liveCanvas.width || 680) / (rect.width || 680 || 1);
-            const scaleY = (liveCanvas.height || 460) / (rect.height || 460 || 1);
             const clientX = e.clientX !== undefined ? e.clientX : ((e.x || 0) + (rect.left || 0));
             const clientY = e.clientY !== undefined ? e.clientY : ((e.y || 0) + (rect.top || 0));
-            const clickX = (clientX - (rect.left || 0)) * scaleX;
-            const clickY = (clientY - (rect.top || 0)) * scaleY;
+            const clickX = clientX - (rect.left || 0);
+            const clickY = clientY - (rect.top || 0);
 
             if (this.mapRenderer) {
                 const clickedNode = this.mapRenderer.getNodeAtPosition(clickX, clickY, this.currentLevel?.map);
@@ -709,6 +705,11 @@ export class GameEngine {
 
         // 初始化地图
         this.explorationEngine.initLevelMap(levelConfig.map);
+
+        // 异步预加载游戏核心音效资源，保证后续走图与触发事件零卡顿零延迟
+        if (typeof Sound !== "undefined" && Sound.preloadDefaults) {
+            Sound.preloadDefaults();
+        }
 
         // 进入 q1: 黑屏白字
         this.enterQ1BlackScreen();
