@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-06T07:12:18.875Z
+ * 自动生成于 2026-09-06T07:25:50.132Z
  */
 (function() {
     'use strict';
@@ -5081,10 +5081,18 @@ class ExplorationEngine {
         };
         const dirName = dirNames[direction] || direction;
 
+        const isAlreadyExplored = this.visitedNodes.has(nextNodeId);
+
         // 记录行动日志
-        this.gameEngine.logAction(
-            `【探索移动】向${dirName}行进至 [${nextNode.name}]，消耗体力 ${cost}点（剩余 ${this.gameEngine.stamina}/${StaminaConfig.maxStamina}）`
-        );
+        if (isAlreadyExplored) {
+            this.gameEngine.logAction(
+                `【安全折返】向${dirName}返回已探明区域 [${nextNode.name}]，消耗体力 ${cost}点（不消耗面临选择次数，剩余 ${this.gameEngine.stamina}/${StaminaConfig.maxStamina}）`
+            );
+        } else {
+            this.gameEngine.logAction(
+                `【探索推进】向${dirName}踏入未知区域 [${nextNode.name}]，消耗体力 ${cost}点（剩余 ${this.gameEngine.stamina}/${StaminaConfig.maxStamina}）`
+            );
+        }
 
         // 2. 更新当前位置
         this.currentNodeId = nextNodeId;
@@ -5096,8 +5104,10 @@ class ExplorationEngine {
         // 3. 终点优先判定：若最后一步踏上的是终点，即使体力耗尽（降至0）也算通过
         const isExitNode = !!(nextNode.isExit || (nextNode.event && nextNode.event.type === "exit"));
         if (isExitNode) {
-            this.choiceCount++;
-            this.handleNodeEvents(nextNode);
+            if (!isAlreadyExplored) {
+                this.choiceCount++;
+            }
+            this.handleNodeEvents(nextNode, isAlreadyExplored);
             return true;
         }
 
@@ -5107,11 +5117,16 @@ class ExplorationEngine {
             return true;
         }
 
-        // 5. 增加面临选择次数
-        this.choiceCount++;
+        // 5. 增加面临选择次数：用户明确规定——点已探索区域不消耗面临选择次数，点未探索区域才消耗
+        if (!isAlreadyExplored) {
+            this.choiceCount++;
+            console.log(`[面临选择计数] 探索新房间 [${nextNode.name}]，选择次数增至: ${this.choiceCount}`);
+        } else {
+            console.log(`[面临选择计数] 折返已探明房间 [${nextNode.name}]，安全通行，不消耗面临选择次数 (保持 ${this.choiceCount} 次)`);
+        }
 
         // 6. 触发并检查当前节点事件
-        this.handleNodeEvents(nextNode);
+        this.handleNodeEvents(nextNode, isAlreadyExplored);
 
         return true;
     }
@@ -5119,7 +5134,7 @@ class ExplorationEngine {
     /**
      * 处理节点事件（终点、食物、昏迷NPC）
      */
-    handleNodeEvents(node) {
+    handleNodeEvents(node, isAlreadyExplored = false) {
         // 更新左上角区域名称与UI
         this.gameEngine.updateHeaderUI();
 
@@ -5142,7 +5157,16 @@ class ExplorationEngine {
             }
         }
 
-        // 无事件或普通走廊，直接检查是否触发傍晚
+        // 如果是已探索过的安全房间，并且没有新事件阻断，则不计入面临选择，不触发傍晚检定
+        if (isAlreadyExplored) {
+            this.gameEngine.renderExplorationControls();
+            if (this.gameEngine.refreshStageMap) {
+                this.gameEngine.refreshStageMap();
+            }
+            return;
+        }
+
+        // 仅当踏入未探索区域时，才检定是否触发傍晚
         this.checkEveningTrigger();
     }
 
@@ -5415,6 +5439,10 @@ class GameEngine {
 
         this.initDomReferences();
         this.bindEvents();
+
+        if (this.stageMapCanvas && !this.stageMapRenderer) {
+            this.stageMapRenderer = new MapRenderer(this.stageMapCanvas);
+        }
     }
 
     initDomReferences() {
@@ -5467,6 +5495,14 @@ class GameEngine {
         this.missionsSidebarList = document.getElementById("missions-sidebar-list");
         this.missionModalList = document.getElementById("mission-modal-list");
         this.missionsSummaryTag = document.getElementById("missions-summary-tag");
+
+        // 舞台常驻大地图与轻量任务卡 DOM 引用
+        this.stageMapCanvas = document.getElementById("stage-map-canvas");
+        this.stageMapRenderer = null;
+        this.stageMissionCard = document.getElementById("stage-mission-card");
+        this.stageMissionContent = document.getElementById("stage-mission-content");
+        this.stageToast = document.getElementById("stage-toast");
+        this.toastTimer = null;
 
         // 人物特征/秘密图鉴 DOM 引用
         this.btnMenuPersonaLog = document.getElementById("btn-menu-persona-log");
@@ -5603,12 +5639,52 @@ class GameEngine {
             }
         });
 
-        // 浮动缩放与居中控制条
+        // 浮动缩放与居中控制条 (模态弹窗)
         document.getElementById("btn-map-zoom-in")?.addEventListener("click", () => this.mapRenderer?.zoomIn());
         document.getElementById("btn-map-zoom-out")?.addEventListener("click", () => this.mapRenderer?.zoomOut());
         document.getElementById("btn-map-center")?.addEventListener("click", () => this.mapRenderer?.resetView());
 
-        // 实时地图 Canvas 点击与悬浮快速往返交互
+        // 主舞台大地图浮动微控工具
+        document.getElementById("btn-stage-map-focus")?.addEventListener("click", () => {
+            if (this.stageMapRenderer) {
+                const newMode = this.stageMapRenderer.toggleViewMode();
+                const btn = document.getElementById("btn-stage-map-focus");
+                if (btn) btn.textContent = newMode === "full" ? "🌌 全景" : "🔭 聚焦";
+                this.renderStageMap();
+            }
+        });
+        document.getElementById("btn-stage-map-zoom-in")?.addEventListener("click", () => this.stageMapRenderer?.zoomIn());
+        document.getElementById("btn-stage-map-zoom-out")?.addEventListener("click", () => this.stageMapRenderer?.zoomOut());
+        document.getElementById("btn-stage-map-reset")?.addEventListener("click", () => this.stageMapRenderer?.resetView());
+
+        // 主舞台轻量任务卡折叠切换
+        document.getElementById("stage-mission-toggle-btn")?.addEventListener("click", () => {
+            this.stageMissionCard?.classList.toggle("collapsed");
+        });
+
+        // 主舞台背景大地图 Canvas 点击：直接点击房间移动或快速往返！
+        const stageCanvas = this.stageMapCanvas || document.getElementById("stage-map-canvas");
+        stageCanvas?.addEventListener("click", (e) => {
+            if (this.isMovingAnimation) return;
+            if (this.stageMapRenderer && this.stageMapRenderer.isDragging) return;
+
+            const rect = stageCanvas.getBoundingClientRect ? stageCanvas.getBoundingClientRect() : { left: 0, top: 0, width: 680, height: 460 };
+            const scaleX = (stageCanvas.width || 680) / (rect.width || 680 || 1);
+            const scaleY = (stageCanvas.height || 460) / (rect.height || 460 || 1);
+            const clientX = e.clientX !== undefined ? e.clientX : ((e.x || 0) + (rect.left || 0));
+            const clientY = e.clientY !== undefined ? e.clientY : ((e.y || 0) + (rect.top || 0));
+            const clickX = (clientX - (rect.left || 0)) * scaleX;
+            const clickY = (clientY - (rect.top || 0)) * scaleY;
+
+            if (this.stageMapRenderer) {
+                const clickedNode = this.stageMapRenderer.getNodeAtPosition(clickX, clickY, this.currentLevel?.map);
+                if (clickedNode) {
+                    this.handleMapNodeClick(clickedNode);
+                }
+            }
+        });
+
+        // 实时地图 Canvas 点击与悬浮快速往返交互 (模态弹窗)
         const liveCanvas = document.getElementById("live-map-canvas");
         liveCanvas?.addEventListener("click", (e) => {
             // 若当前正在移动动画中或拖拽地图平移后抬手，不触发快速往返
@@ -5920,6 +5996,9 @@ class GameEngine {
         }
         if (this.missionModalList) {
             this.missionModalList.innerHTML = modalHtml;
+        }
+        if (this.stageMissionContent) {
+            this.stageMissionContent.innerHTML = sidebarHtml;
         }
     }
 
@@ -7260,6 +7339,9 @@ class GameEngine {
 
         // 实时刷新环境遥测与随行同伴头像栏
         this.updateTelemetryAndRoster();
+
+        // 实时刷新主舞台背景全景蓝图
+        this.renderStageMap();
     }
 
     updateTelemetryAndRoster() {
@@ -7384,13 +7466,35 @@ class GameEngine {
             Sound.playMoveSound();
         }
 
-        // 打开地图弹窗并执行平移位移动画
-        this.showMapModalForMove(currentNode, nextNode, () => {
+        const onFinished = () => {
             this.isMovingAnimation = false;
-            // 动画完成，关闭地图弹窗并执行真实状态结算
-            this.modalMap?.classList.add("hidden");
             this.explorationEngine.moveTo(direction);
-        });
+            this.renderStageMap();
+            this.renderExplorationControls();
+        };
+
+        // 如果主舞台背景大地图存在且支持动画，直接在舞台背景上平移动画，不强制弹出弹窗
+        const renderer = this.stageMapRenderer;
+        if (renderer && typeof requestAnimationFrame !== "undefined") {
+            const visited = this.explorationEngine.visitedNodes;
+            renderer.animateMove(
+                this.currentLevel.map,
+                currentNode.id,
+                nextNode.id,
+                visited,
+                this.teamMembers,
+                onFinished
+            );
+        } else {
+            // 回退兼容
+            this.showMapModalForMove(currentNode, nextNode, () => {
+                this.isMovingAnimation = false;
+                this.modalMap?.classList.add("hidden");
+                this.explorationEngine.moveTo(direction);
+                this.renderStageMap();
+                this.renderExplorationControls();
+            });
+        }
     }
 
     /**
@@ -7533,72 +7637,105 @@ class GameEngine {
     }
 
     /**
-     * 处理点击地图房间节点触发快速往返
+     * 渲染主舞台背景上的全景太空基地蓝图
+     */
+    renderStageMap() {
+        if (!this.stageMapRenderer && this.stageMapCanvas) {
+            this.stageMapRenderer = new MapRenderer(this.stageMapCanvas);
+        }
+
+        const btnToggleFocus = document.getElementById("btn-stage-map-focus");
+        if (btnToggleFocus && this.stageMapRenderer) {
+            btnToggleFocus.textContent = this.stageMapRenderer.viewMode === "full" ? "🌌 全景" : "🔭 聚焦";
+        }
+
+        if (this.stageMapRenderer && this.currentLevel && this.currentLevel.map && this.explorationEngine) {
+            this.stageMapRenderer.render(
+                this.currentLevel.map,
+                this.explorationEngine.currentNodeId,
+                this.explorationEngine.visitedNodes,
+                this.teamMembers,
+                null,
+                0,
+                {
+                    canFastTravel: this.phase === "q3_explore",
+                    hoveredNodeId: this.hoveredMapNodeId
+                }
+            );
+        }
+    }
+
+    /**
+     * 舞台轻量提示条 (Stage Toast)
+     */
+    showStageToast(text) {
+        if (!this.stageToast) {
+            this.stageToast = document.getElementById("stage-toast");
+        }
+        if (!this.stageToast) return;
+
+        this.stageToast.textContent = text;
+        this.stageToast.classList.add("visible");
+        if (this.stageToastTimeout) {
+            clearTimeout(this.stageToastTimeout);
+        }
+        this.stageToastTimeout = setTimeout(() => {
+            this.stageToast?.classList.remove("visible");
+        }, 2200);
+    }
+
+    /**
+     * 处理点击地图房间节点触发移动 (支持直接点击相邻房间移动，或点击已探明远距离房间快速往返)
      */
     handleMapNodeClick(node) {
-        if (!node) return;
+        if (!node || this.isMovingAnimation) return;
 
-        // 1. 阶段约束：快速往返只能在白天自由探索（q3_explore）使用，傍晚时刻、裁决、询问、黑夜均不可使用
+        // 1. 阶段约束：只能在白昼自由探索（q3_explore）使用
         if (this.phase !== "q3_explore") {
-            const banner = document.getElementById("map-move-banner");
-            const bannerText = document.getElementById("map-move-text");
-            if (banner && bannerText) {
-                banner.classList.remove("hidden");
-                bannerText.innerHTML = `⚠️ <span style="color:#ef4444">快速往返锁定：</span>该功能仅限白昼探索时段使用，当前时段（傍晚/裁决/黑夜）禁止使用！`;
-                setTimeout(() => {
-                    if (!this.isMovingAnimation) banner.classList.add("hidden");
-                }, 2400);
-            }
+            this.showStageToast("⚠️ 该功能仅限白昼探索时段使用");
             if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
             return;
         }
 
-        // 2. 区域探明约束：只能前往已探索区域
-        if (!this.explorationEngine.visitedNodes.has(node.id)) {
-            const banner = document.getElementById("map-move-banner");
-            const bannerText = document.getElementById("map-move-text");
-            if (banner && bannerText) {
-                banner.classList.remove("hidden");
-                bannerText.innerHTML = `⚠️ <span style="color:#f59e0b">[未探明迷雾]</span> 只能快速往返于已经探索过的安全房间！`;
-                setTimeout(() => {
-                    if (!this.isMovingAnimation) banner.classList.add("hidden");
-                }, 2200);
-            }
-            if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
-            return;
-        }
+        const currentNode = this.explorationEngine.getCurrentNode();
+        if (!currentNode) return;
 
-        // 3. 当前位置校验：若点击的就是当前所在房间
+        // 2. 当前位置校验：若点击的就是当前所在房间
         if (node.id === this.explorationEngine.currentNodeId) {
-            const banner = document.getElementById("map-move-banner");
-            const bannerText = document.getElementById("map-move-text");
-            if (banner && bannerText) {
-                banner.classList.remove("hidden");
-                bannerText.innerHTML = `📍 <span style="color:#38bdf8">你当前已在 [${node.name}]！</span>无需折返。`;
-                setTimeout(() => {
-                    if (!this.isMovingAnimation) banner.classList.add("hidden");
-                }, 1800);
-            }
+            this.showStageToast(`📍 当前已在 [${node.name}]`);
             return;
         }
 
-        // 4. 寻路校验：寻找经由已探索房间的最短路径
-        const path = this.explorationEngine.findVisitedPath(this.explorationEngine.currentNodeId, node.id);
-        if (!path || path.length < 2) {
-            const banner = document.getElementById("map-move-banner");
-            const bannerText = document.getElementById("map-move-text");
-            if (banner && bannerText) {
-                banner.classList.remove("hidden");
-                bannerText.innerHTML = `⚠️ 暂无连通的已探索路线前往 [${node.name}]！`;
-                setTimeout(() => {
-                    if (!this.isMovingAnimation) banner.classList.add("hidden");
-                }, 2200);
+        // 3. 检查是否为相邻连通房间 (用户要求：直接点击相邻未探索或已探索房间即可移动)
+        const conns = currentNode.connections || {};
+        let targetDir = null;
+        for (const [dir, neighborId] of Object.entries(conns)) {
+            if (neighborId === node.id) {
+                targetDir = dir;
+                break;
             }
+        }
+
+        if (targetDir) {
+            // 点击的是相邻连通房间：直接向该方向行进！
+            this.performMoveWithMapAnimation(targetDir);
             return;
         }
 
-        // 5. 开始执行带动画与音效的快速往返
-        this.performFastTravel(node.id, path);
+        // 4. 非相邻房间：若已探明，触发快速往返穿梭寻路
+        if (this.explorationEngine.visitedNodes.has(node.id)) {
+            const path = this.explorationEngine.findVisitedPath(currentNode.id, node.id);
+            if (!path || path.length < 2) {
+                this.showStageToast(`⚠️ 暂无连通的已探索路线前往 [${node.name}]！`);
+                return;
+            }
+            this.performFastTravel(node.id, path);
+            return;
+        }
+
+        // 5. 非相邻且未探明的房间
+        this.showStageToast(`⚠️ [${node.name}] 属于未探明迷雾区域，请先沿相邻通道探索！`);
+        if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
     }
 
     /**
@@ -7610,35 +7747,35 @@ class GameEngine {
 
         const startNode = this.explorationEngine.getCurrentNode();
         const destNode = this.currentLevel.map.nodes[targetNodeId];
-        const banner = document.getElementById("map-move-banner");
-        const bannerText = document.getElementById("map-move-text");
-        const tabLive = document.getElementById("btn-tab-live-map");
-        const tabSketch = document.getElementById("btn-tab-sketch-map");
-        const viewLive = document.getElementById("map-live-view");
-        const viewSketch = document.getElementById("map-sketch-view");
-
-        // 确保切换至实时定位蓝图
-        tabLive?.classList.add("active");
-        tabSketch?.classList.remove("active");
-        viewLive?.classList.remove("hidden");
-        viewSketch?.classList.add("hidden");
-
         const startName = startNode ? startNode.name : "当前位置";
         const destName = destNode ? destNode.name : targetNodeId;
 
-        if (banner && bannerText) {
-            banner.classList.remove("hidden");
-            bannerText.innerHTML = `🧭 正在快速往返：<span style="color:#38bdf8">[${startName}]</span> ➔ <span style="color:#4ade80">[${destName}]</span> (途经 ${path.length - 1} 间安全走廊)... ⚡ 点击画面可跳过`;
-        }
+        const isModalVisible = this.modalMap && !this.modalMap.classList.contains("hidden");
+        const banner = document.getElementById("map-move-banner");
+        const bannerText = document.getElementById("map-move-text");
 
-        this.modalMap?.classList.remove("hidden");
+        if (isModalVisible) {
+            const tabLive = document.getElementById("btn-tab-live-map");
+            const tabSketch = document.getElementById("btn-tab-sketch-map");
+            const viewLive = document.getElementById("map-live-view");
+            const viewSketch = document.getElementById("map-sketch-view");
 
-        if (!this.mapRenderer) {
-            const canvas = document.getElementById("live-map-canvas");
-            if (canvas) {
-                this.mapRenderer = new MapRenderer(canvas);
+            // 确保切换至实时定位蓝图
+            tabLive?.classList.add("active");
+            tabSketch?.classList.remove("active");
+            viewLive?.classList.remove("hidden");
+            viewSketch?.classList.add("hidden");
+
+            if (banner && bannerText) {
+                banner.classList.remove("hidden");
+                bannerText.innerHTML = `🧭 正在快速往返：<span style="color:#38bdf8">[${startName}]</span> ➔ <span style="color:#4ade80">[${destName}]</span> (途经 ${path.length - 1} 间安全走廊)... ⚡ 点击画面可跳过`;
             }
+        } else {
+            this.showStageToast(`🧭 快速往返：[${startName}] ➔ [${destName}]...`);
         }
+
+        const activeRenderer = isModalVisible ? this.mapRenderer : (this.stageMapRenderer || this.mapRenderer);
+        const canvasElem = isModalVisible ? document.getElementById("live-map-canvas") : this.stageMapCanvas;
 
         let finished = false;
         const completeOnce = () => {
@@ -7647,10 +7784,14 @@ class GameEngine {
             this.isMovingAnimation = false;
             this.skipFastTravelAnimation = null;
             if (banner) banner.classList.add("hidden");
-            this.modalMap?.classList.add("hidden");
+            if (isModalVisible) {
+                this.modalMap?.classList.add("hidden");
+            }
 
             // 执行快速往返状态结算（不累加面临选择次数）
             this.explorationEngine.fastTravelTo(targetNodeId);
+            this.renderStageMap();
+            this.renderExplorationControls();
 
             // 视觉小说对白反馈
             this.dialogueUI.say(
@@ -7659,11 +7800,10 @@ class GameEngine {
             );
         };
 
-        const canvasElem = document.getElementById("live-map-canvas");
         const skipHandler = () => {
             if (finished) return;
-            if (this.mapRenderer && this.mapRenderer.skipAnimation) {
-                this.mapRenderer.skipAnimation();
+            if (activeRenderer && activeRenderer.skipAnimation) {
+                activeRenderer.skipAnimation();
             }
             completeOnce();
         };
@@ -7676,8 +7816,8 @@ class GameEngine {
             Sound.playMoveSound();
         }
 
-        if (this.mapRenderer && typeof requestAnimationFrame !== "undefined" && path && path.length >= 2) {
-            this.mapRenderer.animatePath(
+        if (activeRenderer && typeof requestAnimationFrame !== "undefined" && path && path.length >= 2) {
+            activeRenderer.animatePath(
                 this.currentLevel.map,
                 path,
                 this.explorationEngine.visitedNodes,
@@ -7687,14 +7827,14 @@ class GameEngine {
                     if (typeof Sound !== "undefined" && Sound.playMoveSound) {
                         Sound.playMoveSound();
                     }
-                    if (bannerText) {
+                    if (isModalVisible && bannerText) {
                         const toN = this.currentLevel.map.nodes[toId];
                         bannerText.innerHTML = `🧭 正在快速往返：<span style="color:#38bdf8">[${startName}]</span> ➔ <span style="color:#4ade80">[${destName}]</span> (正在经过: ${toN?.name || toId})... ⚡ 点击跳过`;
                     }
                 },
                 () => {
                     canvasElem?.removeEventListener("click", skipHandler);
-                    if (bannerText) {
+                    if (isModalVisible && bannerText) {
                         bannerText.innerHTML = `📍 已安全抵达：<span style="color:#4ade80">[${destName}]</span>`;
                     }
                     setTimeout(() => {

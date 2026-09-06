@@ -10,7 +10,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>潜伏危机：循环伪装体 (视觉小说·肉鸽探索·AI伪人杀)</title>
-    <link rel="stylesheet" href="./style.css?v=1788678738887">
+    <link rel="stylesheet" href="./style.css?v=1788679550145">
 </head>
 <body>
 
@@ -183,6 +183,32 @@
             <!-- 屏幕正中：太空星舰环境仪 + 随行同伴羁绊栏 + 战术中枢雷达探索盘 -->
             <section class="stage-center-area">
                 
+                <!-- 0. 舞台全景战术地图直绘交互层 (直接铺满背景，支持点击房间直达移动) -->
+                <div id="stage-map-viewport" class="stage-map-viewport">
+                    <canvas id="stage-map-canvas" class="stage-map-canvas"></canvas>
+                    <!-- 舞台地图悬浮微控工具 -->
+                    <div class="stage-map-floating-controls">
+                        <button id="btn-stage-map-focus" class="stage-floating-btn" title="切换：扇区聚焦 / 全舰全景">🔭 聚焦</button>
+                        <button id="btn-stage-map-zoom-in" class="stage-floating-btn" title="放大 (+)">➕</button>
+                        <button id="btn-stage-map-zoom-out" class="stage-floating-btn" title="缩小 (-)">➖</button>
+                        <button id="btn-stage-map-reset" class="stage-floating-btn" title="回正视野 (🎯)">🎯</button>
+                    </div>
+                </div>
+
+                <!-- 屏幕轻量浮动交互提示条 -->
+                <div id="stage-toast" class="stage-toast hidden"></div>
+
+                <!-- 手机/电脑通用常驻左上角轻量任务指示器 -->
+                <div id="stage-mission-card" class="stage-mission-card">
+                    <div class="stage-mission-header">
+                        <span class="stage-mission-title">🎯 观测目标</span>
+                        <span id="stage-mission-toggle-btn" class="stage-mission-toggle" title="展开/收起">▼</span>
+                    </div>
+                    <div id="stage-mission-content" class="stage-mission-content">
+                        <!-- 动态载入当前主要任务概要 -->
+                    </div>
+                </div>
+
                 <!-- 1. 星舰实时环境遥测仪表 (Sector Telemetry HUD) -->
                 <div id="sector-telemetry-hud" class="sector-telemetry-hud">
                     <div class="telemetry-chip">
@@ -470,7 +496,7 @@
     <button id="btn-toggle-landscape" class="btn-float-rotate" title="旋转屏幕方向">🔄</button>
 
     <!-- 游戏启动引导脚本 (单文件普通JS，彻底规避file://协议CORS限制，双击即可直接畅玩) -->
-    <script src="js/app.bundle.js?v=1788678738887"></script>
+    <script src="js/app.bundle.js?v=1788679550145"></script>
 </body>
 </html>
 

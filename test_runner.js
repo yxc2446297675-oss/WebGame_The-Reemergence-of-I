@@ -1420,7 +1420,53 @@ console.log(`   【200次采样检定】范围 [1, 2] 生成分布: 1名伪人=$
 if (stats12[1] < 20 || stats12[2] < 20 || (stats12[3] && stats12[3] > 0)) {
     throw new Error("伪人范围 [1, 2] 分布异常！统计: " + JSON.stringify(stats12));
 }
-console.log("   【已验证】设置 [1, 2] 时，1个、2个伪人均有几率生成，绝不固定只有2个伪人！测试通过！");
+console.log("\n28. 验证走图决策计数机制 (移动到已探索房间不消耗面临选择次数，移动到未探索房间消耗选择次数)...");
+{
+    // 关卡地图状态初始化
+    app.explorationEngine.initLevelMap(app.currentLevel.map);
+    app.phase = "q3_explore";
+    const initialNodeId = app.explorationEngine.currentNodeId;
+    const initialChoiceCount = app.explorationEngine.choiceCount;
 
-console.log('\n====== [TEST PASSED] 全部 27 项核心流程、雷达悬浮窗、母舰蓝图与伪人随机生成测试全部成功！ ======');
+    // 1. 获取一个与起始房间相连的方向进行初次探索
+    const availDirs = app.explorationEngine.getAvailableDirections();
+    const testDir = Object.keys(availDirs)[0];
+    const targetNodeId = availDirs[testDir];
+
+    // 移动到未探索房间
+    const movedFirst = app.explorationEngine.moveTo(testDir);
+    if (!movedFirst) throw new Error("首次移动失败！");
+    if (app.explorationEngine.choiceCount !== initialChoiceCount + 1) {
+        throw new Error(`移动至未探索房间应消耗次数！预期 ${initialChoiceCount + 1}，实际 ${app.explorationEngine.choiceCount}`);
+    }
+    console.log(`   【已验证】移动至未探索房间：面临选择次数由 ${initialChoiceCount} 增加至 ${app.explorationEngine.choiceCount}`);
+
+    // 2. 原路折返回起始房间（起始房间已在 visitedNodes 中）
+    const backAvailDirs = app.explorationEngine.getAvailableDirections();
+    let backDir = null;
+    for (const [d, nId] of Object.entries(backAvailDirs)) {
+        if (nId === initialNodeId) {
+            backDir = d;
+            break;
+        }
+    }
+    if (!backDir) throw new Error("未找到折返路径！");
+
+    const currentChoiceCount = app.explorationEngine.choiceCount;
+    const movedBack = app.explorationEngine.moveTo(backDir);
+    if (!movedBack) throw new Error("折返移动失败！");
+    if (app.explorationEngine.choiceCount !== currentChoiceCount) {
+        throw new Error(`折返至已探索房间不应消耗面临选择次数！预期 ${currentChoiceCount}，实际 ${app.explorationEngine.choiceCount}`);
+    }
+    console.log(`   【已验证】折返移动至已探索房间：面临选择次数保持 ${app.explorationEngine.choiceCount} 不变！`);
+
+    // 3. 验证快速往返 fastTravelTo 同样不消耗选择次数
+    app.explorationEngine.fastTravelTo(targetNodeId);
+    if (app.explorationEngine.choiceCount !== currentChoiceCount) {
+        throw new Error(`快速往返已探明房间不应消耗面临选择次数！预期 ${currentChoiceCount}，实际 ${app.explorationEngine.choiceCount}`);
+    }
+    console.log(`   【已验证】快速往返穿梭：面临选择次数保持 ${app.explorationEngine.choiceCount} 不变！`);
+}
+
+console.log('\n====== [TEST PASSED] 全部 28 项核心流程、雷达悬浮窗、母舰背景蓝图、直点移动与免消耗折返测试全部成功！ ======');
 

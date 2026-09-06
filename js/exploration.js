@@ -77,10 +77,18 @@ export class ExplorationEngine {
         };
         const dirName = dirNames[direction] || direction;
 
+        const isAlreadyExplored = this.visitedNodes.has(nextNodeId);
+
         // 记录行动日志
-        this.gameEngine.logAction(
-            `【探索移动】向${dirName}行进至 [${nextNode.name}]，消耗体力 ${cost}点（剩余 ${this.gameEngine.stamina}/${StaminaConfig.maxStamina}）`
-        );
+        if (isAlreadyExplored) {
+            this.gameEngine.logAction(
+                `【安全折返】向${dirName}返回已探明区域 [${nextNode.name}]，消耗体力 ${cost}点（不消耗面临选择次数，剩余 ${this.gameEngine.stamina}/${StaminaConfig.maxStamina}）`
+            );
+        } else {
+            this.gameEngine.logAction(
+                `【探索推进】向${dirName}踏入未知区域 [${nextNode.name}]，消耗体力 ${cost}点（剩余 ${this.gameEngine.stamina}/${StaminaConfig.maxStamina}）`
+            );
+        }
 
         // 2. 更新当前位置
         this.currentNodeId = nextNodeId;
@@ -92,8 +100,10 @@ export class ExplorationEngine {
         // 3. 终点优先判定：若最后一步踏上的是终点，即使体力耗尽（降至0）也算通过
         const isExitNode = !!(nextNode.isExit || (nextNode.event && nextNode.event.type === "exit"));
         if (isExitNode) {
-            this.choiceCount++;
-            this.handleNodeEvents(nextNode);
+            if (!isAlreadyExplored) {
+                this.choiceCount++;
+            }
+            this.handleNodeEvents(nextNode, isAlreadyExplored);
             return true;
         }
 
@@ -103,11 +113,16 @@ export class ExplorationEngine {
             return true;
         }
 
-        // 5. 增加面临选择次数
-        this.choiceCount++;
+        // 5. 增加面临选择次数：用户明确规定——点已探索区域不消耗面临选择次数，点未探索区域才消耗
+        if (!isAlreadyExplored) {
+            this.choiceCount++;
+            console.log(`[面临选择计数] 探索新房间 [${nextNode.name}]，选择次数增至: ${this.choiceCount}`);
+        } else {
+            console.log(`[面临选择计数] 折返已探明房间 [${nextNode.name}]，安全通行，不消耗面临选择次数 (保持 ${this.choiceCount} 次)`);
+        }
 
         // 6. 触发并检查当前节点事件
-        this.handleNodeEvents(nextNode);
+        this.handleNodeEvents(nextNode, isAlreadyExplored);
 
         return true;
     }
@@ -115,7 +130,7 @@ export class ExplorationEngine {
     /**
      * 处理节点事件（终点、食物、昏迷NPC）
      */
-    handleNodeEvents(node) {
+    handleNodeEvents(node, isAlreadyExplored = false) {
         // 更新左上角区域名称与UI
         this.gameEngine.updateHeaderUI();
 
@@ -138,7 +153,16 @@ export class ExplorationEngine {
             }
         }
 
-        // 无事件或普通走廊，直接检查是否触发傍晚
+        // 如果是已探索过的安全房间，并且没有新事件阻断，则不计入面临选择，不触发傍晚检定
+        if (isAlreadyExplored) {
+            this.gameEngine.renderExplorationControls();
+            if (this.gameEngine.refreshStageMap) {
+                this.gameEngine.refreshStageMap();
+            }
+            return;
+        }
+
+        // 仅当踏入未探索区域时，才检定是否触发傍晚
         this.checkEveningTrigger();
     }
 
