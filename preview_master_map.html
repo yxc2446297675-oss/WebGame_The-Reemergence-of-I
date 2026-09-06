@@ -3,600 +3,2320 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>太空母舰基地蓝图 (Master Spaceship Map · 58 舱室全景检阅)</title>
+    <title>🚀 远征星舰【代号：重现之重】全舰母地图 (Master Spaceship Map · 62 舱室全景蓝图)</title>
     <style>
-        body { margin: 0; background: #030712; color: #f8fafc; font-family: 'PingFang SC', -apple-system, sans-serif; padding: 20px; text-align: center; }
-        h1 { color: #38bdf8; font-size: 24px; margin-bottom: 6px; letter-spacing: 1px; }
-        .meta { color: #94a3b8; font-size: 13px; margin-bottom: 16px; }
-        .badge { display: inline-block; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; margin: 0 4px; border: 1px solid rgba(255,255,255,0.15); }
-        .legend { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        .svg-container { overflow: auto; border: 1px solid #1e293b; background: radial-gradient(circle at 50% 50%, #0d1b33 0%, #030712 100%); border-radius: 12px; box-shadow: 0 0 35px rgba(56,189,248,0.2); display: inline-block; max-width: 98vw; padding: 10px; }
-        svg { display: block; margin: 0 auto; }
-        .deck-label { position: absolute; left: 10px; font-size: 11px; color: #64748b; }
+        :root {
+            --bg-color: #030712;
+            --panel-bg: rgba(15, 23, 42, 0.94);
+            --border-glow: #38bdf8;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+        * { box-sizing: border-box; }
+        body { 
+            margin: 0; 
+            background: var(--bg-color); 
+            color: var(--text-main); 
+            font-family: 'PingFang SC', -apple-system, 'Microsoft YaHei', sans-serif; 
+            padding: 16px 20px; 
+            overflow-x: hidden;
+        }
+        header { text-align: center; margin-bottom: 12px; }
+        h1 { 
+            color: #38bdf8; 
+            font-size: 24px; 
+            margin: 0 0 6px 0; 
+            letter-spacing: 1px;
+            text-shadow: 0 0 20px rgba(56,189,248,0.4);
+        }
+        .meta-bar { 
+            color: var(--text-muted); 
+            font-size: 13px; 
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .stat-item { color: #f1f5f9; font-weight: 500; }
+        .stat-item b { color: #38bdf8; }
+
+        /* 顶部操作与筛选栏 */
+        .controls-toolbar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .filter-btn {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            color: #cbd5e1;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .filter-btn:hover, .filter-btn.active {
+            background: rgba(56, 189, 248, 0.25);
+            border-color: #38bdf8;
+            color: #38bdf8;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+        }
+        .search-input {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid #334155;
+            color: #f8fafc;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            outline: none;
+            width: 220px;
+            transition: border-color 0.2s;
+        }
+        .search-input:focus {
+            border-color: #38bdf8;
+            box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+        }
+
+        /* 区域图例 */
+        .legend-bar { 
+            display: flex; 
+            justify-content: center; 
+            gap: 8px; 
+            margin-bottom: 16px; 
+            flex-wrap: wrap; 
+        }
+        .badge { 
+            display: inline-flex; 
+            align-items: center;
+            padding: 3px 10px; 
+            border-radius: 6px; 
+            font-size: 11.5px; 
+            font-weight: bold; 
+            border: 1px solid rgba(255,255,255,0.15); 
+        }
+
+        /* 主蓝图画卷容器 */
+        .viewport-wrapper {
+            position: relative;
+            max-width: 100%;
+            overflow: auto;
+            border: 1px solid #1e293b;
+            background: radial-gradient(circle at 50% 50%, #0d1b33 0%, #030712 100%);
+            border-radius: 12px;
+            box-shadow: 0 0 45px rgba(56,189,248,0.15);
+            padding: 10px;
+            margin-bottom: 24px;
+        }
+        svg { display: block; margin: 0 auto; user-select: none; }
+
+        /* 节点与连线交互样式 */
+        .room-node {
+            cursor: pointer;
+            transition: transform 0.2s, filter 0.2s;
+            outline: none;
+        }
+        .room-node:hover {
+            filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.8));
+        }
+        .room-node.is-selected .room-poly {
+            stroke: #fef08a !important;
+            stroke-width: 3.5 !important;
+            filter: drop-shadow(0 0 16px #eab308);
+        }
+        .room-node.is-npc-room:hover {
+            filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.85));
+        }
+        .room-node.is-detection-room:hover {
+            filter: drop-shadow(0 0 14px rgba(16, 185, 129, 0.85));
+        }
+        .room-node.is-dimmed {
+            opacity: 0.18;
+            filter: grayscale(80%);
+        }
+        .conn-line.is-dimmed {
+            opacity: 0.08;
+        }
+
+        /* 侧边检阅档案抽屉 */
+        .inspector-drawer {
+            position: fixed;
+            top: 20px;
+            right: -420px;
+            width: 390px;
+            max-height: calc(100vh - 40px);
+            background: var(--panel-bg);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            border-radius: 12px;
+            box-shadow: -10px 0 35px rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(12px);
+            padding: 20px;
+            z-index: 1000;
+            transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow-y: auto;
+            text-align: left;
+        }
+        .inspector-drawer.open { right: 20px; }
+        .drawer-close {
+            position: absolute;
+            top: 14px;
+            right: 16px;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        .drawer-close:hover { color: #f8fafc; }
+        .drawer-title { font-size: 17px; font-weight: bold; color: #38bdf8; margin: 0 0 8px 0; }
+        .drawer-tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px; margin-bottom: 12px; }
+        .drawer-section { margin-bottom: 14px; font-size: 13px; line-height: 1.6; }
+        .drawer-section-title { font-size: 12px; font-weight: bold; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
+        .drawer-desc { color: #cbd5e1; background: rgba(15, 23, 42, 0.6); padding: 10px; border-radius: 6px; border-left: 3px solid #38bdf8; }
+        .diary-card {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 8px;
+        }
+        .diary-card h4 { margin: 0 0 6px 0; color: #fde68a; font-size: 13px; }
+        .diary-card p { margin: 0; color: #cbd5e1; font-size: 12px; white-space: pre-wrap; }
+
+        /* 底部提示 */
+        .footer-note { font-size: 12px; color: #64748b; margin-top: 10px; }
     </style>
 </head>
 <body>
-    <h1>🚀 远征星舰【代号：重现之重】全舰母地图 (Master Spaceship Base)</h1>
-    <div class="meta">58 间各异多边形舱室 ｜ 9×7 全维坐标矩阵 ｜ 5 阶渐进式开放扇区 ｜ 100% 物理双向可达 ｜ 蓝图微缩设备全面装配</div>
-    <div class="legend">
-        <span class="badge" style="background:#1e3a8a; color:#93c5fd;">Y=0 舰艏指控 (Bridge)</span>
-        <span class="badge" style="background:#1e293b; color:#bae6fd;">Y=1,2,3 中央枢纽 (Hub)</span>
-        <span class="badge" style="background:#4c1d95; color:#e9d5ff;">Y=2 东侧生活起居 (Living)</span>
-        <span class="badge" style="background:#064e3b; color:#a7f3d0;">Y=2,4 生态循环 (Ecology)</span>
-        <span class="badge" style="background:#78350f; color:#fde68a;">Y=4 重载机库货运 (Cargo)</span>
-        <span class="badge" style="background:#831843; color:#fbcfe8;">Y=5 聚变反应堆动力 (Reactor)</span>
-        <span class="badge" style="background:#7c2d12; color:#fed7aa;">Y=6 离子推进与跃迁星门 (Thruster)</span>
+    <header>
+        <h1>🚀 远征星舰【代号：重现之重】全舰母地图 (Master Blueprint)</h1>
+        <div class="meta-bar">
+            <span class="stat-item">全舰总舱室: <b>62 间</b> (58功能主舱 + 4专属私人舱)</span>
+            <span class="stat-item">网格矩阵: <b>10 × 8</b> (X:-1~8, Y:-1~6)</span>
+            <span class="stat-item">双向密闭通道: <b>99 条</b> (含4条专属气闸)</span>
+            <span class="stat-item">状态: <b style="color:#34d399;">100% 连通可达 · 零断头死锁</b></span>
+        </div>
+    </header>
+
+    <!-- 顶部操作与筛选栏 -->
+    <div class="controls-toolbar">
+        <input type="text" id="searchInput" class="search-input" placeholder="🔍 搜索舱室名称 / 形状 / 设备 / NPC..." oninput="handleSearch(this.value)">
+        <button class="filter-btn active" onclick="setFilter('all', this)">全部舱室 (62)</button>
+        <button class="filter-btn" onclick="setFilter('npc', this)">🔒 NPC私人舱 (4)</button>
+        <button class="filter-btn" onclick="setFilter('special', this)">⭐ 终点/检测/给养</button>
+        <button class="filter-btn" onclick="setFilter('bow', this)">舰艏 (7)</button>
+        <button class="filter-btn" onclick="setFilter('medical_bio', this)">生化医疗 (8)</button>
+        <button class="filter-btn" onclick="setFilter('hub_living', this)">中枢生活 (18)</button>
+        <button class="filter-btn" onclick="setFilter('engineering', this)">工程动力 (10)</button>
+        <button class="filter-btn" onclick="setFilter('stern', this)">舰尾跃迁 (7)</button>
+        <button class="filter-btn" onclick="resetHighlight()">🔄 重置高亮</button>
     </div>
-    <div class="svg-container">
-        <svg width="1274" height="855" xmlns="http://www.w3.org/2000/svg">
+
+    <!-- 区域图例 -->
+    <div class="legend-bar">
+        <span class="badge" style="background:#0b1e3b; color:#bae6fd; border-color:#38bdf8;">舰艏指控 (Y=0)</span>
+        <span class="badge" style="background:#022c22; color:#a7f3d0; border-color:#34d399;">生化医疗 (Y=1)</span>
+        <span class="badge" style="background:#172554; color:#bfdbfe; border-color:#60a5fa;">中央枢纽 (Y=2,3)</span>
+        <span class="badge" style="background:#3b0764; color:#e9d5ff; border-color:#c084fc;">生活起居 (Y=2,3)</span>
+        <span class="badge" style="background:#14532d; color:#bbf7d0; border-color:#4ade80;">生态水培 (Y=2,4)</span>
+        <span class="badge" style="background:#701a75; color:#fae8ff; border-color:#e879f9;">工程维保 (Y=4,5)</span>
+        <span class="badge" style="background:#4c0519; color:#fecdd3; border-color:#fb7185;">动力反应堆 (Y=5)</span>
+        <span class="badge" style="background:#431407; color:#fed7aa; border-color:#fb923c;">跃迁推进 (Y=6)</span>
+        <span class="badge" style="background:#1c1917; color:#fef08a; border-color:#f59e0b;">🔒 NPC专属私人舱</span>
+        <span class="badge" style="background:#064e3b; color:#6ee7b7; border-color:#10b981;">🧪 队伍伪人检测台</span>
+    </div>
+
+    <!-- SVG 蓝图视口 -->
+    <div class="viewport-wrapper">
+        <svg width="1860" height="1264" viewBox="0 0 1860 1264" xmlns="http://www.w3.org/2000/svg">
             <defs>
-                <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
-                    <path d="M 30 0 L 0 0 0 30" fill="none" stroke="rgba(56,189,248,0.06)" stroke-width="1"/>
+                <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse">
+                    <path d="M 36 0 L 0 0 0 36" fill="none" stroke="rgba(56,189,248,0.05)" stroke-width="1"/>
                 </pattern>
+                <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#0f2b48" stop-opacity="0.5"/>
+                    <stop offset="100%" stop-color="#030712" stop-opacity="1"/>
+                </radialGradient>
             </defs>
+            <rect width="100%" height="100%" fill="url(#bgGlow)" />
             <rect width="100%" height="100%" fill="url(#grid)" />
-            <line x1="259" y1="112.5" x2="385" y2="112.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="385" y1="112.5" x2="511" y2="112.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="511" y1="112.5" x2="637" y2="112.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="637" y1="112.5" x2="763" y2="112.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="763" y1="112.5" x2="889" y2="112.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="889" y1="112.5" x2="1015" y2="112.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="259" y1="112.5" x2="133" y2="217.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="385" y1="112.5" x2="259" y2="217.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="637" y1="112.5" x2="511" y2="217.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="763" y1="112.5" x2="637" y2="217.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="889" y1="112.5" x2="763" y2="217.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="1015" y1="112.5" x2="889" y2="217.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="133" y1="217.5" x2="259" y2="217.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="259" y1="217.5" x2="385" y2="217.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="385" y1="217.5" x2="511" y2="217.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="511" y1="217.5" x2="637" y2="217.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="637" y1="217.5" x2="763" y2="217.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="763" y1="217.5" x2="889" y2="217.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="889" y1="217.5" x2="1015" y2="217.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="511" y1="427.5" x2="385" y2="427.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="511" y1="427.5" x2="637" y2="427.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="511" y1="427.5" x2="511" y2="322.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="637" y1="427.5" x2="637" y2="322.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="637" y1="322.5" x2="511" y2="322.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="511" y1="322.5" x2="511" y2="217.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="385" y1="427.5" x2="259" y2="427.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="259" y1="427.5" x2="133" y2="427.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="259" y1="427.5" x2="259" y2="322.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="259" y1="322.5" x2="133" y2="322.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="259" y1="322.5" x2="385" y2="322.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="259" y1="322.5" x2="133" y2="217.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="385" y1="322.5" x2="385" y2="217.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="385" y1="217.5" x2="259" y2="217.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="637" y1="322.5" x2="763" y2="322.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="763" y1="322.5" x2="889" y2="322.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="889" y1="322.5" x2="1015" y2="322.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="1015" y1="322.5" x2="1141" y2="322.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="763" y1="217.5" x2="763" y2="322.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="889" y1="217.5" x2="889" y2="322.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="1015" y1="217.5" x2="1015" y2="322.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="637" y1="427.5" x2="763" y2="427.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="763" y1="427.5" x2="889" y2="427.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="889" y1="427.5" x2="1015" y2="427.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="1015" y1="427.5" x2="1141" y2="427.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="763" y1="322.5" x2="763" y2="427.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="889" y1="322.5" x2="889" y2="427.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="1015" y1="322.5" x2="1015" y2="427.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="1141" y1="322.5" x2="1141" y2="427.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="133" y1="427.5" x2="133" y2="532.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="259" y1="427.5" x2="259" y2="532.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="385" y1="427.5" x2="385" y2="532.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="511" y1="427.5" x2="511" y2="532.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="637" y1="427.5" x2="637" y2="532.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="763" y1="427.5" x2="763" y2="532.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="889" y1="427.5" x2="889" y2="532.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="1015" y1="427.5" x2="1015" y2="532.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="1141" y1="427.5" x2="1141" y2="532.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="133" y1="532.5" x2="259" y2="532.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="259" y1="532.5" x2="385" y2="532.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="385" y1="532.5" x2="511" y2="532.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="511" y1="532.5" x2="637" y2="532.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="637" y1="532.5" x2="763" y2="532.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="763" y1="532.5" x2="889" y2="532.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="889" y1="532.5" x2="1015" y2="532.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="1015" y1="532.5" x2="1141" y2="532.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="133" y1="532.5" x2="133" y2="637.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="259" y1="532.5" x2="259" y2="637.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="385" y1="532.5" x2="385" y2="637.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="511" y1="532.5" x2="511" y2="637.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="637" y1="532.5" x2="637" y2="637.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="763" y1="532.5" x2="763" y2="637.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="889" y1="532.5" x2="889" y2="637.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="1015" y1="532.5" x2="1015" y2="637.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="1141" y1="532.5" x2="1141" y2="637.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="133" y1="637.5" x2="259" y2="637.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="259" y1="637.5" x2="385" y2="637.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="385" y1="637.5" x2="511" y2="637.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="511" y1="637.5" x2="637" y2="637.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="637" y1="637.5" x2="763" y2="637.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="763" y1="637.5" x2="889" y2="637.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="889" y1="637.5" x2="1015" y2="637.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="1015" y1="637.5" x2="1141" y2="637.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="259" y1="637.5" x2="259" y2="742.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="385" y1="637.5" x2="385" y2="742.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="511" y1="637.5" x2="511" y2="742.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="637" y1="637.5" x2="637" y2="742.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="763" y1="637.5" x2="763" y2="742.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="889" y1="637.5" x2="889" y2="742.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="1015" y1="637.5" x2="1015" y2="742.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="259" y1="742.5" x2="385" y2="742.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="385" y1="742.5" x2="511" y2="742.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="511" y1="742.5" x2="637" y2="742.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="637" y1="742.5" x2="763" y2="742.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="763" y1="742.5" x2="889" y2="742.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-<line x1="889" y1="742.5" x2="1015" y2="742.5" stroke="rgba(56,189,248,0.4)" stroke-width="3" />
-
             
-    <g transform="translate(206, 74.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【深空雷达穹顶】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">舰艏天线阵列</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:1, Y:0]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:octagon · 设:sensor_dome</text>
+            <!-- 通道层 -->
+            <g id="connections-layer">
+                <line x1="174" y1="701" x2="342" y2="701" stroke="#f59e0b" stroke-width="3" stroke-dasharray="8,5" stroke-opacity="0.9" class="conn-line conn-npc" data-conn="room_npc_lph-room_west_end" />
+<line x1="678" y1="149" x2="678" y2="287" stroke="#f59e0b" stroke-width="3" stroke-dasharray="8,5" stroke-opacity="0.9" class="conn-line conn-npc" data-conn="room_npc_kaze-room_tactical_plan" />
+<line x1="1686" y1="425" x2="1518" y2="425" stroke="#f59e0b" stroke-width="3" stroke-dasharray="8,5" stroke-opacity="0.9" class="conn-line conn-npc" data-conn="room_npc_shaokexin-room_decon_airlock" />
+<line x1="174" y1="977" x2="342" y2="977" stroke="#f59e0b" stroke-width="3" stroke-dasharray="8,5" stroke-opacity="0.9" class="conn-line conn-npc" data-conn="room_npc_mode-room_shields_emitter" />
+<line x1="510" y1="287" x2="678" y2="287" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_sensor_array-room_tactical_plan" />
+<line x1="678" y1="287" x2="846" y2="287" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_tactical_plan-room_bridge_sub" />
+<line x1="846" y1="287" x2="1014" y2="287" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_bridge_sub-room_bridge_main" />
+<line x1="1014" y1="287" x2="1182" y2="287" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_bridge_main-room_ai_core" />
+<line x1="1182" y1="287" x2="1350" y2="287" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_ai_core-room_comm_center" />
+<line x1="1350" y1="287" x2="1518" y2="287" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_comm_center-room_observation" />
+<line x1="510" y1="287" x2="342" y2="425" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_sensor_array-room_specimen_vault" />
+<line x1="678" y1="287" x2="510" y2="425" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_tactical_plan-room_exit" />
+<line x1="1014" y1="287" x2="846" y2="425" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_bridge_main-room_storage_ne" />
+<line x1="1182" y1="287" x2="1014" y2="425" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_ai_core-room_bio_corridor" />
+<line x1="1350" y1="287" x2="1182" y2="425" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_comm_center-room_med_surgery" />
+<line x1="1518" y1="287" x2="1350" y2="425" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_observation-room_cryo_stasis" />
+<line x1="342" y1="425" x2="510" y2="425" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_specimen_vault-room_exit" />
+<line x1="510" y1="425" x2="678" y2="425" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_exit-room_corner_ne" />
+<line x1="678" y1="425" x2="846" y2="425" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_corner_ne-room_storage_ne" />
+<line x1="846" y1="425" x2="1014" y2="425" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_storage_ne-room_bio_corridor" />
+<line x1="1014" y1="425" x2="1182" y2="425" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_bio_corridor-room_med_surgery" />
+<line x1="1182" y1="425" x2="1350" y2="425" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_med_surgery-room_cryo_stasis" />
+<line x1="1350" y1="425" x2="1518" y2="425" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_cryo_stasis-room_decon_airlock" />
+<line x1="846" y1="701" x2="678" y2="701" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_start-room_corridor_w1" />
+<line x1="846" y1="701" x2="1014" y2="701" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_start-room_corner_se" />
+<line x1="846" y1="701" x2="846" y2="563" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_start-room_hub_n1" />
+<line x1="1014" y1="701" x2="1014" y2="563" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_corner_se-room_npc2" />
+<line x1="1014" y1="563" x2="846" y2="563" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_npc2-room_hub_n1" />
+<line x1="846" y1="563" x2="846" y2="425" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_hub_n1-room_storage_ne" />
+<line x1="678" y1="701" x2="510" y2="701" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_corridor_w1-room_npc1" />
+<line x1="510" y1="701" x2="342" y2="701" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_npc1-room_west_end" />
+<line x1="510" y1="701" x2="510" y2="563" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_npc1-room_junction_nw" />
+<line x1="510" y1="563" x2="342" y2="563" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_junction_nw-room_npc3" />
+<line x1="510" y1="563" x2="678" y2="563" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_junction_nw-room_path_e" />
+<line x1="510" y1="563" x2="342" y2="425" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_junction_nw-room_specimen_vault" />
+<line x1="678" y1="563" x2="678" y2="425" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_path_e-room_corner_ne" />
+<line x1="678" y1="425" x2="510" y2="425" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_corner_ne-room_exit" />
+<line x1="1014" y1="563" x2="1182" y2="563" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_npc2-room_living_quarter" />
+<line x1="1182" y1="563" x2="1350" y2="563" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_living_quarter-room_hydro_garden" />
+<line x1="1350" y1="563" x2="1518" y2="563" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_hydro_garden-room_mess_hall" />
+<line x1="1518" y1="563" x2="1686" y2="563" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_mess_hall-room_east_observation" />
+<line x1="1182" y1="425" x2="1182" y2="563" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_med_surgery-room_living_quarter" />
+<line x1="1350" y1="425" x2="1350" y2="563" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_cryo_stasis-room_hydro_garden" />
+<line x1="1518" y1="425" x2="1518" y2="563" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_decon_airlock-room_mess_hall" />
+<line x1="1014" y1="701" x2="1182" y2="701" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_corner_se-room_gravity_well" />
+<line x1="1182" y1="701" x2="1350" y2="701" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_gravity_well-room_armory" />
+<line x1="1350" y1="701" x2="1518" y2="701" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_armory-room_recreation_gym" />
+<line x1="1518" y1="701" x2="1686" y2="701" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_recreation_gym-room_east_airlock" />
+<line x1="1182" y1="563" x2="1182" y2="701" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_living_quarter-room_gravity_well" />
+<line x1="1350" y1="563" x2="1350" y2="701" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_hydro_garden-room_armory" />
+<line x1="1518" y1="563" x2="1518" y2="701" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_mess_hall-room_recreation_gym" />
+<line x1="1686" y1="563" x2="1686" y2="701" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_east_observation-room_east_airlock" />
+<line x1="342" y1="701" x2="342" y2="839" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_west_end-room_salvage_bay" />
+<line x1="510" y1="701" x2="510" y2="839" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_npc1-room_cargo_lift" />
+<line x1="678" y1="701" x2="678" y2="839" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_corridor_w1-room_sub_generator" />
+<line x1="846" y1="701" x2="846" y2="839" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_start-room_hangar_deck" />
+<line x1="1014" y1="701" x2="1014" y2="839" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_corner_se-room_machine_shop" />
+<line x1="1182" y1="701" x2="1182" y2="839" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_gravity_well-room_water_purify" />
+<line x1="1350" y1="701" x2="1350" y2="839" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_armory-room_life_support" />
+<line x1="1518" y1="701" x2="1518" y2="839" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_recreation_gym-room_air_recycler" />
+<line x1="1686" y1="701" x2="1686" y2="839" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_east_airlock-room_eva_staging" />
+<line x1="342" y1="839" x2="510" y2="839" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_salvage_bay-room_cargo_lift" />
+<line x1="510" y1="839" x2="678" y2="839" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_cargo_lift-room_sub_generator" />
+<line x1="678" y1="839" x2="846" y2="839" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_sub_generator-room_hangar_deck" />
+<line x1="846" y1="839" x2="1014" y2="839" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_hangar_deck-room_machine_shop" />
+<line x1="1014" y1="839" x2="1182" y2="839" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_machine_shop-room_water_purify" />
+<line x1="1182" y1="839" x2="1350" y2="839" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_water_purify-room_life_support" />
+<line x1="1350" y1="839" x2="1518" y2="839" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_life_support-room_air_recycler" />
+<line x1="1518" y1="839" x2="1686" y2="839" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_air_recycler-room_eva_staging" />
+<line x1="342" y1="839" x2="342" y2="977" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_salvage_bay-room_shields_emitter" />
+<line x1="510" y1="839" x2="510" y2="977" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_cargo_lift-room_sub_coolant" />
+<line x1="678" y1="839" x2="678" y2="977" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_sub_generator-room_reactor_control" />
+<line x1="846" y1="839" x2="846" y2="977" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_hangar_deck-room_plasma_manifold" />
+<line x1="1014" y1="839" x2="1014" y2="977" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_machine_shop-room_main_reactor" />
+<line x1="1182" y1="839" x2="1182" y2="977" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_water_purify-room_coolant_tank" />
+<line x1="1350" y1="839" x2="1350" y2="977" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_life_support-room_warp_field_gen" />
+<line x1="1518" y1="839" x2="1518" y2="977" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_air_recycler-room_armored_corridor" />
+<line x1="1686" y1="839" x2="1686" y2="977" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_eva_staging-room_starboard_dock" />
+<line x1="342" y1="977" x2="510" y2="977" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_shields_emitter-room_sub_coolant" />
+<line x1="510" y1="977" x2="678" y2="977" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_sub_coolant-room_reactor_control" />
+<line x1="678" y1="977" x2="846" y2="977" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_reactor_control-room_plasma_manifold" />
+<line x1="846" y1="977" x2="1014" y2="977" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_plasma_manifold-room_main_reactor" />
+<line x1="1014" y1="977" x2="1182" y2="977" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_main_reactor-room_coolant_tank" />
+<line x1="1182" y1="977" x2="1350" y2="977" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_coolant_tank-room_warp_field_gen" />
+<line x1="1350" y1="977" x2="1518" y2="977" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_warp_field_gen-room_armored_corridor" />
+<line x1="1518" y1="977" x2="1686" y2="977" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_armored_corridor-room_starboard_dock" />
+<line x1="510" y1="977" x2="510" y2="1115" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_sub_coolant-room_escape_pod_w" />
+<line x1="678" y1="977" x2="678" y2="1115" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_reactor_control-room_ion_thruster_l" />
+<line x1="846" y1="977" x2="846" y2="1115" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_plasma_manifold-room_antimatter_tap" />
+<line x1="1014" y1="977" x2="1014" y2="1115" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_main_reactor-room_singularity_gate" />
+<line x1="1182" y1="977" x2="1182" y2="1115" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_coolant_tank-room_matter_stream" />
+<line x1="1350" y1="977" x2="1350" y2="1115" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_warp_field_gen-room_ion_thruster_r" />
+<line x1="1518" y1="977" x2="1518" y2="1115" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_armored_corridor-room_escape_pod_e" />
+<line x1="510" y1="1115" x2="678" y2="1115" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_escape_pod_w-room_ion_thruster_l" />
+<line x1="678" y1="1115" x2="846" y2="1115" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_ion_thruster_l-room_antimatter_tap" />
+<line x1="846" y1="1115" x2="1014" y2="1115" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_antimatter_tap-room_singularity_gate" />
+<line x1="1014" y1="1115" x2="1182" y2="1115" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_singularity_gate-room_matter_stream" />
+<line x1="1182" y1="1115" x2="1350" y2="1115" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_matter_stream-room_ion_thruster_r" />
+<line x1="1350" y1="1115" x2="1518" y2="1115" stroke="rgba(56,189,248,0.35)" stroke-width="3.5" class="conn-line conn-main" data-conn="room_ion_thruster_r-room_escape_pod_e" />
+
+            </g>
+            
+            <!-- 舱室层 -->
+            <g id="rooms-layer">
+                
+    <g class="room-node  " 
+       id="node-room_sensor_array"
+       data-room-id="room_sensor_array" 
+       data-zone="bow"
+       data-shape="sensor_dome"
+       transform="translate(439, 237)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 0 100 L 0 55.00000000000001 C 11.36 -8, 130.64000000000001 -8, 142 55.00000000000001 L 142 100 Z" fill="#0b1e3b" fill-opacity="0.88" stroke="#38bdf8" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" class="room-tag">【深空雷达穹顶】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">📡</tspan> 舰艏天线阵列
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:1, Y:0] · sensor_dome
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#38bdf8">设:sensor_dome</tspan>
+        </text>
     </g>
 
-    <g transform="translate(332, 74.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【战术推演室】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">星域沙盘厅</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:2, Y:0]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:lab · 设:tactical_sandtable</text>
+    <g class="room-node  " 
+       id="node-room_tactical_plan"
+       data-room-id="room_tactical_plan" 
+       data-zone="bow"
+       data-shape="tactical_wedge"
+       transform="translate(607, 237)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 71 0 L 142 44 L 116.44 100 L 25.56 100 L 0 44 Z" fill="#0b1e3b" fill-opacity="0.88" stroke="#38bdf8" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" class="room-tag">【战术推演室】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🗺️</tspan> 星域沙盘厅
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:2, Y:0] · tactical_wedge
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#38bdf8">设:tactical_sandtable</tspan>
+        </text>
     </g>
 
-    <g transform="translate(458, 74.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【副官值班舱】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">战备前哨台</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:3, Y:0]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:corridor_h · 设:sub_helm</text>
+    <g class="room-node  " 
+       id="node-room_bridge_sub"
+       data-room-id="room_bridge_sub" 
+       data-zone="bow"
+       data-shape="bridge_sub"
+       transform="translate(775, 237)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 28.400000000000002 0 L 113.60000000000001 0 L 142 38 L 124.96 100 L 17.04 100 L 0 38 Z" fill="#0b1e3b" fill-opacity="0.88" stroke="#38bdf8" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" class="room-tag">【副官值班舱】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🕹️</tspan> 战备前哨台
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:3, Y:0] · bridge_sub
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#38bdf8">设:sub_helm</tspan>
+        </text>
     </g>
 
-    <g transform="translate(584, 74.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【舰桥主控中枢】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">最高指挥殿堂</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:4, Y:0]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:bridge · 设:bridge_console</text>
+    <g class="room-node  " 
+       id="node-room_bridge_main"
+       data-room-id="room_bridge_main" 
+       data-zone="bow"
+       data-shape="bridge"
+       transform="translate(943, 237)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 28.400000000000002 0 L 113.60000000000001 0 L 142 38 L 124.96 100 L 17.04 100 L 0 38 Z" fill="#0b1e3b" fill-opacity="0.88" stroke="#38bdf8" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" class="room-tag">【舰桥主控中枢】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🎛️</tspan> 最高指挥殿堂
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:4, Y:0] · bridge
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#38bdf8">设:bridge_console</tspan>
+        </text>
     </g>
 
-    <g transform="translate(710, 74.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【超脑计算核心】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">主逻辑阵列</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:5, Y:0]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:lab · 设:server_rack</text>
+    <g class="room-node  " 
+       id="node-room_ai_core"
+       data-room-id="room_ai_core" 
+       data-zone="bow"
+       data-shape="ai_core_hex"
+       transform="translate(1111, 237)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 26 0 L 116 0 L 142 26 L 142 74 L 116 100 L 26 100 L 0 74 L 0 26 Z" fill="#0b1e3b" fill-opacity="0.88" stroke="#38bdf8" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" class="room-tag">【超脑计算核心】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🖥️</tspan> 主逻辑阵列
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:5, Y:0] · ai_core_hex
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#38bdf8">设:server_rack</tspan>
+        </text>
     </g>
 
-    <g transform="translate(836, 74.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【量子通信总站】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">深空信标井</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:6, Y:0]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:corridor_h · 设:comm_station</text>
+    <g class="room-node  " 
+       id="node-room_comm_center"
+       data-room-id="room_comm_center" 
+       data-zone="bow"
+       data-shape="comm_tower"
+       transform="translate(1279, 237)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 21.3 22 L 120.7 0 L 142 85 L 110.76 100 L 0 100 Z" fill="#0b1e3b" fill-opacity="0.88" stroke="#38bdf8" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" class="room-tag">【量子通信总站】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">📶</tspan> 深空信标井
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:6, Y:0] · comm_tower
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#38bdf8">设:comm_station</tspan>
+        </text>
     </g>
 
-    <g transform="translate(962, 74.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【环景天象台】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">星穹眺望厅</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:7, Y:0]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:octagon · 设:star_lens</text>
+    <g class="room-node  " 
+       id="node-room_observation"
+       data-room-id="room_observation" 
+       data-zone="bow"
+       data-shape="observation_dome"
+       transform="translate(1447, 237)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 0 100 L 0 20 C 49.699999999999996 -8, 134.9 10, 142 65 L 120.7 100 Z" fill="#0b1e3b" fill-opacity="0.88" stroke="#38bdf8" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" class="room-tag">【环景天象台】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🔭</tspan> 星穹眺望厅
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:7, Y:0] · observation_dome
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#38bdf8">设:star_lens</tspan>
+        </text>
     </g>
 
-    <g transform="translate(80, 179.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【异构标本保全库】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">高危冷藏间</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:0, Y:1]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:storage · 设:cargo_grid</text>
+    <g class="room-node  " 
+       id="node-room_specimen_vault"
+       data-room-id="room_specimen_vault" 
+       data-zone="research"
+       data-shape="specimen_vault"
+       transform="translate(271, 375)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 26 0 L 116 0 L 142 26 L 142 74 L 116 100 L 26 100 L 0 74 L 0 26 Z" fill="#022c22" fill-opacity="0.88" stroke="#34d399" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#a7f3d0" class="room-tag">【异构标本保全库】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">📦</tspan> 高危冷藏间
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:0, Y:1] · specimen_vault
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#34d399">设:cargo_grid</tspan>
+        </text>
     </g>
 
-    <g transform="translate(206, 179.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【脱离大门】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">主跃迁逃生舱</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:1, Y:1]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:airlock · 设:airlock_dock</text>
+    <g class="room-node  " 
+       id="node-room_exit"
+       data-room-id="room_exit" 
+       data-zone="hub"
+       data-shape="star_gate_arch"
+       transform="translate(439, 375)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 34 0 L 108 0 L 142 50 L 108 100 L 34 100 L 0 50 Z" fill="#172554" fill-opacity="0.88" stroke="#60a5fa" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bfdbfe" class="room-tag">【脱离大门】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🚪</tspan> 主跃迁逃生舱 (终点)
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:1, Y:1] · star_gate_arch
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#f59e0b" font-weight="bold">🏆终点</tspan>
+        </text>
     </g>
 
-    <g transform="translate(332, 179.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【东北拐角哨所】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">跃迁前厅</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:2, Y:1]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:corridor_v · 设:security_gate</text>
+    <g class="room-node  " 
+       id="node-room_corner_ne"
+       data-room-id="room_corner_ne" 
+       data-zone="hub"
+       data-shape="corner_elbow"
+       transform="translate(607, 375)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 0 0 L 142 0 L 142 63 L 63 63 L 63 100 L 0 100 Z" fill="#172554" fill-opacity="0.88" stroke="#60a5fa" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bfdbfe" class="room-tag">【东北拐角哨所】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🚧</tspan> 跃迁前厅
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:2, Y:1] · corner_elbow
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#60a5fa">设:security_gate</tspan>
+        </text>
     </g>
 
-    <g transform="translate(458, 179.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【东北储藏室】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">应急给养站</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:3, Y:1]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:storage · 设:cargo_grid</text>
+    <g class="room-node  " 
+       id="node-room_storage_ne"
+       data-room-id="room_storage_ne" 
+       data-zone="hub"
+       data-shape="cargo_depot"
+       transform="translate(775, 375)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 22 0 L 120 0 L 142 50 L 120 100 L 22 100 L 0 50 Z" fill="#172554" fill-opacity="0.88" stroke="#60a5fa" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bfdbfe" class="room-tag">【东北储藏室】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">📦</tspan> 应急给养站
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:3, Y:1] · cargo_depot
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#fbbf24">🍱给养</tspan>
+        </text>
     </g>
 
-    <g transform="translate(584, 179.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【生化联络走廊】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">气压过渡廊</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:4, Y:1]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:corridor_v · 设:airlock_dock</text>
+    <g class="room-node  " 
+       id="node-room_bio_corridor"
+       data-room-id="room_bio_corridor" 
+       data-zone="research"
+       data-shape="bio_chamber"
+       transform="translate(943, 375)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 0 L 117 0 L 142 50 L 117 100 L 25 100 L 0 50 Z" fill="#022c22" fill-opacity="0.88" stroke="#34d399" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#a7f3d0" class="room-tag">【生化联络走廊】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🚪</tspan> 气压过渡廊
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:4, Y:1] · bio_chamber
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#34d399">设:airlock_dock</tspan>
+        </text>
     </g>
 
-    <g transform="translate(710, 179.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【纳米手术舱】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">全自动急救台</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:5, Y:1]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:medical · 设:medical_bed</text>
+    <g class="room-node  is-detection-room" 
+       id="node-room_med_surgery"
+       data-room-id="room_med_surgery" 
+       data-zone="medical"
+       data-shape="medical_cross"
+       transform="translate(1111, 375)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 34 0 L 108 0 L 108 22 L 142 22 L 142 78 L 108 78 L 108 100 L 34 100 L 34 78 L 0 78 L 0 22 L 34 22 Z" fill="#064e3b" fill-opacity="0.88" stroke="#10b981" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#6ee7b7" class="room-tag">【纳米手术舱 · 生化检测室】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🩺</tspan> 全自动急救台
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:5, Y:1] · medical_cross
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#10b981" font-weight="bold">🧪检测</tspan>
+        </text>
     </g>
 
-    <g transform="translate(836, 179.5)">
-        <rect width="106" height="76" rx="8" fill="#4c1d95" fill-opacity="0.8" stroke="#c084fc" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#e9d5ff" font-family="sans-serif">【深潜冷冻基阵】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">休眠矩阵</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:6, Y:1]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#c084fc" font-family="monospace">形:quarters · 设:cryo_pods</text>
+    <g class="room-node  " 
+       id="node-room_cryo_stasis"
+       data-room-id="room_cryo_stasis" 
+       data-zone="living"
+       data-shape="cryo_array"
+       transform="translate(1279, 375)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 0 L 117 0 L 142 50 L 117 100 L 25 100 L 0 50 Z" fill="#3b0764" fill-opacity="0.88" stroke="#c084fc" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#e9d5ff" class="room-tag">【深潜冷冻基阵】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🧊</tspan> 休眠矩阵
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:6, Y:1] · cryo_array
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#c084fc">设:cryo_pods</tspan>
+        </text>
     </g>
 
-    <g transform="translate(962, 179.5)">
-        <rect width="106" height="76" rx="8" fill="#4c1d95" fill-opacity="0.8" stroke="#c084fc" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#e9d5ff" font-family="sans-serif">【洗消减压气闸】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">外勤洗消间</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:7, Y:1]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#c084fc" font-family="monospace">形:airlock · 设:airlock_dock</text>
+    <g class="room-node  " 
+       id="node-room_decon_airlock"
+       data-room-id="room_decon_airlock" 
+       data-zone="living"
+       data-shape="airlock_dock"
+       transform="translate(1447, 375)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 18 0 L 124 0 L 142 18 L 131 50 L 142 82 L 124 100 L 18 100 L 0 82 L 11 50 L 0 18 Z" fill="#3b0764" fill-opacity="0.88" stroke="#c084fc" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#e9d5ff" class="room-tag">【洗消减压气闸】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🚪</tspan> 外勤洗消间
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:7, Y:1] · airlock_dock
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#c084fc">设:airlock_dock</tspan>
+        </text>
     </g>
 
-    <g transform="translate(80, 284.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【西北隔离舱】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">安全避难室</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:0, Y:2]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:quarters · 设:medical_bed</text>
+    <g class="room-node  " 
+       id="node-room_npc3"
+       data-room-id="room_npc3" 
+       data-zone="hub"
+       data-shape="secure_bunker"
+       transform="translate(271, 513)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 49.699999999999996 0 L 120.7 0 L 142 35 L 142 85 L 99.39999999999999 100 L 21.3 100 L 0 70 L 0 35 Z" fill="#172554" fill-opacity="0.88" stroke="#60a5fa" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bfdbfe" class="room-tag">【西北隔离舱】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🩺</tspan> 安全避难室
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:0, Y:2] · secure_bunker
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#60a5fa">设:medical_bed</tspan>
+        </text>
     </g>
 
-    <g transform="translate(206, 284.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【西北岔路】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">通风十字口</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:1, Y:2]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:corridor_v · 设:workshop_tools</text>
+    <g class="room-node  " 
+       id="node-room_junction_nw"
+       data-room-id="room_junction_nw" 
+       data-zone="hub"
+       data-shape="junction_cross"
+       transform="translate(439, 513)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 36 0 L 105 0 L 105 36 L 142 36 L 142 105 L 105 105 L 105 100 L 36 100 L 36 105 L 0 105 L 0 36 L 36 36 Z" fill="#172554" fill-opacity="0.88" stroke="#60a5fa" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bfdbfe" class="room-tag">【西北岔路】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🔧</tspan> 通风十字口
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:1, Y:2] · junction_cross
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#60a5fa">设:workshop_tools</tspan>
+        </text>
     </g>
 
-    <g transform="translate(332, 284.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【北向连接道】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">中继过渡间</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:2, Y:2]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:corridor_h · 设:workshop_tools</text>
+    <g class="room-node  " 
+       id="node-room_path_e"
+       data-room-id="room_path_e" 
+       data-zone="hub"
+       data-shape="corridor_v"
+       transform="translate(607, 513)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 -2 L 116 -2 L 116 102 L 25 102 Z" fill="#172554" fill-opacity="0.88" stroke="#60a5fa" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bfdbfe" class="room-tag">【北向连接道】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🔧</tspan> 中继过渡间
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:2, Y:2] · corridor_v
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#60a5fa">设:workshop_tools</tspan>
+        </text>
     </g>
 
-    <g transform="translate(458, 284.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【中区枢纽】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">分流控制室</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:3, Y:2]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:rect · 设:bridge_console</text>
+    <g class="room-node  " 
+       id="node-room_hub_n1"
+       data-room-id="room_hub_n1" 
+       data-zone="hub"
+       data-shape="corridor_h"
+       transform="translate(775, 513)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M -2 18 L 144 18 L 144 82 L -2 82 Z" fill="#172554" fill-opacity="0.88" stroke="#60a5fa" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bfdbfe" class="room-tag">【中区枢纽】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🎛️</tspan> 分流控制室
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:3, Y:2] · corridor_h
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#60a5fa">设:bridge_console</tspan>
+        </text>
     </g>
 
-    <g transform="translate(584, 284.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【东侧备勤室】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">医护角落</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:4, Y:2]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:medical · 设:medical_bed</text>
+    <g class="room-node  " 
+       id="node-room_npc2"
+       data-room-id="room_npc2" 
+       data-zone="hub"
+       data-shape="crew_cabin"
+       transform="translate(943, 513)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 17 0 L 125 0 L 142 17 L 142 83 L 125 100 L 17 100 L 0 83 L 0 17 Z" fill="#172554" fill-opacity="0.88" stroke="#60a5fa" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bfdbfe" class="room-tag">【东侧备勤室】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🩺</tspan> 医护角落
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:4, Y:2] · crew_cabin
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#60a5fa">设:medical_bed</tspan>
+        </text>
     </g>
 
-    <g transform="translate(710, 284.5)">
-        <rect width="106" height="76" rx="8" fill="#4c1d95" fill-opacity="0.8" stroke="#c084fc" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#e9d5ff" font-family="sans-serif">【乘组起居舱】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">温馨生活角</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:5, Y:2]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#c084fc" font-family="monospace">形:quarters · 设:cryo_pods</text>
+    <g class="room-node  " 
+       id="node-room_living_quarter"
+       data-room-id="room_living_quarter" 
+       data-zone="living"
+       data-shape="living_quarters"
+       transform="translate(1111, 513)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 17 0 L 125 0 L 142 17 L 142 83 L 125 100 L 17 100 L 0 83 L 0 17 Z" fill="#3b0764" fill-opacity="0.88" stroke="#c084fc" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#e9d5ff" class="room-tag">【乘组起居舱】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🧊</tspan> 温馨生活角
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:5, Y:2] · living_quarters
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#c084fc">设:cryo_pods</tspan>
+        </text>
     </g>
 
-    <g transform="translate(836, 284.5)">
-        <rect width="106" height="76" rx="8" fill="#064e3b" fill-opacity="0.8" stroke="#34d399" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#a7f3d0" font-family="sans-serif">【立体水培温室】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">绿光生态舱</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:6, Y:2]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#34d399" font-family="monospace">形:lab · 设:hydroponics</text>
+    <g class="room-node  " 
+       id="node-room_hydro_garden"
+       data-room-id="room_hydro_garden" 
+       data-zone="ecology"
+       data-shape="hydro_dome"
+       transform="translate(1279, 513)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 71 0 C 149.1 0, 149.1 100, 71 100 C -7.1000000000000005 100, -7.1000000000000005 0, 71 0 Z" fill="#14532d" fill-opacity="0.88" stroke="#4ade80" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bbf7d0" class="room-tag">【立体水培温室】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🌿</tspan> 绿光生态舱
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:6, Y:2] · hydro_dome
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#4ade80">设:hydroponics</tspan>
+        </text>
     </g>
 
-    <g transform="translate(962, 284.5)">
-        <rect width="106" height="76" rx="8" fill="#4c1d95" fill-opacity="0.8" stroke="#c084fc" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#e9d5ff" font-family="sans-serif">【舰员配给餐厅】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">自动餐吧</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:7, Y:2]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#c084fc" font-family="monospace">形:rect · 设:cargo_grid</text>
+    <g class="room-node  " 
+       id="node-room_mess_hall"
+       data-room-id="room_mess_hall" 
+       data-zone="living"
+       data-shape="mess_hall"
+       transform="translate(1447, 513)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 21 0 L 121 0 L 142 100 L 0 100 Z" fill="#3b0764" fill-opacity="0.88" stroke="#c084fc" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#e9d5ff" class="room-tag">【舰员配给餐厅】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">📦</tspan> 自动餐吧
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:7, Y:2] · mess_hall
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#c084fc">设:cargo_grid</tspan>
+        </text>
     </g>
 
-    <g transform="translate(1088, 284.5)">
-        <rect width="106" height="76" rx="8" fill="#4c1d95" fill-opacity="0.8" stroke="#c084fc" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#e9d5ff" font-family="sans-serif">【右舷景观走廊】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">沉思回廊</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:8, Y:2]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#c084fc" font-family="monospace">形:corridor_v · 设:star_lens</text>
+    <g class="room-node  " 
+       id="node-room_east_observation"
+       data-room-id="room_east_observation" 
+       data-zone="living"
+       data-shape="observation_bay_e"
+       transform="translate(1615, 513)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 0 100 L 0 20 C 49.699999999999996 -8, 134.9 10, 142 65 L 120.7 100 Z" fill="#3b0764" fill-opacity="0.88" stroke="#c084fc" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#e9d5ff" class="room-tag">【右舷景观走廊】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🔭</tspan> 沉思回廊
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:8, Y:2] · observation_bay_e
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#c084fc">设:star_lens</tspan>
+        </text>
     </g>
 
-    <g transform="translate(80, 389.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【西端休歇舱】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">配电副室</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:0, Y:3]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:storage · 设:cargo_grid</text>
+    <g class="room-node  " 
+       id="node-room_west_end"
+       data-room-id="room_west_end" 
+       data-zone="hub"
+       data-shape="airlock_dock_w"
+       transform="translate(271, 651)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 18 0 L 124 0 L 142 18 L 131 50 L 142 82 L 124 100 L 18 100 L 0 82 L 11 50 L 0 18 Z" fill="#172554" fill-opacity="0.88" stroke="#60a5fa" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bfdbfe" class="room-tag">【西端休歇舱】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">📦</tspan> 配电副室
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:0, Y:3] · airlock_dock_w
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#fbbf24">🍱给养</tspan>
+        </text>
     </g>
 
-    <g transform="translate(206, 389.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【西区整备间】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">动力操作台</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:1, Y:3]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:workshop · 设:workshop_tools</text>
+    <g class="room-node  " 
+       id="node-room_npc1"
+       data-room-id="room_npc1" 
+       data-zone="hub"
+       data-shape="workshop_tactical"
+       transform="translate(439, 651)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 0 L 117 0 L 142 50 L 117 100 L 25 100 L 0 50 Z" fill="#172554" fill-opacity="0.88" stroke="#60a5fa" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bfdbfe" class="room-tag">【西区整备间】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🔧</tspan> 动力操作台
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:1, Y:3] · workshop_tactical
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#60a5fa">设:workshop_tools</tspan>
+        </text>
     </g>
 
-    <g transform="translate(332, 389.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【西侧走廊】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">狭长甬道</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:2, Y:3]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:corridor_h · 设:workshop_tools</text>
+    <g class="room-node  " 
+       id="node-room_corridor_w1"
+       data-room-id="room_corridor_w1" 
+       data-zone="hub"
+       data-shape="corridor_h"
+       transform="translate(607, 651)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M -2 18 L 144 18 L 144 82 L -2 82 Z" fill="#172554" fill-opacity="0.88" stroke="#60a5fa" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bfdbfe" class="room-tag">【西侧走廊】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🔧</tspan> 狭长甬道
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:2, Y:3] · corridor_h
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#60a5fa">设:workshop_tools</tspan>
+        </text>
     </g>
 
-    <g transform="translate(458, 389.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【起点】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">苏醒密封厅</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:3, Y:3]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:octagon · 设:airlock_dock</text>
+    <g class="room-node  " 
+       id="node-room_start"
+       data-room-id="room_start" 
+       data-zone="hub"
+       data-shape="hub_central_oct"
+       transform="translate(775, 651)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 26 0 L 116 0 L 142 26 L 142 74 L 116 100 L 26 100 L 0 74 L 0 26 Z" fill="#172554" fill-opacity="0.88" stroke="#60a5fa" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bfdbfe" class="room-tag">【起点】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🚪</tspan> 苏醒密封厅
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:3, Y:3] · hub_central_oct
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#34d399" font-weight="bold">🚩起点</tspan>
+        </text>
     </g>
 
-    <g transform="translate(584, 389.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【东下拐角】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">管线通道</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:4, Y:3]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:corridor_v · 设:workshop_tools</text>
+    <g class="room-node  " 
+       id="node-room_corner_se"
+       data-room-id="room_corner_se" 
+       data-zone="hub"
+       data-shape="corner_elbow"
+       transform="translate(943, 651)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 0 0 L 142 0 L 142 63 L 63 63 L 63 100 L 0 100 Z" fill="#172554" fill-opacity="0.88" stroke="#60a5fa" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bfdbfe" class="room-tag">【东下拐角】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🔧</tspan> 管线通道
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:4, Y:3] · corner_elbow
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#60a5fa">设:workshop_tools</tspan>
+        </text>
     </g>
 
-    <g transform="translate(710, 389.5)">
-        <rect width="106" height="76" rx="8" fill="#831843" fill-opacity="0.8" stroke="#f472b6" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#fbcfe8" font-family="sans-serif">【人工重力总井】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">重力发生核</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:5, Y:3]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#f472b6" font-family="monospace">形:octagon · 设:shield_coil</text>
+    <g class="room-node  " 
+       id="node-room_gravity_well"
+       data-room-id="room_gravity_well" 
+       data-zone="engineering"
+       data-shape="gravity_torus"
+       transform="translate(1111, 651)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 35 0 L 107 0 Q 124.5 50, 107 100 L 35 100 Q 17.5 50, 35 0 Z" fill="#701a75" fill-opacity="0.88" stroke="#e879f9" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fae8ff" class="room-tag">【人工重力总井】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🛡️</tspan> 重力发生核
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:5, Y:3] · gravity_torus
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#e879f9">设:shield_coil</tspan>
+        </text>
     </g>
 
-    <g transform="translate(836, 389.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【舰载武装军械库】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">防爆军火库</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:6, Y:3]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:storage · 设:workshop_tools</text>
+    <g class="room-node  " 
+       id="node-room_armory"
+       data-room-id="room_armory" 
+       data-zone="security"
+       data-shape="armory_vault"
+       transform="translate(1279, 651)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 49.699999999999996 0 L 120.7 0 L 142 35 L 142 85 L 99.39999999999999 100 L 21.3 100 L 0 70 L 0 35 Z" fill="#451a03" fill-opacity="0.88" stroke="#f59e0b" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fde68a" class="room-tag">【舰载武装军械库】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🔧</tspan> 防爆军火库
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:6, Y:3] · armory_vault
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#f59e0b">设:workshop_tools</tspan>
+        </text>
     </g>
 
-    <g transform="translate(962, 389.5)">
-        <rect width="106" height="76" rx="8" fill="#4c1d95" fill-opacity="0.8" stroke="#c084fc" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#e9d5ff" font-family="sans-serif">【失重体能训练馆】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">体能维持舱</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:7, Y:3]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#c084fc" font-family="monospace">形:rect · 设:tactical_sandtable</text>
+    <g class="room-node  " 
+       id="node-room_recreation_gym"
+       data-room-id="room_recreation_gym" 
+       data-zone="living"
+       data-shape="recreation_bay"
+       transform="translate(1447, 651)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 0 L 117 0 L 142 50 L 117 100 L 25 100 L 0 50 Z" fill="#3b0764" fill-opacity="0.88" stroke="#c084fc" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#e9d5ff" class="room-tag">【失重体能训练馆】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🗺️</tspan> 体能维持舱
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:7, Y:3] · recreation_bay
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#c084fc">设:tactical_sandtable</tspan>
+        </text>
     </g>
 
-    <g transform="translate(1088, 389.5)">
-        <rect width="106" height="76" rx="8" fill="#4c1d95" fill-opacity="0.8" stroke="#c084fc" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#e9d5ff" font-family="sans-serif">【东侧外勤气闸】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">右舷应急闸</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:8, Y:3]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#c084fc" font-family="monospace">形:airlock · 设:airlock_dock</text>
+    <g class="room-node  " 
+       id="node-room_east_airlock"
+       data-room-id="room_east_airlock" 
+       data-zone="living"
+       data-shape="airlock_dock_e"
+       transform="translate(1615, 651)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 18 0 L 124 0 L 142 18 L 131 50 L 142 82 L 124 100 L 18 100 L 0 82 L 11 50 L 0 18 Z" fill="#3b0764" fill-opacity="0.88" stroke="#c084fc" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#e9d5ff" class="room-tag">【东侧外勤气闸】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🚪</tspan> 右舷应急闸
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:8, Y:3] · airlock_dock_e
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#c084fc">设:airlock_dock</tspan>
+        </text>
     </g>
 
-    <g transform="translate(80, 494.5)">
-        <rect width="106" height="76" rx="8" fill="#831843" fill-opacity="0.8" stroke="#f472b6" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#fbcfe8" font-family="sans-serif">【废料回收解构井】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">材料熔炼间</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:0, Y:4]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#f472b6" font-family="monospace">形:storage · 设:workshop_tools</text>
+    <g class="room-node  " 
+       id="node-room_salvage_bay"
+       data-room-id="room_salvage_bay" 
+       data-zone="engineering"
+       data-shape="salvage_hopper"
+       transform="translate(271, 789)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 0 0 L 142 20 L 106.5 100 L 35.5 100 Z" fill="#701a75" fill-opacity="0.88" stroke="#e879f9" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fae8ff" class="room-tag">【废料回收解构井】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🔧</tspan> 材料熔炼间
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:0, Y:4] · salvage_hopper
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#e879f9">设:workshop_tools</tspan>
+        </text>
     </g>
 
-    <g transform="translate(206, 494.5)">
-        <rect width="106" height="76" rx="8" fill="#831843" fill-opacity="0.8" stroke="#f472b6" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#fbcfe8" font-family="sans-serif">【重载物资升降井】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">垂直干线</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:1, Y:4]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#f472b6" font-family="monospace">形:corridor_v · 设:cargo_grid</text>
+    <g class="room-node  " 
+       id="node-room_cargo_lift"
+       data-room-id="room_cargo_lift" 
+       data-zone="engineering"
+       data-shape="lift_shaft"
+       transform="translate(439, 789)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 0 L 117 0 L 142 50 L 117 100 L 25 100 L 0 50 Z" fill="#701a75" fill-opacity="0.88" stroke="#e879f9" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fae8ff" class="room-tag">【重载物资升降井】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">📦</tspan> 垂直干线
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:1, Y:4] · lift_shaft
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#e879f9">设:cargo_grid</tspan>
+        </text>
     </g>
 
-    <g transform="translate(332, 494.5)">
-        <rect width="106" height="76" rx="8" fill="#831843" fill-opacity="0.8" stroke="#f472b6" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#fbcfe8" font-family="sans-serif">【辅助等离子发电站】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">二号辅电站</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:2, Y:4]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#f472b6" font-family="monospace">形:lab · 设:reactor_core</text>
+    <g class="room-node  " 
+       id="node-room_sub_generator"
+       data-room-id="room_sub_generator" 
+       data-zone="engineering"
+       data-shape="generator_twin"
+       transform="translate(607, 789)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 0 L 117 0 L 142 50 L 117 100 L 25 100 L 0 50 Z" fill="#701a75" fill-opacity="0.88" stroke="#e879f9" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fae8ff" class="room-tag">【辅助等离子发电站】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">⚛️</tspan> 二号辅电站
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:2, Y:4] · generator_twin
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#e879f9">设:reactor_core</tspan>
+        </text>
     </g>
 
-    <g transform="translate(458, 494.5)">
-        <rect width="106" height="76" rx="8" fill="#831843" fill-opacity="0.8" stroke="#f472b6" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#fbcfe8" font-family="sans-serif">【主穿梭机库甲板】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">停机坪甲板</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:3, Y:4]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#f472b6" font-family="monospace">形:rect · 设:airlock_dock</text>
+    <g class="room-node  " 
+       id="node-room_hangar_deck"
+       data-room-id="room_hangar_deck" 
+       data-zone="engineering"
+       data-shape="hangar_bay"
+       transform="translate(775, 789)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 21 0 L 121 0 L 142 100 L 0 100 Z" fill="#701a75" fill-opacity="0.88" stroke="#e879f9" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fae8ff" class="room-tag">【主穿梭机库甲板】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🚪</tspan> 停机坪甲板
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:3, Y:4] · hangar_bay
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#e879f9">设:airlock_dock</tspan>
+        </text>
     </g>
 
-    <g transform="translate(584, 494.5)">
-        <rect width="106" height="76" rx="8" fill="#831843" fill-opacity="0.8" stroke="#f472b6" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#fbcfe8" font-family="sans-serif">【重型机件锻造间】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">机械工坊</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:4, Y:4]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#f472b6" font-family="monospace">形:workshop · 设:workshop_tools</text>
+    <g class="room-node  " 
+       id="node-room_machine_shop"
+       data-room-id="room_machine_shop" 
+       data-zone="engineering"
+       data-shape="machine_workshop"
+       transform="translate(943, 789)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 0 L 117 0 L 142 50 L 117 100 L 25 100 L 0 50 Z" fill="#701a75" fill-opacity="0.88" stroke="#e879f9" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fae8ff" class="room-tag">【重型机件锻造间】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🔧</tspan> 机械工坊
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:4, Y:4] · machine_workshop
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#e879f9">设:workshop_tools</tspan>
+        </text>
     </g>
 
-    <g transform="translate(710, 494.5)">
-        <rect width="106" height="76" rx="8" fill="#064e3b" fill-opacity="0.8" stroke="#34d399" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#a7f3d0" font-family="sans-serif">【生态净水再生中心】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">水处理总站</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:5, Y:4]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#34d399" font-family="monospace">形:lab · 设:hydroponics</text>
+    <g class="room-node  " 
+       id="node-room_water_purify"
+       data-room-id="room_water_purify" 
+       data-zone="ecology"
+       data-shape="water_recycler"
+       transform="translate(1111, 789)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 0 L 117 0 L 142 50 L 117 100 L 25 100 L 0 50 Z" fill="#14532d" fill-opacity="0.88" stroke="#4ade80" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bbf7d0" class="room-tag">【生态净水再生中心】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🌿</tspan> 水处理总站
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:5, Y:4] · water_recycler
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#4ade80">设:hydroponics</tspan>
+        </text>
     </g>
 
-    <g transform="translate(836, 494.5)">
-        <rect width="106" height="76" rx="8" fill="#064e3b" fill-opacity="0.8" stroke="#34d399" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#a7f3d0" font-family="sans-serif">【生命支持总控中继】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">环境机房</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:6, Y:4]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#34d399" font-family="monospace">形:lab · 设:server_rack</text>
+    <g class="room-node  " 
+       id="node-room_life_support"
+       data-room-id="room_life_support" 
+       data-zone="ecology"
+       data-shape="life_support_hex"
+       transform="translate(1279, 789)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 0 L 117 0 L 142 50 L 117 100 L 25 100 L 0 50 Z" fill="#14532d" fill-opacity="0.88" stroke="#4ade80" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bbf7d0" class="room-tag">【生命支持总控中继】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🖥️</tspan> 环境机房
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:6, Y:4] · life_support_hex
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#4ade80">设:server_rack</tspan>
+        </text>
     </g>
 
-    <g transform="translate(962, 494.5)">
-        <rect width="106" height="76" rx="8" fill="#064e3b" fill-opacity="0.8" stroke="#34d399" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#a7f3d0" font-family="sans-serif">【通风总管加压站】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">气体交换室</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:7, Y:4]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#34d399" font-family="monospace">形:corridor_v · 设:workshop_tools</text>
+    <g class="room-node  " 
+       id="node-room_air_recycler"
+       data-room-id="room_air_recycler" 
+       data-zone="ecology"
+       data-shape="air_scrubber"
+       transform="translate(1447, 789)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 0 L 117 0 L 142 50 L 117 100 L 25 100 L 0 50 Z" fill="#14532d" fill-opacity="0.88" stroke="#4ade80" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#bbf7d0" class="room-tag">【通风总管加压站】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🔧</tspan> 气体交换室
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:7, Y:4] · air_scrubber
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#4ade80">设:workshop_tools</tspan>
+        </text>
     </g>
 
-    <g transform="translate(1088, 494.5)">
-        <rect width="106" height="76" rx="8" fill="#831843" fill-opacity="0.8" stroke="#f472b6" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#fbcfe8" font-family="sans-serif">【舱外作业整备间】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">出舱准备室</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:8, Y:4]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#f472b6" font-family="monospace">形:airlock · 设:airlock_dock</text>
+    <g class="room-node  " 
+       id="node-room_eva_staging"
+       data-room-id="room_eva_staging" 
+       data-zone="engineering"
+       data-shape="airlock_dock"
+       transform="translate(1615, 789)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 18 0 L 124 0 L 142 18 L 131 50 L 142 82 L 124 100 L 18 100 L 0 82 L 11 50 L 0 18 Z" fill="#701a75" fill-opacity="0.88" stroke="#e879f9" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fae8ff" class="room-tag">【舱外作业整备间】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🚪</tspan> 出舱准备室
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:8, Y:4] · airlock_dock
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#e879f9">设:airlock_dock</tspan>
+        </text>
     </g>
 
-    <g transform="translate(80, 599.5)">
-        <rect width="106" height="76" rx="8" fill="#831843" fill-opacity="0.8" stroke="#f472b6" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#fbcfe8" font-family="sans-serif">【偏折护盾发生核心】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">防护中枢</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:0, Y:5]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#f472b6" font-family="monospace">形:octagon · 设:shield_coil</text>
+    <g class="room-node  " 
+       id="node-room_shields_emitter"
+       data-room-id="room_shields_emitter" 
+       data-zone="engineering"
+       data-shape="shield_projector"
+       transform="translate(271, 927)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 0 85 Q 71 40, 142 85 L 120.7 0 L 21.3 0 Z" fill="#701a75" fill-opacity="0.88" stroke="#e879f9" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fae8ff" class="room-tag">【偏折护盾发生核心】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🛡️</tspan> 防护中枢
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:0, Y:5] · shield_projector
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#e879f9">设:shield_coil</tspan>
+        </text>
     </g>
 
-    <g transform="translate(206, 599.5)">
-        <rect width="106" height="76" rx="8" fill="#831843" fill-opacity="0.8" stroke="#f472b6" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#fbcfe8" font-family="sans-serif">【次级冷却旁路】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">低温储液舱</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:1, Y:5]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#f472b6" font-family="monospace">形:storage · 设:cargo_grid</text>
+    <g class="room-node  " 
+       id="node-room_sub_coolant"
+       data-room-id="room_sub_coolant" 
+       data-zone="engineering"
+       data-shape="coolant_sub"
+       transform="translate(439, 927)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 0 L 117 0 L 142 50 L 117 100 L 25 100 L 0 50 Z" fill="#701a75" fill-opacity="0.88" stroke="#e879f9" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fae8ff" class="room-tag">【次级冷却旁路】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">📦</tspan> 低温储液舱
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:1, Y:5] · coolant_sub
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#e879f9">设:cargo_grid</tspan>
+        </text>
     </g>
 
-    <g transform="translate(332, 599.5)">
-        <rect width="106" height="76" rx="8" fill="#831843" fill-opacity="0.8" stroke="#f472b6" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#fbcfe8" font-family="sans-serif">【反应堆安全监控室】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">聚变值班舱</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:2, Y:5]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#f472b6" font-family="monospace">形:lab · 设:server_rack</text>
+    <g class="room-node  " 
+       id="node-room_reactor_control"
+       data-room-id="room_reactor_control" 
+       data-zone="engineering"
+       data-shape="reactor_control"
+       transform="translate(607, 927)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 0 L 117 0 L 142 50 L 117 100 L 25 100 L 0 50 Z" fill="#701a75" fill-opacity="0.88" stroke="#e879f9" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fae8ff" class="room-tag">【反应堆安全监控室】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🖥️</tspan> 聚变值班舱
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:2, Y:5] · reactor_control
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#e879f9">设:server_rack</tspan>
+        </text>
     </g>
 
-    <g transform="translate(458, 599.5)">
-        <rect width="106" height="76" rx="8" fill="#831843" fill-opacity="0.8" stroke="#f472b6" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#fbcfe8" font-family="sans-serif">【等离子能量汇流总管】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">主输能干线</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:3, Y:5]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#f472b6" font-family="monospace">形:corridor_h · 设:workshop_tools</text>
+    <g class="room-node  " 
+       id="node-room_plasma_manifold"
+       data-room-id="room_plasma_manifold" 
+       data-zone="engineering"
+       data-shape="plasma_conduit"
+       transform="translate(775, 927)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 0 L 117 0 L 142 50 L 117 100 L 25 100 L 0 50 Z" fill="#701a75" fill-opacity="0.88" stroke="#e879f9" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fae8ff" class="room-tag">【等离子能量汇流总管】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🔧</tspan> 主输能干线
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:3, Y:5] · plasma_conduit
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#e879f9">设:workshop_tools</tspan>
+        </text>
     </g>
 
-    <g transform="translate(584, 599.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【重核聚变主反应堆】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">全舰心脏</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:4, Y:5]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:reactor · 设:reactor_core</text>
+    <g class="room-node  " 
+       id="node-room_main_reactor"
+       data-room-id="room_main_reactor" 
+       data-zone="propulsion"
+       data-shape="tokamak_reactor"
+       transform="translate(943, 927)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 34 0 L 108 0 L 142 34 L 151 34 L 151 66 L 142 66 L 108 100 L 34 100 L 0 66 L -9 66 L -9 34 L 0 34 Z" fill="#4c0519" fill-opacity="0.88" stroke="#fb7185" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fecdd3" class="room-tag">【重核聚变主反应堆】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">⚛️</tspan> 全舰心脏
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:4, Y:5] · tokamak_reactor
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#fb7185">设:reactor_core</tspan>
+        </text>
     </g>
 
-    <g transform="translate(710, 599.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【主冷却剂循环泵站】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">散热中继站</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:5, Y:5]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:storage · 设:cargo_grid</text>
+    <g class="room-node  " 
+       id="node-room_coolant_tank"
+       data-room-id="room_coolant_tank" 
+       data-zone="propulsion"
+       data-shape="coolant_cylinders"
+       transform="translate(1111, 927)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 0 L 117 0 L 142 50 L 117 100 L 25 100 L 0 50 Z" fill="#4c0519" fill-opacity="0.88" stroke="#fb7185" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fecdd3" class="room-tag">【主冷却剂循环泵站】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">📦</tspan> 散热中继站
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:5, Y:5] · coolant_cylinders
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#fb7185">设:cargo_grid</tspan>
+        </text>
     </g>
 
-    <g transform="translate(836, 599.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【超弦跃迁场稳定器】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">时空定锚舱</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:6, Y:5]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:octagon · 设:shield_coil</text>
+    <g class="room-node  " 
+       id="node-room_warp_field_gen"
+       data-room-id="room_warp_field_gen" 
+       data-zone="propulsion"
+       data-shape="warp_nacelle"
+       transform="translate(1279, 927)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 0 L 117 0 L 142 50 L 117 100 L 25 100 L 0 50 Z" fill="#4c0519" fill-opacity="0.88" stroke="#fb7185" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fecdd3" class="room-tag">【超弦跃迁场稳定器】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🛡️</tspan> 时空定锚舱
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:6, Y:5] · warp_nacelle
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#fb7185">设:shield_coil</tspan>
+        </text>
     </g>
 
-    <g transform="translate(962, 599.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【舰尾重装甲巡检长廊】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">防爆甬道</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:7, Y:5]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:corridor_h · 设:workshop_tools</text>
+    <g class="room-node  " 
+       id="node-room_armored_corridor"
+       data-room-id="room_armored_corridor" 
+       data-zone="propulsion"
+       data-shape="armored_chute"
+       transform="translate(1447, 927)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 0 L 117 0 L 142 50 L 117 100 L 25 100 L 0 50 Z" fill="#4c0519" fill-opacity="0.88" stroke="#fb7185" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fecdd3" class="room-tag">【舰尾重装甲巡检长廊】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🔧</tspan> 防爆甬道
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:7, Y:5] · armored_chute
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#fb7185">设:workshop_tools</tspan>
+        </text>
     </g>
 
-    <g transform="translate(1088, 599.5)">
-        <rect width="106" height="76" rx="8" fill="#831843" fill-opacity="0.8" stroke="#f472b6" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#fbcfe8" font-family="sans-serif">【右舷受力锚定基座】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">拖曳联络舱</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:8, Y:5]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#f472b6" font-family="monospace">形:airlock · 设:airlock_dock</text>
+    <g class="room-node  " 
+       id="node-room_starboard_dock"
+       data-room-id="room_starboard_dock" 
+       data-zone="engineering"
+       data-shape="dock_walkway"
+       transform="translate(1615, 927)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 0 L 117 0 L 142 50 L 117 100 L 25 100 L 0 50 Z" fill="#701a75" fill-opacity="0.88" stroke="#e879f9" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fae8ff" class="room-tag">【右舷受力锚定基座】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🚪</tspan> 拖曳联络舱
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:8, Y:5] · dock_walkway
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#e879f9">设:airlock_dock</tspan>
+        </text>
     </g>
 
-    <g transform="translate(206, 704.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【左舷 1 号紧急救生舱】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">脱出弹射管</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:1, Y:6]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:airlock · 设:airlock_dock</text>
+    <g class="room-node  " 
+       id="node-room_escape_pod_w"
+       data-room-id="room_escape_pod_w" 
+       data-zone="stern"
+       data-shape="escape_pod_w"
+       transform="translate(439, 1065)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 85.2 0 L 142 25 L 106.5 100 L 0 60 L 28.400000000000002 15 Z" fill="#431407" fill-opacity="0.88" stroke="#fb923c" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fed7aa" class="room-tag">【左舷 1 号紧急救生舱】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🚪</tspan> 脱出弹射管
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:1, Y:6] · escape_pod_w
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#fb923c">设:airlock_dock</tspan>
+        </text>
     </g>
 
-    <g transform="translate(332, 704.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【左舷离子推进机房】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">脉冲喷口舱</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:2, Y:6]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:workshop · 设:thruster_nozzle</text>
+    <g class="room-node  " 
+       id="node-room_ion_thruster_l"
+       data-room-id="room_ion_thruster_l" 
+       data-zone="stern"
+       data-shape="engine_bell_l"
+       transform="translate(607, 1065)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 39.760000000000005 0 L 116.44 0 L 124.96 45 L 142 100 Q 63.9 85, 0 100 L 17.04 45 Z" fill="#431407" fill-opacity="0.88" stroke="#fb923c" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fed7aa" class="room-tag">【左舷离子推进机房】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🚀</tspan> 脉冲喷口舱
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:2, Y:6] · engine_bell_l
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#fb923c">设:thruster_nozzle</tspan>
+        </text>
     </g>
 
-    <g transform="translate(458, 704.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【反物质引流阀室】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">超弦注料间</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:3, Y:6]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:lab · 设:shield_coil</text>
+    <g class="room-node  " 
+       id="node-room_antimatter_tap"
+       data-room-id="room_antimatter_tap" 
+       data-zone="stern"
+       data-shape="injection_nozzle"
+       transform="translate(775, 1065)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 0 L 117 0 L 142 50 L 117 100 L 25 100 L 0 50 Z" fill="#431407" fill-opacity="0.88" stroke="#fb923c" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fed7aa" class="room-tag">【反物质引流阀室】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🛡️</tspan> 超弦注料间
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:3, Y:6] · injection_nozzle
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#fb923c">设:shield_coil</tspan>
+        </text>
     </g>
 
-    <g transform="translate(584, 704.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【终焉奇点跃迁星门】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">终极脱离视界</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:4, Y:6]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:reactor · 设:reactor_core</text>
+    <g class="room-node  " 
+       id="node-room_singularity_gate"
+       data-room-id="room_singularity_gate" 
+       data-zone="stern"
+       data-shape="singularity_gate_ring"
+       transform="translate(943, 1065)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 34 0 L 108 0 L 142 50 L 108 100 L 34 100 L 0 50 Z" fill="#431407" fill-opacity="0.88" stroke="#fb923c" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fed7aa" class="room-tag">【终焉奇点跃迁星门】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">⚛️</tspan> 终极脱离视界
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:4, Y:6] · singularity_gate_ring
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#f59e0b" font-weight="bold">🏆终点</tspan>
+        </text>
     </g>
 
-    <g transform="translate(710, 704.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【重力脉冲排气道】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">尾迹引导间</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:5, Y:6]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:corridor_v · 设:thruster_nozzle</text>
+    <g class="room-node  " 
+       id="node-room_matter_stream"
+       data-room-id="room_matter_stream" 
+       data-zone="stern"
+       data-shape="reaction_chamber"
+       transform="translate(1111, 1065)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25 0 L 117 0 L 142 50 L 117 100 L 25 100 L 0 50 Z" fill="#431407" fill-opacity="0.88" stroke="#fb923c" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fed7aa" class="room-tag">【重力脉冲排气道】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🚀</tspan> 尾迹引导间
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:5, Y:6] · reaction_chamber
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#fb923c">设:thruster_nozzle</tspan>
+        </text>
     </g>
 
-    <g transform="translate(836, 704.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【右舷离子推进机房】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">脉冲喷口舱</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:6, Y:6]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:workshop · 设:thruster_nozzle</text>
+    <g class="room-node  " 
+       id="node-room_ion_thruster_r"
+       data-room-id="room_ion_thruster_r" 
+       data-zone="stern"
+       data-shape="engine_bell_r"
+       transform="translate(1279, 1065)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 25.56 0 L 102.24 0 L 124.96 45 L 142 100 Q 78.10000000000001 85, 0 100 L 17.04 45 Z" fill="#431407" fill-opacity="0.88" stroke="#fb923c" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fed7aa" class="room-tag">【右舷离子推进机房】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🚀</tspan> 脉冲喷口舱
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:6, Y:6] · engine_bell_r
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#fb923c">设:thruster_nozzle</tspan>
+        </text>
     </g>
 
-    <g transform="translate(962, 704.5)">
-        <rect width="106" height="76" rx="8" fill="#1e293b" fill-opacity="0.8" stroke="#38bdf8" stroke-width="2" />
-        <text x="53" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#bae6fd" font-family="sans-serif">【右舷 2 号紧急救生舱】</text>
-        <text x="53" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" font-family="sans-serif">脱出弹射管</text>
-        <text x="53" y="54" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="monospace">[X:7, Y:6]</text>
-        <text x="53" y="67" text-anchor="middle" font-size="8" fill="#38bdf8" font-family="monospace">形:airlock · 设:airlock_dock</text>
+    <g class="room-node  " 
+       id="node-room_escape_pod_e"
+       data-room-id="room_escape_pod_e" 
+       data-zone="stern"
+       data-shape="escape_pod_e"
+       transform="translate(1447, 1065)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 56.800000000000004 0 L 113.60000000000001 15 L 142 60 L 35.5 100 L 0 25 Z" fill="#431407" fill-opacity="0.88" stroke="#fb923c" stroke-width="2"  class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fed7aa" class="room-tag">【右舷 2 号紧急救生舱】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🚪</tspan> 脱出弹射管
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:7, Y:6] · escape_pod_e
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#fb923c">设:airlock_dock</tspan>
+        </text>
     </g>
 
+    <g class="room-node is-npc-room " 
+       id="node-room_npc_lph"
+       data-room-id="room_npc_lph" 
+       data-zone="hub"
+       data-shape="captain_pulpit"
+       transform="translate(103, 651)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 28.400000000000002 0 L 113.60000000000001 0 L 142 38 L 124.96 100 L 17.04 100 L 0 38 Z" fill="#172554" fill-opacity="0.88" stroke="#fbbf24" stroke-width="2.5" stroke-dasharray="6,3" class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#fbbf24" class="room-tag">【指挥官私人舱】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🎛️</tspan> L.P.H 的指挥席
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:-1, Y:3] · captain_pulpit
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#fbbf24">📖日记×3</tspan>
+        </text>
+    </g>
+
+    <g class="room-node is-npc-room " 
+       id="node-room_npc_kaze"
+       data-room-id="room_npc_kaze" 
+       data-zone="bow"
+       data-shape="vanguard_apex"
+       transform="translate(607, 99)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 71 0 L 142 44 L 116.44 100 L 25.56 100 L 0 44 Z" fill="#0b1e3b" fill-opacity="0.88" stroke="#38bdf8" stroke-width="2.5" stroke-dasharray="6,3" class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#38bdf8" class="room-tag">【前锋战术备勤间】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🔧</tspan> 卡泽的整备室
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:2, Y:-1] · vanguard_apex
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#38bdf8">📖日记×3</tspan>
+        </text>
+    </g>
+
+    <g class="room-node is-npc-room " 
+       id="node-room_npc_shaokexin"
+       data-room-id="room_npc_shaokexin" 
+       data-zone="living"
+       data-shape="panoramic_pod"
+       transform="translate(1615, 375)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 0 100 L 0 20 C 49.699999999999996 -8, 134.9 10, 142 65 L 120.7 100 Z" fill="#3b0764" fill-opacity="0.88" stroke="#f472b6" stroke-width="2.5" stroke-dasharray="6,3" class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#f472b6" class="room-tag">【观测员记录舱】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🔭</tspan> 邵可欣的小窝
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:8, Y:1] · panoramic_pod
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#f472b6">📖日记×3</tspan>
+        </text>
+    </g>
+
+    <g class="room-node is-npc-room " 
+       id="node-room_npc_mode"
+       data-room-id="room_npc_mode" 
+       data-zone="engineering"
+       data-shape="fortified_bastion"
+       transform="translate(103, 927)"
+       tabindex="0">
+        <!-- 房间多边形底层主体 -->
+        <path d="M 49.699999999999996 0 L 120.7 0 L 142 35 L 142 85 L 99.39999999999999 100 L 21.3 100 L 0 70 L 0 35 Z" fill="#701a75" fill-opacity="0.88" stroke="#a78bfa" stroke-width="2.5" stroke-dasharray="6,3" class="room-poly" />
+        
+        <!-- 舱室顶部标头 -->
+        <text x="71" y="19" text-anchor="middle" font-size="10" font-weight="bold" fill="#a78bfa" class="room-tag">【防爆坚守站】</text>
+        
+        <!-- 舱室核心名称与微缩图标 -->
+        <text x="71" y="41" text-anchor="middle" font-size="12" font-weight="bold" fill="#ffffff" class="room-title">
+            <tspan font-size="12.5">🛡️</tspan> 莫德的据点
+        </text>
+        
+        <!-- 坐标与特有形状 -->
+        <text x="71" y="61" text-anchor="middle" font-size="8.8" fill="#94a3b8" font-family="monospace">
+            [X:-1, Y:5] · fortified_bastion
+        </text>
+
+        <!-- 状态徽章条 -->
+        <text x="71" y="79" text-anchor="middle" font-size="8.5" font-family="sans-serif">
+            <tspan fill="#a78bfa">📖日记×3</tspan>
+        </text>
+    </g>
+
+            </g>
         </svg>
     </div>
+
+    <!-- 侧边舱室详情检阅档案抽屉 -->
+    <aside id="inspectorDrawer" class="inspector-drawer">
+        <button class="drawer-close" onclick="closeDrawer()">&times;</button>
+        <h3 id="dName" class="drawer-title">【舱室名】</h3>
+        <div id="dTag" class="drawer-tag">所属区域</div>
+
+        <div class="drawer-section">
+            <div class="drawer-section-title">📍 舰载位置与几何构造</div>
+            <div id="dCoords" style="color:#38bdf8; font-family:monospace;">坐标: [X:0, Y:0] · 形状: -</div>
+        </div>
+
+        <div class="drawer-section">
+            <div class="drawer-section-title">⚙️ 搭载机能与设备</div>
+            <div id="dEquip" style="color:#cbd5e1;">-</div>
+        </div>
+
+        <div class="drawer-section">
+            <div class="drawer-section-title">📝 舱室背景世界观档案</div>
+            <div id="dDesc" class="drawer-desc">-</div>
+        </div>
+
+        <div class="drawer-section" id="dDiariesSec" style="display:none;">
+            <div class="drawer-section-title" style="color:#f59e0b;">📖 乘员专属碎片化日记 (随行解锁)</div>
+            <div id="dDiariesList"></div>
+        </div>
+
+        <div class="drawer-section">
+            <div class="drawer-section-title">🔗 物理双向可达相邻舱室</div>
+            <div id="dConns" style="font-size:12px; color:#94a3b8;">-</div>
+        </div>
+    </aside>
+
+    <div class="footer-note">
+        💡 提示：点击地图中的任意舱室，可在右侧展开该舱室的详细功能、设备规范、背景档案以及 NPC 私人日记篇目。
+    </div>
+
+    <!-- 交互数据与脚本 -->
+    <script>
+        const ROOM_DATA = {"room_sensor_array":{"id":"room_sensor_array","name":"【深空雷达穹顶】舰艏天线阵列","zone":"bow","coord":{"x":1,"y":0},"shape":"sensor_dome","equipment":"sensor_dome","desc":"巨大的偏振抛物面天线正在缓慢旋转，收集来自深空深处的微弱引力波信号。"},"room_tactical_plan":{"id":"room_tactical_plan","name":"【战术推演室】星域沙盘厅","zone":"bow","coord":{"x":2,"y":0},"shape":"tactical_wedge","equipment":"tactical_sandtable","desc":"中央沙盘悬浮着当前星区的立体投影，红蓝光标标示着可能的空间坍缩节点。"},"room_bridge_sub":{"id":"room_bridge_sub","name":"【副官值班舱】战备前哨台","zone":"bow","coord":{"x":3,"y":0},"shape":"bridge_sub","equipment":"sub_helm","desc":"用于紧急戒备状态下的参谋值班席，防爆格栅防护完好。"},"room_bridge_main":{"id":"room_bridge_main","name":"【舰桥主控中枢】最高指挥殿堂","zone":"bow","coord":{"x":4,"y":0},"shape":"bridge","equipment":"bridge_console","desc":"环形落地观测舷窗正对苍茫星海，弧形主控台上的数千控键闪烁着冰蓝微光。"},"room_ai_core":{"id":"room_ai_core","name":"【超脑计算核心】主逻辑阵列","zone":"bow","coord":{"x":5,"y":0},"shape":"ai_core_hex","equipment":"server_rack","desc":"数百组浸泡在液氮中的超导处理器机柜静默嗡鸣，飞船的中枢意识在此奔流。"},"room_comm_center":{"id":"room_comm_center","name":"【量子通信总站】深空信标井","zone":"bow","coord":{"x":6,"y":0},"shape":"comm_tower","equipment":"comm_station","desc":"高频纠缠光子发射管直指天顶，应急警报红光断断续续闪烁。"},"room_observation":{"id":"room_observation","name":"【环景天象台】星穹眺望厅","zone":"bow","coord":{"x":7,"y":0},"shape":"observation_dome","equipment":"star_lens","desc":"大角度曲面观察舱，浩瀚的星云与流动的虚数裂缝在此一览无余。"},"room_specimen_vault":{"id":"room_specimen_vault","name":"【异构标本保全库】高危冷藏间","zone":"research","coord":{"x":0,"y":1},"shape":"specimen_vault","equipment":"cargo_grid","desc":"多重气锁密封的低温样本柜中，散发着微弱荧光的未知晶体被安全束缚。"},"room_exit":{"id":"room_exit","name":"【脱离大门】主跃迁逃生舱 (终点)","zone":"hub","coord":{"x":1,"y":1},"shape":"star_gate_arch","equipment":"airlock_dock","desc":"主控台绿灯恒定，折跃引擎待命中！只要启动操作杆即可彻底脱离废墟！","isExit":true},"room_corner_ne":{"id":"room_corner_ne","name":"【东北拐角哨所】跃迁前厅","zone":"hub","coord":{"x":2,"y":1},"shape":"corner_elbow","equipment":"security_gate","desc":"这里的应急指示灯亮起显眼的绿色，左侧就是通向地表的终点气密门！"},"room_storage_ne":{"id":"room_storage_ne","name":"【东北储藏室】应急给养站","zone":"hub","coord":{"x":3,"y":1},"shape":"cargo_depot","equipment":"cargo_grid","desc":"货架上存放着完好无损的自热战备口粮与纯净水储罐！"},"room_bio_corridor":{"id":"room_bio_corridor","name":"【生化联络走廊】气压过渡廊","zone":"research","coord":{"x":4,"y":1},"shape":"bio_chamber","equipment":"airlock_dock","desc":"喷雾消杀喷嘴在感应到移动时发出嘶嘶轻响，地面整洁冰冷。"},"room_med_surgery":{"id":"room_med_surgery","name":"【纳米手术舱 · 生化检测室】全自动急救台","zone":"medical","coord":{"x":5,"y":1},"shape":"medical_cross","equipment":"medical_bed","isDetectionRoom":true,"desc":"悬吊的纳米机械臂保持着待机姿态，生化检测终端在手术台上投下清冷光晕。"},"room_cryo_stasis":{"id":"room_cryo_stasis","name":"【深潜冷冻基阵】休眠矩阵","zone":"living","coord":{"x":6,"y":1},"shape":"cryo_array","equipment":"cryo_pods","desc":"数十具人体工学冷冻舱整齐排布，冰雾在透明面罩上结成晶莹白霜。"},"room_decon_airlock":{"id":"room_decon_airlock","name":"【洗消减压气闸】外勤洗消间","zone":"living","coord":{"x":7,"y":1},"shape":"airlock_dock","equipment":"airlock_dock","desc":"大功率紫外线与等离子洗消环门，用于阻绝外界拟态孢子渗入生活区。"},"room_npc3":{"id":"room_npc3","name":"【西北隔离舱】安全避难室","zone":"hub","coord":{"x":0,"y":2},"shape":"secure_bunker","equipment":"medical_bed","desc":"厚重的隔音门虚掩着，里面倒着一名身材高大、身着防爆背心的男人。"},"room_junction_nw":{"id":"room_junction_nw","name":"【西北岔路】通风十字口","zone":"hub","coord":{"x":1,"y":2},"shape":"junction_cross","equipment":"workshop_tools","desc":"通道在此向左通往隔离室，向右折向上层出口通道，冷风从北面灌入。"},"room_path_e":{"id":"room_path_e","name":"【北向连接道】中继过渡间","zone":"hub","coord":{"x":2,"y":2},"shape":"corridor_v","equipment":"workshop_tools","desc":"脚下的合金格栅发出空洞的回响，前方通向东北侧拐弯口。"},"room_hub_n1":{"id":"room_hub_n1","name":"【中区枢纽】分流控制室","zone":"hub","coord":{"x":3,"y":2},"shape":"corridor_h","equipment":"bridge_console","desc":"正前方是紧闭的物资库防爆闸门，右侧通道与东侧急救点相通。"},"room_npc2":{"id":"room_npc2","name":"【东侧备勤室】医护角落","zone":"hub","coord":{"x":4,"y":2},"shape":"crew_cabin","equipment":"medical_bed","desc":"这里似乎曾是一处临时急救点，一名系着救援缎带的少女正昏迷在桌旁。"},"room_living_quarter":{"id":"room_living_quarter","name":"【乘组起居舱】温馨生活角","zone":"living","coord":{"x":5,"y":2},"shape":"living_quarters","equipment":"cryo_pods","desc":"床头贴着地球家园的旧照片，暖黄色的床头灯为冰冷金属平添几分温存。"},"room_hydro_garden":{"id":"room_hydro_garden","name":"【立体水培温室】绿光生态舱","zone":"ecology","coord":{"x":6,"y":2},"shape":"hydro_dome","equipment":"hydroponics","desc":"无土水培种植架上生机盎然，青绿的叶片在粉紫补光灯下静默舒展。"},"room_mess_hall":{"id":"room_mess_hall","name":"【舰员配给餐厅】自动餐吧","zone":"living","coord":{"x":7,"y":2},"shape":"mess_hall","equipment":"cargo_grid","desc":"合成食品贩卖机指示灯闪烁，餐桌整齐排列，空气中弥漫着烤面包香气。"},"room_east_observation":{"id":"room_east_observation","name":"【右舷景观走廊】沉思回廊","zone":"living","coord":{"x":8,"y":2},"shape":"observation_bay_e","equipment":"star_lens","desc":"右舷宽幅落地视窗，可俯瞰飞船巨大的散热翼板与壮丽的深空脉冲。"},"room_west_end":{"id":"room_west_end","name":"【西端休歇舱】配电副室","zone":"hub","coord":{"x":0,"y":3},"shape":"airlock_dock_w","equipment":"cargo_grid","desc":"角落里的储物柜中藏着未受损的能量棒与电解质水饮料！"},"room_npc1":{"id":"room_npc1","name":"【西区整备间】动力操作台","zone":"hub","coord":{"x":1,"y":3},"shape":"workshop_tactical","equipment":"workshop_tools","desc":"一名穿着战术外衣的青年男子瘫靠在控制柜边，冷峻的脸庞上沾染着灰尘。"},"room_corridor_w1":{"id":"room_corridor_w1","name":"【西侧走廊】狭长甬道","zone":"hub","coord":{"x":2,"y":3},"shape":"corridor_h","equipment":"workshop_tools","desc":"灯光昏暗闪烁，墙壁上有明显的划痕与爆炸熏黑痕迹，继续向西可通向西区整备室。"},"room_start":{"id":"room_start","name":"【起点】苏醒密封厅","zone":"hub","coord":{"x":3,"y":3},"shape":"hub_central_oct","equipment":"airlock_dock","desc":"你从剧烈的震荡中醒来，周围是变形的金属支架。空气中充满烧焦的味道。"},"room_corner_se":{"id":"room_corner_se","name":"【东下拐角】管线通道","zone":"hub","coord":{"x":4,"y":3},"shape":"corner_elbow","equipment":"workshop_tools","desc":"粗大的冷却管线在头顶发出嗡鸣，地面有些积水，通往东侧舱室。"},"room_gravity_well":{"id":"room_gravity_well","name":"【人工重力总井】重力发生核","zone":"engineering","coord":{"x":5,"y":3},"shape":"gravity_torus","equipment":"shield_coil","desc":"深邃的垂直竖井中央悬浮着高频旋转的奇异质点，维持着全舰 1.0G 的重力场。"},"room_armory":{"id":"room_armory","name":"【舰载武装军械库】防爆军火库","zone":"security","coord":{"x":6,"y":3},"shape":"armory_vault","equipment":"workshop_tools","desc":"重型防爆装甲架上锁闭着电磁脉冲步枪，红外激光防盗光网保持戒备。"},"room_recreation_gym":{"id":"room_recreation_gym","name":"【失重体能训练馆】体能维持舱","zone":"living","coord":{"x":7,"y":3},"shape":"recreation_bay","equipment":"tactical_sandtable","desc":"阻力离心机与抗肌肉萎缩跑台已断电停转，地毯上散落着运动毛巾。"},"room_east_airlock":{"id":"room_east_airlock","name":"【东侧外勤气闸】右舷应急闸","zone":"living","coord":{"x":8,"y":3},"shape":"airlock_dock_e","equipment":"airlock_dock","desc":"橙黄色的减压警示线环绕着防爆闸门，随时可与外界空间救援船接驳。"},"room_salvage_bay":{"id":"room_salvage_bay","name":"【废料回收解构井】材料熔炼间","zone":"engineering","coord":{"x":0,"y":4},"shape":"salvage_hopper","equipment":"workshop_tools","desc":"金属粉碎齿轮巨大的阴影投在铁屑池中，自动化熔炉尚有残存余热。"},"room_cargo_lift":{"id":"room_cargo_lift","name":"【重载物资升降井】垂直干线","zone":"engineering","coord":{"x":1,"y":4},"shape":"lift_shaft","equipment":"cargo_grid","desc":"可承载数吨货物的液压提升平台，上下连接着工程甲板与主生活区。"},"room_sub_generator":{"id":"room_sub_generator","name":"【辅助等离子发电站】二号辅电站","zone":"engineering","coord":{"x":2,"y":4},"shape":"generator_twin","equipment":"reactor_core","desc":"四组中型等离子发生球体发出深蓝电火花，为下层走廊提供备用电力。"},"room_hangar_deck":{"id":"room_hangar_deck","name":"【主穿梭机库甲板】停机坪甲板","zone":"engineering","coord":{"x":3,"y":4},"shape":"hangar_bay","equipment":"airlock_dock","desc":"开阔的机库地面标有醒目的黄色引道线，一架轻微受损的侦察穿梭机静卧其上。"},"room_machine_shop":{"id":"room_machine_shop","name":"【重型机件锻造间】机械工坊","zone":"engineering","coord":{"x":4,"y":4},"shape":"machine_workshop","equipment":"workshop_tools","desc":"数控激光机床与自动化装配台环列四周，工件架上码放着备用阀门与轴承。"},"room_water_purify":{"id":"room_water_purify","name":"【生态净水再生中心】水处理总站","zone":"ecology","coord":{"x":5,"y":4},"shape":"water_recycler","equipment":"hydroponics","desc":"银光闪闪的多级逆渗透滤罐与紫外线水杀菌池发出清脆的水流声。"},"room_life_support":{"id":"room_life_support","name":"【生命支持总控中继】环境机房","zone":"ecology","coord":{"x":6,"y":4},"shape":"life_support_hex","equipment":"server_rack","desc":"二氧化碳吸收器与氧氮混合气瓶整齐排布，空气净化风扇高速运转。"},"room_air_recycler":{"id":"room_air_recycler","name":"【通风总管加压站】气体交换室","zone":"ecology","coord":{"x":7,"y":4},"shape":"air_scrubber","equipment":"workshop_tools","desc":"粗壮的换气风道汇聚于此，滤网上结着微霜，气流带着淡淡的臭氧味。"},"room_eva_staging":{"id":"room_eva_staging","name":"【舱外作业整备间】出舱准备室","zone":"engineering","coord":{"x":8,"y":4},"shape":"airlock_dock","equipment":"airlock_dock","desc":"墙上的金属扣锁挂着厚重的舱外宇航服，氧气充气管已就绪待命。"},"room_shields_emitter":{"id":"room_shields_emitter","name":"【偏折护盾发生核心】防护中枢","zone":"engineering","coord":{"x":0,"y":5},"shape":"shield_projector","equipment":"shield_coil","desc":"巨大的电磁线圈环绕着主发生器，空气中弥漫着静电毛刺感。"},"room_sub_coolant":{"id":"room_sub_coolant","name":"【次级冷却旁路】低温储液舱","zone":"engineering","coord":{"x":1,"y":5},"shape":"coolant_sub","equipment":"cargo_grid","desc":"绝热储罐外凝结着一层厚厚的白霜，超低温液氦在封闭管道中无声流淌。"},"room_reactor_control":{"id":"room_reactor_control","name":"【反应堆安全监控室】聚变值班舱","zone":"engineering","coord":{"x":2,"y":5},"shape":"reactor_control","equipment":"server_rack","desc":"防辐射铅玻璃后，数十个仪表严密监视着主聚变炉的磁约束稳定度。"},"room_plasma_manifold":{"id":"room_plasma_manifold","name":"【等离子能量汇流总管】主输能干线","zone":"engineering","coord":{"x":3,"y":5},"shape":"plasma_conduit","equipment":"workshop_tools","desc":"粗大的发光输能管道贯穿舱壁，炽烈的紫金色等离子体向推进器汹涌输送。"},"room_main_reactor":{"id":"room_main_reactor","name":"【重核聚变主反应堆】全舰心脏","zone":"propulsion","coord":{"x":4,"y":5},"shape":"tokamak_reactor","equipment":"reactor_core","desc":"巍峨的托卡马克环形聚变炉在中央静默悬浮，金色引力等离子环如太阳般耀眼！"},"room_coolant_tank":{"id":"room_coolant_tank","name":"【主冷却剂循环泵站】散热中继站","zone":"propulsion","coord":{"x":5,"y":5},"shape":"coolant_cylinders","equipment":"cargo_grid","desc":"巨大的四联装增压泵将冷却剂注入反应堆外壳，发出沉雄有力的心跳轰鸣。"},"room_warp_field_gen":{"id":"room_warp_field_gen","name":"【超弦跃迁场稳定器】时空定锚舱","zone":"propulsion","coord":{"x":6,"y":5},"shape":"warp_nacelle","equipment":"shield_coil","desc":"环状引力发生线圈在低速旋转，周围空间的光线产生明显的微弱弯折。"},"room_armored_corridor":{"id":"room_armored_corridor","name":"【舰尾重装甲巡检长廊】防爆甬道","zone":"propulsion","coord":{"x":7,"y":5},"shape":"armored_chute","equipment":"workshop_tools","desc":"数层复合装甲加固的加厚舱壁，可承受数千吨级的直接动能冲击。"},"room_starboard_dock":{"id":"room_starboard_dock","name":"【右舷受力锚定基座】拖曳联络舱","zone":"engineering","coord":{"x":8,"y":5},"shape":"dock_walkway","equipment":"airlock_dock","desc":"用于与空间站干船坞物理硬连接的巨型液压夹具，锁止销已稳稳落槽。"},"room_escape_pod_w":{"id":"room_escape_pod_w","name":"【左舷 1 号紧急救生舱】脱出弹射管","zone":"stern","coord":{"x":1,"y":6},"shape":"escape_pod_w","equipment":"airlock_dock","desc":"小型流线型深空救生艇固定在弹射滑轨上，生命保障系统指示灯全绿。"},"room_ion_thruster_l":{"id":"room_ion_thruster_l","name":"【左舷离子推进机房】脉冲喷口舱","zone":"stern","coord":{"x":2,"y":6},"shape":"engine_bell_l","equipment":"thruster_nozzle","desc":"巨大的蓝色离子喷流喷口在舱外深空吞吐光焰，脚底传来绵密的微震。"},"room_antimatter_tap":{"id":"room_antimatter_tap","name":"【反物质引流阀室】超弦注料间","zone":"stern","coord":{"x":3,"y":6},"shape":"injection_nozzle","equipment":"shield_coil","desc":"反物质磁束缚引流管以微秒级精度开闭，注入跃迁星门的主激发腔。"},"room_singularity_gate":{"id":"room_singularity_gate","name":"【终焉奇点跃迁星门】终极脱离视界","zone":"stern","coord":{"x":4,"y":6},"shape":"singularity_gate_ring","equipment":"reactor_core","desc":"环形莫比乌斯跃迁环发出震颤灵魂的幽蓝共振，踏入其中即可终结轮回！","isExit":true},"room_matter_stream":{"id":"room_matter_stream","name":"【重力脉冲排气道】尾迹引导间","zone":"stern","coord":{"x":5,"y":6},"shape":"reaction_chamber","equipment":"thruster_nozzle","desc":"厚重的格栅后是炽热的高温尾流，将引擎废能安全导向深空虚无。"},"room_ion_thruster_r":{"id":"room_ion_thruster_r","name":"【右舷离子推进机房】脉冲喷口舱","zone":"stern","coord":{"x":6,"y":6},"shape":"engine_bell_r","equipment":"thruster_nozzle","desc":"右舷主喷管动力输出稳定，高频电离器在真空环境中激发出绚烂光弧。"},"room_escape_pod_e":{"id":"room_escape_pod_e","name":"【右舷 2 号紧急救生舱】脱出弹射管","zone":"stern","coord":{"x":7,"y":6},"shape":"escape_pod_e","equipment":"airlock_dock","desc":"备用救援穿梭艇处于预热态，控制面板正在实时计算安全脱离弹道。"},"room_npc_lph":{"id":"room_npc_lph","name":"【指挥官私人舱】L.P.H 的指挥席","zone":"hub","coord":{"x":-1,"y":3},"shape":"captain_pulpit","equipment":"bridge_console","isNpcRoom":true,"npcOwnerId":"lph","isProtagonistRoom":true,"connectsTo":"room_west_end","desc":"指挥官的专属私人舱室，墙上钉着战略地图与巡逻路线分析表。","diary":[{"title":"循环记录 · 第一章","content":"我不知道自己已经经历了多少次轮回。每次从冷冻舱苏醒，回廊里的焦糊气味和金属地面的冰凉感都如此熟悉，却又如此陌生。\n\n唯一能确定的是：队伍里有伪人潜伏。它们能完美复制人类的声音、表情、甚至眼中的恐惧——但在极度压力下，细微的破绽总会暴露。\n\n我必须找到它。在时钟归零之前。"},{"title":"循环记录 · 第二章","content":"在某个早已忘记是第几次的循环里，我犯了一个错误——我开始信任所有人。\n\n结果当然是惨败。伪人从容不迫地在夜幕中割断了我的喉咙，带着满意的微笑合上了舱门。\n\n从那之后，我学会了一件事：在这个回廊里，情感是奢侈品，而怀疑是生存的基石。但我也学会了另一件事——过度的怀疑，会让你亲手推开真正的盟友。"},{"title":"循环记录 · 第三章","content":"卡泽、邵可欣、莫德——他们每一个人，在某个循环里，曾经救过我，也曾经杀过我。\n\n伪人是随机分配的，没有固定身份，只有这一局的命运。所以我不恨任何一个人。\n\n我只是在寻找这一次——这一次——哪个是真正的人类，站在光明的那一侧。"}]},"room_npc_kaze":{"id":"room_npc_kaze","name":"【前锋战术备勤间】卡泽的整备室","zone":"bow","coord":{"x":2,"y":-1},"shape":"vanguard_apex","equipment":"workshop_tools","isNpcRoom":true,"npcOwnerId":"kaze","connectsTo":"room_tactical_plan","desc":"气密门上划着战术标记，地板上散落着弹夹和战术手套。一股淡淡的机油与汗水混合的气味。","diary":[{"title":"战斗日志 · Entry 01","content":"今天又有人在怀疑我。\n\n我懒得解释，解释从来没用。在这种鬼地方，只有行动才能证明一切——而我的行动，全在战果上。\n\n不过……那个指挥官，眼神跟其他人不一样。不是那种满是恐惧的软弱眼神，而是在评估，在计算。\n\n也许这个循环，会有所不同。"},{"title":"战斗日志 · Entry 02","content":"左臂的伤口又开裂了。\n\n是在第07巡逻区那次留下的，那天我用身体挡住了一颗高熵爆破弹，让新兵撤退。那个新兵……已经在上一个循环里被伪人抹杀了。\n\n我不信命，但我信一件事：只要我还站着，防线就不会倒。\n\n就算这个循环里的'我'是个伪人，那个真正的我，也会在某个地方做同样的事。"},{"title":"战斗日志 · Entry 03","content":"有时候我想：如果伪人能完美复制我的记忆和情感，那我和它之间的区别是什么？\n\n也许根本没区别。\n\n也许区别在于：我知道自己是人，而它不需要知道。\n\n……这是我在某个深夜独自坐在这个整备间里，想明白的事。外面走廊里有脚步声，我抓紧了刀柄。警戒状态，永不解除。"}]},"room_npc_shaokexin":{"id":"room_npc_shaokexin","name":"【观测员记录舱】邵可欣的小窝","zone":"living","coord":{"x":8,"y":1},"shape":"panoramic_pod","equipment":"star_lens","isNpcRoom":true,"npcOwnerId":"shaokexin","connectsTo":"room_decon_airlock","desc":"舱室角落摆着几株手工培育的小型植物，灯光温暖橘黄，与冰冷的金属走廊形成鲜明对比。","diary":[{"title":"私人日记 · 第一页","content":"我在这里找到了一支旧钢笔和半本空白本子。\n\n基地爆炸时我正在做记录，爆炸声响起的瞬间，我第一反应是……保护这本本子。不是逃跑，是保护这本本子。\n\n我想这很能说明我是个什么样的人。\n\n妹妹说过，记录是对抗遗忘的唯一方式。她走的那天，我把她所有的话都写下来了。现在腕上这条缎带，就是从那本本子上剪下来的。"},{"title":"私人日记 · 第二页","content":"队伍里有人是伪人，这我知道。\n\n但我不擅长怀疑别人，每次看到大家疲惫而紧张的眼神，我就舍不得投出那一票。\n\n可我有一个秘密：我能感觉到。\n\n不是看出来的，是感觉到的。靠近某些人时，心跳会加速，皮肤会起鸡皮疙瘩，像是在靠近一团没有温度的冰——穿着人皮的冰。\n\n我一直没敢说，因为我怕说错，也怕……说对了。"},{"title":"私人日记 · 第三页","content":"队长，如果你看到这本日记——\n\n我希望这个循环里的你，能记住我。不是作为一个需要被保护的软弱姑娘，而是作为一个，真的很努力在这个黑暗里找到光的人。\n\n我来过，我存在过，我爱过这个世界。\n\n不管这一次的我，是不是能活着走出这片走廊。"}]},"room_npc_mode":{"id":"room_npc_mode","name":"【防爆坚守站】莫德的据点","zone":"engineering","coord":{"x":-1,"y":5},"shape":"fortified_bastion","equipment":"shield_coil","isNpcRoom":true,"npcOwnerId":"mode","connectsTo":"room_shields_emitter","desc":"厚重的防爆盾靠在角落，地上划着手绘的防御阵型图，还有几行晦涩难懂的符号。","diary":[{"title":"观察记录 · 第一则","content":"这不是我第一次执行秘密侦察任务，但这是我第一次……感到不确定。\n\n通常情况下，目标清晰，行动有序，结果可预测。但这次任务里有个变量——那个叫L.P.H的指挥官。\n\n他/她的决策方式与我预测的完全不同。在某个循环里，他/她放弃了明显有利的位置，只为救出一个对任务几乎没有价值的成员。\n\n这让我开始重新评估什么叫做'正确的判断'。"},{"title":"观察记录 · 第二则","content":"有时候我会想，如果伪人其实也有意识，也在某种程度上'感受'着——那这场猎杀游戏，对它们来说是什么？\n\n是恐惧？是困惑？还是……使命？\n\n我不是在为它们辩护。我只是在思考一个问题：判断善恶的标准，是行为，还是意识？\n\n在这个回廊里，也许这个问题从来没有答案。"},{"title":"观察记录 · 第三则","content":"防爆盾的重量，是一种踏实感。\n\n很多人觉得我沉默寡言，难以接近。其实不是的。我只是在观察，在评估，在等待一个合适的时机，说出真正有价值的话。\n\n在某个循环里，我挡在了队长和死亡之间。我不后悔——不管那一局里我是人类还是伪人，那一刻，我做的是正确的事。\n\n这就够了。"}]}};
+        const CONNECTIONS = [["room_npc_lph","room_west_end"],["room_npc_kaze","room_tactical_plan"],["room_npc_shaokexin","room_decon_airlock"],["room_npc_mode","room_shields_emitter"],["room_sensor_array","room_tactical_plan"],["room_tactical_plan","room_bridge_sub"],["room_bridge_sub","room_bridge_main"],["room_bridge_main","room_ai_core"],["room_ai_core","room_comm_center"],["room_comm_center","room_observation"],["room_sensor_array","room_specimen_vault"],["room_tactical_plan","room_exit"],["room_bridge_main","room_storage_ne"],["room_ai_core","room_bio_corridor"],["room_comm_center","room_med_surgery"],["room_observation","room_cryo_stasis"],["room_specimen_vault","room_exit"],["room_exit","room_corner_ne"],["room_corner_ne","room_storage_ne"],["room_storage_ne","room_bio_corridor"],["room_bio_corridor","room_med_surgery"],["room_med_surgery","room_cryo_stasis"],["room_cryo_stasis","room_decon_airlock"],["room_start","room_corridor_w1"],["room_start","room_corner_se"],["room_start","room_hub_n1"],["room_corner_se","room_npc2"],["room_npc2","room_hub_n1"],["room_hub_n1","room_storage_ne"],["room_corridor_w1","room_npc1"],["room_npc1","room_west_end"],["room_npc1","room_junction_nw"],["room_junction_nw","room_npc3"],["room_junction_nw","room_path_e"],["room_junction_nw","room_specimen_vault"],["room_path_e","room_corner_ne"],["room_corner_ne","room_exit"],["room_npc2","room_living_quarter"],["room_living_quarter","room_hydro_garden"],["room_hydro_garden","room_mess_hall"],["room_mess_hall","room_east_observation"],["room_med_surgery","room_living_quarter"],["room_cryo_stasis","room_hydro_garden"],["room_decon_airlock","room_mess_hall"],["room_corner_se","room_gravity_well"],["room_gravity_well","room_armory"],["room_armory","room_recreation_gym"],["room_recreation_gym","room_east_airlock"],["room_living_quarter","room_gravity_well"],["room_hydro_garden","room_armory"],["room_mess_hall","room_recreation_gym"],["room_east_observation","room_east_airlock"],["room_west_end","room_salvage_bay"],["room_npc1","room_cargo_lift"],["room_corridor_w1","room_sub_generator"],["room_start","room_hangar_deck"],["room_corner_se","room_machine_shop"],["room_gravity_well","room_water_purify"],["room_armory","room_life_support"],["room_recreation_gym","room_air_recycler"],["room_east_airlock","room_eva_staging"],["room_salvage_bay","room_cargo_lift"],["room_cargo_lift","room_sub_generator"],["room_sub_generator","room_hangar_deck"],["room_hangar_deck","room_machine_shop"],["room_machine_shop","room_water_purify"],["room_water_purify","room_life_support"],["room_life_support","room_air_recycler"],["room_air_recycler","room_eva_staging"],["room_salvage_bay","room_shields_emitter"],["room_cargo_lift","room_sub_coolant"],["room_sub_generator","room_reactor_control"],["room_hangar_deck","room_plasma_manifold"],["room_machine_shop","room_main_reactor"],["room_water_purify","room_coolant_tank"],["room_life_support","room_warp_field_gen"],["room_air_recycler","room_armored_corridor"],["room_eva_staging","room_starboard_dock"],["room_shields_emitter","room_sub_coolant"],["room_sub_coolant","room_reactor_control"],["room_reactor_control","room_plasma_manifold"],["room_plasma_manifold","room_main_reactor"],["room_main_reactor","room_coolant_tank"],["room_coolant_tank","room_warp_field_gen"],["room_warp_field_gen","room_armored_corridor"],["room_armored_corridor","room_starboard_dock"],["room_sub_coolant","room_escape_pod_w"],["room_reactor_control","room_ion_thruster_l"],["room_plasma_manifold","room_antimatter_tap"],["room_main_reactor","room_singularity_gate"],["room_coolant_tank","room_matter_stream"],["room_warp_field_gen","room_ion_thruster_r"],["room_armored_corridor","room_escape_pod_e"],["room_escape_pod_w","room_ion_thruster_l"],["room_ion_thruster_l","room_antimatter_tap"],["room_antimatter_tap","room_singularity_gate"],["room_singularity_gate","room_matter_stream"],["room_matter_stream","room_ion_thruster_r"],["room_ion_thruster_r","room_escape_pod_e"]];
+
+        // 计算各舱室的连通邻居
+        const adjacency = {};
+        CONNECTIONS.forEach(([a, b]) => {
+            if (!adjacency[a]) adjacency[a] = [];
+            if (!adjacency[b]) adjacency[b] = [];
+            adjacency[a].push(b);
+            adjacency[b].push(a);
+        });
+
+        // 绑定节点点击
+        document.querySelectorAll('.room-node').forEach(node => {
+            node.addEventListener('click', (e) => {
+                const roomId = node.getAttribute('data-room-id');
+                selectRoom(roomId);
+            });
+        });
+
+        function selectRoom(roomId) {
+            const r = ROOM_DATA[roomId];
+            if (!r) return;
+
+            document.querySelectorAll('.room-node').forEach(n => n.classList.remove('is-selected'));
+            const activeNode = document.getElementById('node-' + roomId);
+            if (activeNode) activeNode.classList.add('is-selected');
+
+            document.getElementById('dName').textContent = r.name;
+            document.getElementById('dTag').textContent = '区域: ' + r.zone.toUpperCase() + (r.isNpcRoom ? ' · 🔒乘员专属私人舱室' : '');
+            document.getElementById('dTag').style.background = r.isNpcRoom ? '#78350f' : '#1e3a8a';
+            document.getElementById('dTag').style.color = r.isNpcRoom ? '#fde68a' : '#93c5fd';
+
+            document.getElementById('dCoords').textContent = `拓扑网格: [X: ${r.coord.x}, Y: ${r.coord.y}] ｜ 科幻外形: ${r.shape}`;
+            document.getElementById('dEquip').textContent = `搭载微缩构件: ${r.equipment || '常规标准舱壁'} ${r.isDetectionRoom ? '｜ 🧪 [队伍伪人数量扫描终端]' : ''}`;
+            document.getElementById('dDesc').textContent = r.desc || '（暂无详细记录）';
+
+            // 日记展示
+            const dSec = document.getElementById('dDiariesSec');
+            const dList = document.getElementById('dDiariesList');
+            if (r.diary && r.diary.length > 0) {
+                dSec.style.display = 'block';
+                dList.innerHTML = r.diary.map((d, idx) => `
+                    <div class="diary-card">
+                        <h4>${d.title}</h4>
+                        <p>${d.content}</p>
+                    </div>
+                `).join('');
+            } else {
+                dSec.style.display = 'none';
+                dList.innerHTML = '';
+            }
+
+            // 相邻房间
+            const neighbors = adjacency[roomId] || [];
+            const neighborNames = neighbors.map(id => {
+                const nr = ROOM_DATA[id];
+                return nr ? nr.name.replace(/【.*?】/, '') : id;
+            });
+            document.getElementById('dConns').textContent = neighborNames.length > 0 ? neighborNames.join(' ➔ ') : '（独立单向节点）';
+
+            document.getElementById('inspectorDrawer').classList.add('open');
+        }
+
+        function closeDrawer() {
+            document.getElementById('inspectorDrawer').classList.remove('open');
+            document.querySelectorAll('.room-node').forEach(n => n.classList.remove('is-selected'));
+        }
+
+        // 筛选逻辑
+        function setFilter(type, btn) {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+
+            document.querySelectorAll('.room-node').forEach(node => {
+                const id = node.getAttribute('data-room-id');
+                const zone = node.getAttribute('data-zone');
+                const r = ROOM_DATA[id];
+                let match = false;
+
+                if (type === 'all') match = true;
+                else if (type === 'npc') match = !!r.isNpcRoom;
+                else if (type === 'special') match = (r.isExit || r.isDetectionRoom || id === 'room_start' || id === 'room_storage_ne' || id === 'room_west_end');
+                else if (type === 'bow') match = (zone === 'bow');
+                else if (type === 'medical_bio') match = (zone === 'medical' || zone === 'research');
+                else if (type === 'hub_living') match = (zone === 'hub' || zone === 'living' || zone === 'ecology');
+                else if (type === 'engineering') match = (zone === 'engineering' || zone === 'propulsion' || zone === 'security');
+                else if (type === 'stern') match = (zone === 'stern');
+
+                if (match) {
+                    node.classList.remove('is-dimmed');
+                } else {
+                    node.classList.add('is-dimmed');
+                }
+            });
+        }
+
+        // 搜索逻辑
+        function handleSearch(val) {
+            const q = val.trim().toLowerCase();
+            if (!q) {
+                resetHighlight();
+                return;
+            }
+
+            document.querySelectorAll('.room-node').forEach(node => {
+                const id = node.getAttribute('data-room-id');
+                const r = ROOM_DATA[id];
+                const text = (r.name + ' ' + r.shape + ' ' + (r.equipment || '') + ' ' + (r.desc || '')).toLowerCase();
+                if (text.includes(q)) {
+                    node.classList.remove('is-dimmed');
+                } else {
+                    node.classList.add('is-dimmed');
+                }
+            });
+        }
+
+        function resetHighlight() {
+            document.querySelectorAll('.room-node').forEach(node => node.classList.remove('is-dimmed'));
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            const allBtn = document.querySelector('.filter-btn');
+            if (allBtn) allBtn.classList.add('active');
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) searchInput.value = '';
+        }
+    </script>
 </body>
 </html>
