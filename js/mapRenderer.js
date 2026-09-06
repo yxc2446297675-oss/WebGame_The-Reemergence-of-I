@@ -95,19 +95,70 @@ const DECK_THEMES = {
 function drawRoomPolygon(ctx, shape, x, y, w, h) {
     ctx.beginPath();
     switch (shape) {
-        case "bridge": {
-            // 梯形前探式主控舰桥 (顶窄底宽 + 前部观察视窗弧)
+        // 1. 舰桥指挥中枢 (前凸梯形，顶窄底宽，带前向观察广角)
+        case "bridge":
+        case "bridge_sub":
+        case "captain_pulpit": {
             const cut = Math.floor(w * 0.22);
-            ctx.moveTo(x + cut, y);
-            ctx.lineTo(x + w - cut, y);
+            ctx.moveTo(x + cut, y + 2);
+            ctx.quadraticCurveTo(x + w * 0.5, y - 1, x + w - cut, y + 2);
             ctx.lineTo(x + w, y + h);
             ctx.lineTo(x, y + h);
             ctx.closePath();
             break;
         }
-        case "octagon":
+
+        // 2. 舰艏深空雷达天线罩 (前伸抛物流线穹顶)
+        case "sensor_dome":
+        case "bow_dome":
+        case "radome": {
+            ctx.moveTo(x, y + h);
+            ctx.lineTo(x + w * 0.08, y + h * 0.45);
+            ctx.quadraticCurveTo(x + w * 0.18, y, x + w * 0.5, y);
+            ctx.quadraticCurveTo(x + w * 0.82, y, x + w * 0.92, y + h * 0.45);
+            ctx.lineTo(x + w, y + h);
+            ctx.closePath();
+            break;
+        }
+
+        // 3. 战术推演厅 / 前锋战备室 (前凸锋利五角倒角楔形)
+        case "tactical_wedge":
+        case "vanguard_apex": {
+            ctx.moveTo(x + w * 0.5, y);
+            ctx.lineTo(x + w, y + h * 0.38);
+            ctx.lineTo(x + w * 0.82, y + h);
+            ctx.lineTo(x + w * 0.18, y + h);
+            ctx.lineTo(x, y + h * 0.38);
+            ctx.closePath();
+            break;
+        }
+
+        // 4. 重核聚变主反应堆 (托卡马克磁约束四角外伸抗磁护耳强装甲舱)
+        case "tokamak_reactor":
         case "reactor": {
-            // 重型装甲八角聚变核心舱 (四角大倒角)
+            const c = Math.floor(w * 0.26);
+            const ear = Math.floor(w * 0.08); // 四角外突磁轭
+            ctx.moveTo(x + c, y);
+            ctx.lineTo(x + w - c, y);
+            ctx.lineTo(x + w, y + c);
+            ctx.lineTo(x + w + ear, y + c);
+            ctx.lineTo(x + w + ear, y + h - c);
+            ctx.lineTo(x + w, y + h - c);
+            ctx.lineTo(x + w - c, y + h);
+            ctx.lineTo(x + c, y + h);
+            ctx.lineTo(x, y + h - c);
+            ctx.lineTo(x - ear, y + h - c);
+            ctx.lineTo(x - ear, y + c);
+            ctx.lineTo(x, y + c);
+            ctx.closePath();
+            break;
+        }
+
+        // 5. 重装八角舱 (AI超脑核心 / 异构标本库 / 苏醒中枢)
+        case "ai_core_hex":
+        case "specimen_vault":
+        case "hub_central_oct":
+        case "octagon": {
             const c = Math.floor(Math.min(w, h) * 0.28);
             ctx.moveTo(x + c, y);
             ctx.lineTo(x + w - c, y);
@@ -120,72 +171,343 @@ function drawRoomPolygon(ctx, shape, x, y, w, h) {
             ctx.closePath();
             break;
         }
+
+        // 6. 医疗急救与生化检测 (经典科幻十字十二边形级联舱)
+        case "medical_cross":
         case "medical": {
-            // 医疗救护舱 (四角圆弧 + 顶部微凹门斗)
-            const r = Math.floor(Math.min(w, h) * 0.24);
-            if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
-            else ctx.rect(x, y, w, h);
-            break;
-        }
-        case "quarters": {
-            // 船员起居生活舱 (平滑胶囊圆角)
-            if (ctx.roundRect) ctx.roundRect(x, y, w, h, 10);
-            else ctx.rect(x, y, w, h);
-            break;
-        }
-        case "storage": {
-            // 六角仓储库房 (上下宽切角)
-            const c = Math.floor(Math.min(w, h) * 0.2);
-            ctx.moveTo(x + c, y);
-            ctx.lineTo(x + w - c, y);
-            ctx.lineTo(x + w, y + h / 2);
-            ctx.lineTo(x + w - c, y + h);
-            ctx.lineTo(x + c, y + h);
-            ctx.lineTo(x, y + h / 2);
+            const cw = Math.floor(w * 0.24);
+            const ch = Math.floor(h * 0.24);
+            ctx.moveTo(x + cw, y);
+            ctx.lineTo(x + w - cw, y);
+            ctx.lineTo(x + w - cw, y + ch);
+            ctx.lineTo(x + w, y + ch);
+            ctx.lineTo(x + w, y + h - ch);
+            ctx.lineTo(x + w - cw, y + h - ch);
+            ctx.lineTo(x + w - cw, y + h);
+            ctx.lineTo(x + cw, y + h);
+            ctx.lineTo(x + cw, y + h - ch);
+            ctx.lineTo(x, y + h - ch);
+            ctx.lineTo(x, y + ch);
+            ctx.lineTo(x + cw, y + ch);
             ctx.closePath();
             break;
         }
+
+        // 7. 通讯信标发射塔楼 (倾斜不对称天线台楼)
+        case "comm_tower": {
+            ctx.moveTo(x + w * 0.15, y + h * 0.25);
+            ctx.lineTo(x + w * 0.82, y);
+            ctx.lineTo(x + w, y + h * 0.85);
+            ctx.lineTo(x + w * 0.78, y + h);
+            ctx.lineTo(x, y + h);
+            ctx.closePath();
+            break;
+        }
+
+        // 8. 环景深空观景穹顶 / 邵可欣观测舱 (大弧度外舷窗穹顶)
+        case "observation_dome":
+        case "observation_bay_e":
+        case "panoramic_pod": {
+            ctx.moveTo(x, y + h);
+            ctx.lineTo(x, y + h * 0.2);
+            if (ctx.bezierCurveTo) {
+                ctx.bezierCurveTo(x + w * 0.35, y - h * 0.08, x + w * 0.95, y + h * 0.1, x + w, y + h * 0.65);
+            } else {
+                ctx.lineTo(x + w, y + h * 0.65);
+            }
+            ctx.lineTo(x + w * 0.85, y + h);
+            ctx.closePath();
+            break;
+        }
+
+        // 9. 气闸对接舱 / 洗消气闸 (束腰内凹双重气密锁)
+        case "airlock_dock":
+        case "airlock_dock_w":
+        case "airlock_dock_e":
+        case "decon_airlock":
         case "airlock": {
-            // 防爆气闸 (两侧切角内凹侧翼)
             const c = Math.floor(Math.min(w, h) * 0.18);
-            ctx.moveTo(x, y + c);
-            ctx.lineTo(x + c, y);
+            const waist = Math.floor(w * 0.09);
+            ctx.moveTo(x + c, y);
             ctx.lineTo(x + w - c, y);
             ctx.lineTo(x + w, y + c);
-            ctx.lineTo(x + w - c, y + h / 2);
+            ctx.lineTo(x + w - waist, y + h * 0.5);
             ctx.lineTo(x + w, y + h - c);
             ctx.lineTo(x + w - c, y + h);
             ctx.lineTo(x + c, y + h);
             ctx.lineTo(x, y + h - c);
-            ctx.lineTo(x + c, y + h / 2);
+            ctx.lineTo(x + waist, y + h * 0.5);
+            ctx.lineTo(x, y + c);
             ctx.closePath();
             break;
         }
+
+        // 10. 终焉折跃星门 / 脱出大门 (宏伟六角星门框)
+        case "singularity_gate_ring":
+        case "star_gate_arch": {
+            const c = Math.floor(w * 0.24);
+            ctx.moveTo(x + c, y);
+            ctx.lineTo(x + w - c, y);
+            ctx.lineTo(x + w, y + h * 0.5);
+            ctx.lineTo(x + w - c, y + h);
+            ctx.lineTo(x + c, y + h);
+            ctx.lineTo(x, y + h * 0.5);
+            ctx.closePath();
+            break;
+        }
+
+        // 11. 左舷主离子推进器 (向后下扩散喇叭形离子喷管)
+        case "engine_bell_l": {
+            ctx.moveTo(x + w * 0.28, y);
+            ctx.lineTo(x + w * 0.82, y);
+            ctx.lineTo(x + w * 0.88, y + h * 0.45);
+            ctx.lineTo(x + w, y + h);
+            if (ctx.quadraticCurveTo) {
+                ctx.quadraticCurveTo(x + w * 0.45, y + h * 0.85, x, y + h);
+            } else {
+                ctx.lineTo(x, y + h);
+            }
+            ctx.lineTo(x + w * 0.12, y + h * 0.45);
+            ctx.closePath();
+            break;
+        }
+
+        // 12. 右舷主离子推进器 (向后下扩散喇叭形离子喷管)
+        case "engine_bell_r": {
+            ctx.moveTo(x + w * 0.18, y);
+            ctx.lineTo(x + w * 0.72, y);
+            ctx.lineTo(x + w * 0.88, y + h * 0.45);
+            ctx.lineTo(x + w, y + h);
+            if (ctx.quadraticCurveTo) {
+                ctx.quadraticCurveTo(x + w * 0.55, y + h * 0.85, x, y + h);
+            } else {
+                ctx.lineTo(x, y + h);
+            }
+            ctx.lineTo(x + w * 0.12, y + h * 0.45);
+            ctx.closePath();
+            break;
+        }
+
+        // 13. 救生穿梭机弹射管 (后倾斜向外弹射尖椎体)
+        case "escape_pod_w": {
+            ctx.moveTo(x + w * 0.6, y);
+            ctx.lineTo(x + w, y + h * 0.25);
+            ctx.lineTo(x + w * 0.75, y + h);
+            ctx.lineTo(x, y + h * 0.6);
+            ctx.lineTo(x + w * 0.2, y + h * 0.15);
+            ctx.closePath();
+            break;
+        }
+        case "escape_pod_e": {
+            ctx.moveTo(x + w * 0.4, y);
+            ctx.lineTo(x + w * 0.8, y + h * 0.15);
+            ctx.lineTo(x + w, y + h * 0.6);
+            ctx.lineTo(x + w * 0.25, y + h);
+            ctx.lineTo(x, y + h * 0.25);
+            ctx.closePath();
+            break;
+        }
+
+        // 14. 水培生态植物园 (有机流线椭圆穹顶)
+        case "hydro_dome": {
+            const rx = w / 2, ry = h / 2;
+            const cx = x + rx, cy = y + ry;
+            if (ctx.ellipse) {
+                ctx.ellipse(cx, cy, rx, ry * 0.88, 0, 0, Math.PI * 2);
+            } else {
+                ctx.arc(cx, cy, Math.min(rx, ry), 0, Math.PI * 2);
+            }
+            break;
+        }
+
+        // 15. 穿梭艇停泊机库 / 自动化餐厅 (宽阔装载平底梯形)
+        case "hangar_bay":
+        case "mess_hall": {
+            const cut = Math.floor(w * 0.16);
+            ctx.moveTo(x + cut, y);
+            ctx.lineTo(x + w - cut, y);
+            ctx.lineTo(x + w, y + h);
+            ctx.lineTo(x, y + h);
+            ctx.closePath();
+            break;
+        }
+
+        // 16. 重型仓储库房 / 矿石冷藏 (宽六角强化仓)
+        case "cargo_depot":
+        case "storage": {
+            const c = Math.floor(Math.min(w, h) * 0.22);
+            ctx.moveTo(x + c, y);
+            ctx.lineTo(x + w - c, y);
+            ctx.lineTo(x + w, y + h * 0.5);
+            ctx.lineTo(x + w - c, y + h);
+            ctx.lineTo(x + c, y + h);
+            ctx.lineTo(x, y + h * 0.5);
+            ctx.closePath();
+            break;
+        }
+
+        // 17. 船员起居生活舱群 (模块化胶囊休眠凹槽)
+        case "living_quarters":
+        case "crew_cabin":
+        case "quarters": {
+            const cut = Math.floor(w * 0.12);
+            ctx.moveTo(x + cut, y);
+            ctx.lineTo(x + w - cut, y);
+            ctx.lineTo(x + w, y + cut);
+            ctx.lineTo(x + w, y + h - cut);
+            ctx.lineTo(x + w - cut, y + h);
+            ctx.lineTo(x + cut, y + h);
+            ctx.lineTo(x, y + h - cut);
+            ctx.lineTo(x, y + cut);
+            ctx.closePath();
+            break;
+        }
+
+        // 18. 防爆掩体与坚守战位 (多棱角厚重折角堡垒)
+        case "secure_bunker":
+        case "armory_vault":
+        case "fortified_bastion": {
+            ctx.moveTo(x + w * 0.35, y);
+            ctx.lineTo(x + w * 0.85, y);
+            ctx.lineTo(x + w, y + h * 0.35);
+            ctx.lineTo(x + w, y + h * 0.85);
+            ctx.lineTo(x + w * 0.7, y + h);
+            ctx.lineTo(x + w * 0.15, y + h);
+            ctx.lineTo(x, y + h * 0.7);
+            ctx.lineTo(x, y + h * 0.35);
+            ctx.closePath();
+            break;
+        }
+
+        // 19. 通风十字交叉口 (真十字路口通道)
+        case "junction_cross": {
+            const m1 = Math.floor(w * 0.26);
+            const m2 = Math.floor(w * 0.74);
+            ctx.moveTo(x + m1, y);
+            ctx.lineTo(x + m2, y);
+            ctx.lineTo(x + m2, y + m1);
+            ctx.lineTo(x + w, y + m1);
+            ctx.lineTo(x + w, y + m2);
+            ctx.lineTo(x + m2, y + m2);
+            ctx.lineTo(x + m2, y + h);
+            ctx.lineTo(x + m1, y + h);
+            ctx.lineTo(x + m1, y + m2);
+            ctx.lineTo(x, y + m2);
+            ctx.lineTo(x, y + m1);
+            ctx.lineTo(x + m1, y + m1);
+            ctx.closePath();
+            break;
+        }
+
+        // 20. 拐角弯道 (L型通道)
+        case "corner_elbow": {
+            const m = Math.floor(w * 0.45);
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + w, y);
+            ctx.lineTo(x + w, y + m);
+            ctx.lineTo(x + m, y + m);
+            ctx.lineTo(x + m, y + h);
+            ctx.lineTo(x, y + h);
+            ctx.closePath();
+            break;
+        }
+
+        // 21. 横向加固走廊通道
+        case "corridor_horizontal":
         case "corridor_h": {
-            const my = y + Math.floor(h * 0.18);
-            const mh = h - Math.floor(h * 0.36);
+            const my = y + Math.floor(h * 0.2);
+            const mh = h - Math.floor(h * 0.4);
             if (ctx.roundRect) ctx.roundRect(x - 2, my, w + 4, mh, 4);
             else ctx.rect(x - 2, my, w + 4, mh);
             break;
         }
+
+        // 22. 纵向维保管道走廊
+        case "corridor_vertical":
         case "corridor_v": {
-            const mx = x + Math.floor(w * 0.18);
-            const mw = w - Math.floor(w * 0.36);
+            const mx = x + Math.floor(w * 0.2);
+            const mw = w - Math.floor(w * 0.4);
             if (ctx.roundRect) ctx.roundRect(mx, y - 2, mw, h + 4, 4);
             else ctx.rect(mx, y - 2, mw, h + 4);
             break;
         }
-        case "lab": {
-            const cutX = Math.floor(w * 0.22);
-            ctx.moveTo(x + cutX, y);
-            ctx.lineTo(x + w - cutX, y);
-            ctx.lineTo(x + w, y + h / 2);
-            ctx.lineTo(x + w - cutX, y + h);
-            ctx.lineTo(x + cutX, y + h);
-            ctx.lineTo(x, y + h / 2);
+
+        // 23. 人工重力发生井 (外角切角带内凹离心力槽)
+        case "gravity_torus": {
+            const c = Math.floor(w * 0.25);
+            ctx.moveTo(x + c, y);
+            ctx.lineTo(x + w - c, y);
+            if (ctx.quadraticCurveTo) {
+                ctx.quadraticCurveTo(x + w - c / 2, y + h * 0.5, x + w - c, y + h);
+            } else {
+                ctx.lineTo(x + w - c, y + h);
+            }
+            ctx.lineTo(x + c, y + h);
+            if (ctx.quadraticCurveTo) {
+                ctx.quadraticCurveTo(x + c / 2, y + h * 0.5, x + c, y);
+            } else {
+                ctx.lineTo(x + c, y);
+            }
             ctx.closePath();
             break;
         }
+
+        // 24. 偏折护盾发生器 (外弧凹面投影罩)
+        case "shield_projector": {
+            ctx.moveTo(x, y + h * 0.85);
+            if (ctx.quadraticCurveTo) {
+                ctx.quadraticCurveTo(x + w * 0.5, y + h * 0.4, x + w, y + h * 0.85);
+            } else {
+                ctx.lineTo(x + w, y + h * 0.85);
+            }
+            ctx.lineTo(x + w * 0.85, y);
+            ctx.lineTo(x + w * 0.15, y);
+            ctx.closePath();
+            break;
+        }
+
+        // 25. 废料回收漏斗井 (外展漏斗)
+        case "salvage_hopper": {
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + w, y + h * 0.2);
+            ctx.lineTo(x + w * 0.75, y + h);
+            ctx.lineTo(x + w * 0.25, y + h);
+            ctx.closePath();
+            break;
+        }
+
+        // 26. 精密工坊、动力管道与对撞腔室等科幻多边形
+        case "lab":
+        case "machine_workshop":
+        case "generator_twin":
+        case "reaction_chamber":
+        case "injection_nozzle":
+        case "plasma_conduit":
+        case "warp_nacelle":
+        case "coolant_cylinders":
+        case "coolant_sub":
+        case "reactor_control":
+        case "recreation_bay":
+        case "water_recycler":
+        case "life_support_hex":
+        case "air_scrubber":
+        case "dock_walkway":
+        case "lift_shaft":
+        case "bio_chamber":
+        case "cryo_array":
+        case "workshop_tactical":
+        case "armored_chute": {
+            const cutX = Math.floor(w * 0.2);
+            ctx.moveTo(x + cutX, y);
+            ctx.lineTo(x + w - cutX, y);
+            ctx.lineTo(x + w, y + h * 0.5);
+            ctx.lineTo(x + w - cutX, y + h);
+            ctx.lineTo(x + cutX, y + h);
+            ctx.lineTo(x, y + h * 0.5);
+            ctx.closePath();
+            break;
+        }
+
         case "rect":
         default: {
             if (ctx.roundRect) ctx.roundRect(x, y, w, h, 6);

@@ -89,6 +89,7 @@ function createMockElement(id, tag = 'div') {
                 arc() {}, closePath() {}, save() {}, restore() {},
                 setLineDash() {}, clearRect() {}, clip() {},
                 translate() {}, scale() {}, rotate() {}, roundRect() {},
+                quadraticCurveTo() {}, bezierCurveTo() {}, ellipse() {},
                 createLinearGradient() { return { addColorStop() {} }; },
                 createRadialGradient() { return { addColorStop() {} }; },
                 measureText() { return { width: 50 }; }
@@ -1891,5 +1892,55 @@ console.log('\n35. 验证生化检测室伪人播报、舱室装饰绘制与NPC�
     console.log(`   【已验证】日记弹窗关闭功能正常，完全独立于视觉小说文字框！测试全部通过！`);
 }
 
-console.log('\n====== [TEST PASSED] 全部 35 项核心流程、NPC专属房间、生化检测室与日记弹窗测试 100% 成功！ ======');
+// =============================================================================
+// 36. 验证已探索区域单步与折返移动免除体力消耗（0 AP）与科幻舱室多边形几何覆盖
+// =============================================================================
+console.log('\n36. 验证已探索区域单步与折返移动免除体力消耗 (消耗 0 体力) 与科幻星舰形状覆盖...');
+{
+    // 测试已探索区域移动：在第一关中，当前位于卡泽房间，走廊与起点均已探索
+    const currentStamina = app.stamina;
+    const prevNodeId = app.explorationEngine.currentNodeId;
+
+    // 向右单步移动折返回已探索的走廊
+    const canMoveRight = !!app.explorationEngine.getCurrentNode().connections['right'];
+    if (canMoveRight) {
+        app.explorationEngine.moveTo('right');
+        const afterStamina = app.stamina;
+        if (afterStamina !== currentStamina) {
+            throw new Error(`折返已探明区域单步移动不应消耗体力！原体力: ${currentStamina}, 现体力: ${afterStamina}`);
+        }
+        console.log(`   【已验证】单步折返已探索房间 [${app.explorationEngine.getCurrentNode().name}]，体力保持 ${afterStamina} (消耗 0 点体力)！`);
+    }
+
+    // 再次折返至卡泽房间 (已探明)
+    const canMoveLeft = !!app.explorationEngine.getCurrentNode().connections['left'];
+    if (canMoveLeft) {
+        const staminaBefore = app.stamina;
+        app.explorationEngine.moveTo('left');
+        if (app.stamina !== staminaBefore) {
+            throw new Error(`再次折返已探明区域不应消耗体力！原体力: ${staminaBefore}, 现体力: ${app.stamina}`);
+        }
+        console.log(`   【已验证】再次单步折返已探索房间 [${app.explorationEngine.getCurrentNode().name}]，体力保持 ${app.stamina} (消耗 0 点体力)！`);
+    }
+
+    // 验证各舱室科幻形状定义覆盖
+    const MasterMap = global.window.SpaceshipMasterMap || require('./js/spaceshipMasterMap.js');
+    const masterDefs = MasterMap.MASTER_ROOM_DEFS;
+    const requiredShapes = [
+        "sensor_dome", "tactical_wedge", "bridge", "ai_core_hex", "comm_tower",
+        "observation_dome", "star_gate_arch", "medical_cross", "tokamak_reactor",
+        "singularity_gate_ring", "engine_bell_l", "engine_bell_r", "hangar_bay",
+        "gravity_torus", "shield_projector", "salvage_hopper", "captain_pulpit"
+    ];
+
+    const definedShapes = new Set(Object.values(masterDefs).map(r => r.shape));
+    requiredShapes.forEach(shape => {
+        if (!definedShapes.has(shape)) {
+            throw new Error(`MASTER_ROOM_DEFS 中缺少科幻多边形形状定义: ${shape}`);
+        }
+    });
+    console.log(`   【已验证】科幻星舰真实舱室几何形状全覆盖 (已包含 ${definedShapes.size} 种专属科幻舱室俯视轮廓)！`);
+}
+
+console.log('\n====== [TEST PASSED] 全部 36 项核心流程、体力免消耗、科幻舱室几何与日记弹窗测试 100% 成功！ ======');
 

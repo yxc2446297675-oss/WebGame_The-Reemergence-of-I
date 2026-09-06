@@ -19,7 +19,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【深空雷达穹顶】舰艏天线阵列",
         zone: "bow",
         coord: { x: 1, y: 0 },
-        shape: "octagon",
+        shape: "sensor_dome",
         equipment: "sensor_dome",
         desc: "巨大的偏振抛物面天线正在缓慢旋转，收集来自深空深处的微弱引力波信号。"
     },
@@ -28,7 +28,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【战术推演室】星域沙盘厅",
         zone: "bow",
         coord: { x: 2, y: 0 },
-        shape: "lab",
+        shape: "tactical_wedge",
         equipment: "tactical_sandtable",
         desc: "中央沙盘悬浮着当前星区的立体投影，红蓝光标标示着可能的空间坍缩节点。"
     },
@@ -37,7 +37,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【副官值班舱】战备前哨台",
         zone: "bow",
         coord: { x: 3, y: 0 },
-        shape: "corridor_h",
+        shape: "bridge_sub",
         equipment: "sub_helm",
         desc: "用于紧急戒备状态下的参谋值班席，防爆格栅防护完好。"
     },
@@ -55,7 +55,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【超脑计算核心】主逻辑阵列",
         zone: "bow",
         coord: { x: 5, y: 0 },
-        shape: "lab",
+        shape: "ai_core_hex",
         equipment: "server_rack",
         desc: "数百组浸泡在液氮中的超导处理器机柜静默嗡鸣，飞船的中枢意识在此奔流。"
     },
@@ -64,7 +64,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【量子通信总站】深空信标井",
         zone: "bow",
         coord: { x: 6, y: 0 },
-        shape: "corridor_h",
+        shape: "comm_tower",
         equipment: "comm_station",
         desc: "高频纠缠光子发射管直指天顶，应急警报红光断断续续闪烁。"
     },
@@ -73,7 +73,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【环景天象台】星穹眺望厅",
         zone: "bow",
         coord: { x: 7, y: 0 },
-        shape: "octagon",
+        shape: "observation_dome",
         equipment: "star_lens",
         desc: "大角度曲面观察舱，浩瀚的星云与流动的虚数裂缝在此一览无余。"
     },
@@ -86,7 +86,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【异构标本保全库】高危冷藏间",
         zone: "research",
         coord: { x: 0, y: 1 },
-        shape: "storage",
+        shape: "specimen_vault",
         equipment: "cargo_grid",
         desc: "多重气锁密封的低温样本柜中，散发着微弱荧光的未知晶体被安全束缚。"
     },
@@ -96,7 +96,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【脱离大门】主跃迁逃生舱 (终点)",
         zone: "hub",
         coord: { x: 1, y: 1 },
-        shape: "airlock",
+        shape: "star_gate_arch",
         equipment: "airlock_dock",
         desc: "主控台绿灯恒定，折跃引擎待命中！只要启动操作杆即可彻底脱离废墟！",
         isExit: true
@@ -107,7 +107,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【东北拐角哨所】跃迁前厅",
         zone: "hub",
         coord: { x: 2, y: 1 },
-        shape: "corridor_v",
+        shape: "corner_elbow",
         equipment: "security_gate",
         desc: "这里的应急指示灯亮起显眼的绿色，左侧就是通向地表的终点气密门！"
     },
@@ -117,7 +117,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【东北储藏室】应急给养站",
         zone: "hub",
         coord: { x: 3, y: 1 },
-        shape: "storage",
+        shape: "cargo_depot",
         equipment: "cargo_grid",
         desc: "货架上存放着完好无损的自热战备口粮与纯净水储罐！"
     },
@@ -126,7 +126,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【生化联络走廊】气压过渡廊",
         zone: "research",
         coord: { x: 4, y: 1 },
-        shape: "corridor_v",
+        shape: "bio_chamber",
         equipment: "airlock_dock",
         desc: "喷雾消杀喷嘴在感应到移动时发出嘶嘶轻响，地面整洁冰冷。"
     },
@@ -135,7 +135,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【纳米手术舱 · 生化检测室】全自动急救台",
         zone: "medical",
         coord: { x: 5, y: 1 },
-        shape: "medical",
+        shape: "medical_cross",
         equipment: "medical_bed",
         isDetectionRoom: true, // 特殊：进入时触发伪人数量检测播报
         desc: "悬吊的纳米机械臂保持着待机姿态，生化检测终端在手术台上投下清冷光晕。"
@@ -145,7 +145,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【深潜冷冻基阵】休眠矩阵",
         zone: "living",
         coord: { x: 6, y: 1 },
-        shape: "quarters",
+        shape: "cryo_array",
         equipment: "cryo_pods",
         desc: "数十具人体工学冷冻舱整齐排布，冰雾在透明面罩上结成晶莹白霜。"
     },
@@ -154,7 +154,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【洗消减压气闸】外勤洗消间",
         zone: "living",
         coord: { x: 7, y: 1 },
-        shape: "airlock",
+        shape: "airlock_dock",
         equipment: "airlock_dock",
         desc: "大功率紫外线与等离子洗消环门，用于阻绝外界拟态孢子渗入生活区。"
     },
@@ -168,7 +168,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【西北隔离舱】安全避难室",
         zone: "hub",
         coord: { x: 0, y: 2 },
-        shape: "quarters",
+        shape: "secure_bunker",
         equipment: "medical_bed",
         desc: "厚重的隔音门虚掩着，里面倒着一名身材高大、身着防爆背心的男人。"
     },
@@ -178,7 +178,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【西北岔路】通风十字口",
         zone: "hub",
         coord: { x: 1, y: 2 },
-        shape: "corridor_v",
+        shape: "junction_cross",
         equipment: "workshop_tools",
         desc: "通道在此向左通往隔离室，向右折向上层出口通道，冷风从北面灌入。"
     },
@@ -188,7 +188,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【北向连接道】中继过渡间",
         zone: "hub",
         coord: { x: 2, y: 2 },
-        shape: "corridor_h",
+        shape: "corridor_v",
         equipment: "workshop_tools",
         desc: "脚下的合金格栅发出空洞的回响，前方通向东北侧拐弯口。"
     },
@@ -198,7 +198,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【中区枢纽】分流控制室",
         zone: "hub",
         coord: { x: 3, y: 2 },
-        shape: "rect",
+        shape: "corridor_h",
         equipment: "bridge_console",
         desc: "正前方是紧闭的物资库防爆闸门，右侧通道与东侧急救点相通。"
     },
@@ -208,7 +208,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【东侧备勤室】医护角落",
         zone: "hub",
         coord: { x: 4, y: 2 },
-        shape: "medical",
+        shape: "crew_cabin",
         equipment: "medical_bed",
         desc: "这里似乎曾是一处临时急救点，一名系着救援缎带的少女正昏迷在桌旁。"
     },
@@ -217,7 +217,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【乘组起居舱】温馨生活角",
         zone: "living",
         coord: { x: 5, y: 2 },
-        shape: "quarters",
+        shape: "living_quarters",
         equipment: "cryo_pods",
         desc: "床头贴着地球家园的旧照片，暖黄色的床头灯为冰冷金属平添几分温存。"
     },
@@ -226,7 +226,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【立体水培温室】绿光生态舱",
         zone: "ecology",
         coord: { x: 6, y: 2 },
-        shape: "lab",
+        shape: "hydro_dome",
         equipment: "hydroponics",
         desc: "无土水培种植架上生机盎然，青绿的叶片在粉紫补光灯下静默舒展。"
     },
@@ -235,7 +235,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【舰员配给餐厅】自动餐吧",
         zone: "living",
         coord: { x: 7, y: 2 },
-        shape: "rect",
+        shape: "mess_hall",
         equipment: "cargo_grid",
         desc: "合成食品贩卖机指示灯闪烁，餐桌整齐排列，空气中弥漫着烤面包香气。"
     },
@@ -244,7 +244,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【右舷景观走廊】沉思回廊",
         zone: "living",
         coord: { x: 8, y: 2 },
-        shape: "corridor_v",
+        shape: "observation_bay_e",
         equipment: "star_lens",
         desc: "右舷宽幅落地视窗，可俯瞰飞船巨大的散热翼板与壮丽的深空脉冲。"
     },
@@ -258,7 +258,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【西端休歇舱】配电副室",
         zone: "hub",
         coord: { x: 0, y: 3 },
-        shape: "storage",
+        shape: "airlock_dock_w",
         equipment: "cargo_grid",
         desc: "角落里的储物柜中藏着未受损的能量棒与电解质水饮料！"
     },
@@ -268,7 +268,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【西区整备间】动力操作台",
         zone: "hub",
         coord: { x: 1, y: 3 },
-        shape: "workshop",
+        shape: "workshop_tactical",
         equipment: "workshop_tools",
         desc: "一名穿着战术外衣的青年男子瘫靠在控制柜边，冷峻的脸庞上沾染着灰尘。"
     },
@@ -288,7 +288,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【起点】苏醒密封厅",
         zone: "hub",
         coord: { x: 3, y: 3 },
-        shape: "octagon",
+        shape: "hub_central_oct",
         equipment: "airlock_dock",
         desc: "你从剧烈的震荡中醒来，周围是变形的金属支架。空气中充满烧焦的味道。"
     },
@@ -298,7 +298,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【东下拐角】管线通道",
         zone: "hub",
         coord: { x: 4, y: 3 },
-        shape: "corridor_v",
+        shape: "corner_elbow",
         equipment: "workshop_tools",
         desc: "粗大的冷却管线在头顶发出嗡鸣，地面有些积水，通往东侧舱室。"
     },
@@ -307,7 +307,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【人工重力总井】重力发生核",
         zone: "engineering",
         coord: { x: 5, y: 3 },
-        shape: "octagon",
+        shape: "gravity_torus",
         equipment: "shield_coil",
         desc: "深邃的垂直竖井中央悬浮着高频旋转的奇异质点，维持着全舰 1.0G 的重力场。"
     },
@@ -316,7 +316,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【舰载武装军械库】防爆军火库",
         zone: "security",
         coord: { x: 6, y: 3 },
-        shape: "storage",
+        shape: "armory_vault",
         equipment: "workshop_tools",
         desc: "重型防爆装甲架上锁闭着电磁脉冲步枪，红外激光防盗光网保持戒备。"
     },
@@ -325,7 +325,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【失重体能训练馆】体能维持舱",
         zone: "living",
         coord: { x: 7, y: 3 },
-        shape: "rect",
+        shape: "recreation_bay",
         equipment: "tactical_sandtable",
         desc: "阻力离心机与抗肌肉萎缩跑台已断电停转，地毯上散落着运动毛巾。"
     },
@@ -334,7 +334,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【东侧外勤气闸】右舷应急闸",
         zone: "living",
         coord: { x: 8, y: 3 },
-        shape: "airlock",
+        shape: "airlock_dock_e",
         equipment: "airlock_dock",
         desc: "橙黄色的减压警示线环绕着防爆闸门，随时可与外界空间救援船接驳。"
     },
@@ -347,7 +347,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【废料回收解构井】材料熔炼间",
         zone: "engineering",
         coord: { x: 0, y: 4 },
-        shape: "storage",
+        shape: "salvage_hopper",
         equipment: "workshop_tools",
         desc: "金属粉碎齿轮巨大的阴影投在铁屑池中，自动化熔炉尚有残存余热。"
     },
@@ -356,7 +356,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【重载物资升降井】垂直干线",
         zone: "engineering",
         coord: { x: 1, y: 4 },
-        shape: "corridor_v",
+        shape: "lift_shaft",
         equipment: "cargo_grid",
         desc: "可承载数吨货物的液压提升平台，上下连接着工程甲板与主生活区。"
     },
@@ -365,7 +365,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【辅助等离子发电站】二号辅电站",
         zone: "engineering",
         coord: { x: 2, y: 4 },
-        shape: "lab",
+        shape: "generator_twin",
         equipment: "reactor_core",
         desc: "四组中型等离子发生球体发出深蓝电火花，为下层走廊提供备用电力。"
     },
@@ -374,7 +374,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【主穿梭机库甲板】停机坪甲板",
         zone: "engineering",
         coord: { x: 3, y: 4 },
-        shape: "rect",
+        shape: "hangar_bay",
         equipment: "airlock_dock",
         desc: "开阔的机库地面标有醒目的黄色引道线，一架轻微受损的侦察穿梭机静卧其上。"
     },
@@ -383,7 +383,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【重型机件锻造间】机械工坊",
         zone: "engineering",
         coord: { x: 4, y: 4 },
-        shape: "workshop",
+        shape: "machine_workshop",
         equipment: "workshop_tools",
         desc: "数控激光机床与自动化装配台环列四周，工件架上码放着备用阀门与轴承。"
     },
@@ -392,7 +392,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【生态净水再生中心】水处理总站",
         zone: "ecology",
         coord: { x: 5, y: 4 },
-        shape: "lab",
+        shape: "water_recycler",
         equipment: "hydroponics",
         desc: "银光闪闪的多级逆渗透滤罐与紫外线水杀菌池发出清脆的水流声。"
     },
@@ -401,7 +401,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【生命支持总控中继】环境机房",
         zone: "ecology",
         coord: { x: 6, y: 4 },
-        shape: "lab",
+        shape: "life_support_hex",
         equipment: "server_rack",
         desc: "二氧化碳吸收器与氧氮混合气瓶整齐排布，空气净化风扇高速运转。"
     },
@@ -410,7 +410,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【通风总管加压站】气体交换室",
         zone: "ecology",
         coord: { x: 7, y: 4 },
-        shape: "corridor_v",
+        shape: "air_scrubber",
         equipment: "workshop_tools",
         desc: "粗壮的换气风道汇聚于此，滤网上结着微霜，气流带着淡淡的臭氧味。"
     },
@@ -419,7 +419,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【舱外作业整备间】出舱准备室",
         zone: "engineering",
         coord: { x: 8, y: 4 },
-        shape: "airlock",
+        shape: "airlock_dock",
         equipment: "airlock_dock",
         desc: "墙上的金属扣锁挂着厚重的舱外宇航服，氧气充气管已就绪待命。"
     },
@@ -432,7 +432,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【偏折护盾发生核心】防护中枢",
         zone: "engineering",
         coord: { x: 0, y: 5 },
-        shape: "octagon",
+        shape: "shield_projector",
         equipment: "shield_coil",
         desc: "巨大的电磁线圈环绕着主发生器，空气中弥漫着静电毛刺感。"
     },
@@ -441,7 +441,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【次级冷却旁路】低温储液舱",
         zone: "engineering",
         coord: { x: 1, y: 5 },
-        shape: "storage",
+        shape: "coolant_sub",
         equipment: "cargo_grid",
         desc: "绝热储罐外凝结着一层厚厚的白霜，超低温液氦在封闭管道中无声流淌。"
     },
@@ -450,7 +450,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【反应堆安全监控室】聚变值班舱",
         zone: "engineering",
         coord: { x: 2, y: 5 },
-        shape: "lab",
+        shape: "reactor_control",
         equipment: "server_rack",
         desc: "防辐射铅玻璃后，数十个仪表严密监视着主聚变炉的磁约束稳定度。"
     },
@@ -459,7 +459,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【等离子能量汇流总管】主输能干线",
         zone: "engineering",
         coord: { x: 3, y: 5 },
-        shape: "corridor_h",
+        shape: "plasma_conduit",
         equipment: "workshop_tools",
         desc: "粗大的发光输能管道贯穿舱壁，炽烈的紫金色等离子体向推进器汹涌输送。"
     },
@@ -468,7 +468,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【重核聚变主反应堆】全舰心脏",
         zone: "propulsion",
         coord: { x: 4, y: 5 },
-        shape: "reactor",
+        shape: "tokamak_reactor",
         equipment: "reactor_core",
         desc: "巍峨的托卡马克环形聚变炉在中央静默悬浮，金色引力等离子环如太阳般耀眼！"
     },
@@ -477,7 +477,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【主冷却剂循环泵站】散热中继站",
         zone: "propulsion",
         coord: { x: 5, y: 5 },
-        shape: "storage",
+        shape: "coolant_cylinders",
         equipment: "cargo_grid",
         desc: "巨大的四联装增压泵将冷却剂注入反应堆外壳，发出沉雄有力的心跳轰鸣。"
     },
@@ -486,7 +486,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【超弦跃迁场稳定器】时空定锚舱",
         zone: "propulsion",
         coord: { x: 6, y: 5 },
-        shape: "octagon",
+        shape: "warp_nacelle",
         equipment: "shield_coil",
         desc: "环状引力发生线圈在低速旋转，周围空间的光线产生明显的微弱弯折。"
     },
@@ -495,7 +495,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【舰尾重装甲巡检长廊】防爆甬道",
         zone: "propulsion",
         coord: { x: 7, y: 5 },
-        shape: "corridor_h",
+        shape: "armored_chute",
         equipment: "workshop_tools",
         desc: "数层复合装甲加固的加厚舱壁，可承受数千吨级的直接动能冲击。"
     },
@@ -504,7 +504,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【右舷受力锚定基座】拖曳联络舱",
         zone: "engineering",
         coord: { x: 8, y: 5 },
-        shape: "airlock",
+        shape: "dock_walkway",
         equipment: "airlock_dock",
         desc: "用于与空间站干船坞物理硬连接的巨型液压夹具，锁止销已稳稳落槽。"
     },
@@ -517,7 +517,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【左舷 1 号紧急救生舱】脱出弹射管",
         zone: "stern",
         coord: { x: 1, y: 6 },
-        shape: "airlock",
+        shape: "escape_pod_w",
         equipment: "airlock_dock",
         desc: "小型流线型深空救生艇固定在弹射滑轨上，生命保障系统指示灯全绿。"
     },
@@ -526,7 +526,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【左舷离子推进机房】脉冲喷口舱",
         zone: "stern",
         coord: { x: 2, y: 6 },
-        shape: "workshop",
+        shape: "engine_bell_l",
         equipment: "thruster_nozzle",
         desc: "巨大的蓝色离子喷流喷口在舱外深空吞吐光焰，脚底传来绵密的微震。"
     },
@@ -535,7 +535,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【反物质引流阀室】超弦注料间",
         zone: "stern",
         coord: { x: 3, y: 6 },
-        shape: "lab",
+        shape: "injection_nozzle",
         equipment: "shield_coil",
         desc: "反物质磁束缚引流管以微秒级精度开闭，注入跃迁星门的主激发腔。"
     },
@@ -544,7 +544,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【终焉奇点跃迁星门】终极脱离视界",
         zone: "stern",
         coord: { x: 4, y: 6 },
-        shape: "reactor",
+        shape: "singularity_gate_ring",
         equipment: "reactor_core",
         desc: "环形莫比乌斯跃迁环发出震颤灵魂的幽蓝共振，踏入其中即可终结轮回！",
         isExit: true
@@ -554,7 +554,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【重力脉冲排气道】尾迹引导间",
         zone: "stern",
         coord: { x: 5, y: 6 },
-        shape: "corridor_v",
+        shape: "reaction_chamber",
         equipment: "thruster_nozzle",
         desc: "厚重的格栅后是炽热的高温尾流，将引擎废能安全导向深空虚无。"
     },
@@ -563,7 +563,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【右舷离子推进机房】脉冲喷口舱",
         zone: "stern",
         coord: { x: 6, y: 6 },
-        shape: "workshop",
+        shape: "engine_bell_r",
         equipment: "thruster_nozzle",
         desc: "右舷主喷管动力输出稳定，高频电离器在真空环境中激发出绚烂光弧。"
     },
@@ -572,7 +572,7 @@ export const MASTER_ROOM_DEFS = {
         name: "【右舷 2 号紧急救生舱】脱出弹射管",
         zone: "stern",
         coord: { x: 7, y: 6 },
-        shape: "airlock",
+        shape: "escape_pod_e",
         equipment: "airlock_dock",
         desc: "备用救援穿梭艇处于预热态，控制面板正在实时计算安全脱离弹道。"
     }
@@ -591,7 +591,7 @@ export const NPC_PRIVATE_QUARTERS = [
         name: "【指挥官私人舱】L.P.H 的指挥席",
         zone: "hub",
         coord: { x: -1, y: 3 },
-        shape: "quarters",
+        shape: "captain_pulpit",
         equipment: "bridge_console",
         isNpcRoom: true,
         npcOwnerId: "lph",         // 主角ID
@@ -619,7 +619,7 @@ export const NPC_PRIVATE_QUARTERS = [
         name: "【前锋战术备勤间】卡泽的整备室",
         zone: "bow",
         coord: { x: 2, y: -1 },
-        shape: "workshop",
+        shape: "vanguard_apex",
         equipment: "workshop_tools",
         isNpcRoom: true,
         npcOwnerId: "kaze",
@@ -646,7 +646,7 @@ export const NPC_PRIVATE_QUARTERS = [
         name: "【观测员记录舱】邵可欣的小窝",
         zone: "living",
         coord: { x: 8, y: 1 },
-        shape: "quarters",
+        shape: "panoramic_pod",
         equipment: "star_lens",
         isNpcRoom: true,
         npcOwnerId: "shaokexin",
@@ -673,7 +673,7 @@ export const NPC_PRIVATE_QUARTERS = [
         name: "【防爆坚守站】莫德的据点",
         zone: "engineering",
         coord: { x: -1, y: 5 },
-        shape: "storage",
+        shape: "fortified_bastion",
         equipment: "shield_coil",
         isNpcRoom: true,
         npcOwnerId: "mode",

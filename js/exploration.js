@@ -55,10 +55,14 @@ export class ExplorationEngine {
         const nextNode = this.currentMap.nodes[nextNodeId];
         if (!nextNode) return false;
 
-        // 1. 消耗 8 点体力并播放移动脚步音效 (移动.wav)
-        const cost = StaminaConfig.stepCost;
-        this.gameEngine.stamina -= cost;
-        if (this.gameEngine.stamina < 0) this.gameEngine.stamina = 0;
+        const isAlreadyExplored = this.visitedNodes.has(nextNodeId);
+
+        // 1. 体力消耗规则：移动到已探索区域免除体力消耗；移动到未知区域消耗 8 点体力
+        const cost = isAlreadyExplored ? 0 : StaminaConfig.stepCost;
+        if (cost > 0) {
+            this.gameEngine.stamina -= cost;
+            if (this.gameEngine.stamina < 0) this.gameEngine.stamina = 0;
+        }
 
         if (typeof Sound !== "undefined" && Sound.playMoveSound) {
             Sound.playMoveSound();
@@ -77,12 +81,10 @@ export class ExplorationEngine {
         };
         const dirName = dirNames[direction] || direction;
 
-        const isAlreadyExplored = this.visitedNodes.has(nextNodeId);
-
         // 记录行动日志
         if (isAlreadyExplored) {
             this.gameEngine.logAction(
-                `【安全折返】向${dirName}返回已探明区域 [${nextNode.name}]，消耗体力 ${cost}点（不消耗面临选择次数，剩余 ${this.gameEngine.stamina}/${StaminaConfig.maxStamina}）`
+                `【安全折返】向${dirName}返回已探明区域 [${nextNode.name}]，免除体力消耗（不消耗面临选择次数，剩余 ${this.gameEngine.stamina}/${StaminaConfig.maxStamina}）`
             );
         } else {
             this.gameEngine.logAction(
