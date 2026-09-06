@@ -1468,7 +1468,7 @@ console.log("\n28. 验证走图决策计数机制 (移动到已探索房间不�
     console.log(`   【已验证】快速往返穿梭：面临选择次数保持 ${app.explorationEngine.choiceCount} 不变！`);
 }
 
-console.log("\n29. 验证全景蓝图画面直绘方向标牌与严格 1:1 物理等比网格...");
+console.log("\n29. 验证全景蓝图房间内嵌名称标注、未探索标记、直接点击相邻房间移动与严格 1:1 物理等比网格...");
 {
     // 1. 验证网格世界坐标严格等比 1:1 (cellW === cellH，杜绝任何形变拉伸)
     const layout = app.stageMapRenderer.getLayout();
@@ -1480,28 +1480,36 @@ console.log("\n29. 验证全景蓝图画面直绘方向标牌与严格 1:1 物�
     // 2. 触发一次舞台地图渲染
     app.renderStageMap();
 
-    // 3. 验证画面上是否成功生成相邻通道的方向胶囊标牌 (directionBadges)
+    // 3. 验证去除遮挡的浮动方向胶囊标牌，避免视觉繁杂
     const badges = app.stageMapRenderer.directionBadges || [];
-    console.log(`   当前房间直绘方向标牌数量: ${badges.length} 个`);
-    if (badges.length === 0) {
-        throw new Error("当前房间周围存在通路，但未能成功直绘方向导航胶囊标牌！");
+    if (badges.length > 0) {
+        throw new Error("检测到仍有浮动胶囊标牌渲染，应当在房间内直接标注未探索信息！");
     }
+    console.log(`   【已验证】浮动胶囊标牌已彻底移除，房间名称与状态直接集成于舱室内`);
 
-    // 4. 验证点击/命中方向标牌坐标是否准确映射为目标房间并支持直接移动
-    const firstBadge = badges[0];
+    // 4. 验证直接点击相邻未探索/已探索房间节点触发精准映射与移动
+    const curN = app.explorationEngine.getCurrentNode();
+    const conns = curN.connections || {};
+    const targetRoomId = Object.values(conns)[0];
+    if (!targetRoomId) {
+        throw new Error("当前房间周围不存在通路测试用例！");
+    }
+    const targetNode = app.currentLevel.map.nodes[targetRoomId];
+    const targetCenter = app.stageMapRenderer.getNodeCenter(targetNode);
+
     const scale = app.stageMapRenderer.currentScale || 1.0;
     const cam = app.stageMapRenderer.currentCam || { x: 520, y: 410 };
     const rect = app.stageMapRenderer.getCanvasRect();
     const displayW = rect.width;
     const displayH = rect.height;
-    const screenX = displayW / 2 + app.stageMapRenderer.panX + (firstBadge.cx - cam.x) * scale;
-    const screenY = displayH / 2 + app.stageMapRenderer.panY + (firstBadge.cy - cam.y) * scale;
+    const screenX = displayW / 2 + app.stageMapRenderer.panX + (targetCenter.x - cam.x) * scale;
+    const screenY = displayH / 2 + app.stageMapRenderer.panY + (targetCenter.y - cam.y) * scale;
 
     const hitNode = app.stageMapRenderer.getNodeAtPosition(screenX, screenY, app.currentLevel.map);
-    if (!hitNode || hitNode.id !== firstBadge.targetId) {
-        throw new Error(`方向标牌热区点击坐标换算异常！预期房间 ${firstBadge.targetId}，实际命中: ${hitNode?.id}`);
+    if (!hitNode || hitNode.id !== targetRoomId) {
+        throw new Error(`相邻房间点击坐标换算异常！预期命中房间 ${targetRoomId}，实际命中: ${hitNode?.id}`);
     }
-    console.log(`   【已验证】直绘标牌点击测试：成功命中标牌 [${firstBadge.dir}] -> 目标房间 [${hitNode.name}]`);
+    console.log(`   【已验证】直接点击相邻房间测试：成功命中目标房间 [${hitNode.name}]`);
 
     // 5. 验证工业级平移阻尼与视角复位
     app.stageMapRenderer.panX = 99999;

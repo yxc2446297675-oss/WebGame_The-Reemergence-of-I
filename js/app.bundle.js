@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-06T07:44:38.057Z
+ * 自动生成于 2026-09-06T07:50:38.107Z
  */
 (function() {
     'use strict';
@@ -3875,7 +3875,6 @@ class MapRenderer {
         // 运行时状态缓存：世界坐标缩放与摄像机中点
         this.currentScale = 1.0;
         this.currentCam = { x: 520, y: 410 };
-        this.directionBadges = []; // 当前帧直绘方向标牌热区
 
         this.initInteractiveGestures();
     }
@@ -4208,19 +4207,10 @@ class MapRenderer {
         const worldX = cam.x + (normX - (displayW / 2 + this.panX)) / scale;
         const worldY = cam.y + (normY - (displayH / 2 + this.panY)) / scale;
 
-        // 1. 优先判定点击直绘的方向胶囊标牌 (Direction Badges)
-        if (this.directionBadges && this.directionBadges.length > 0) {
-            for (const badge of this.directionBadges) {
-                if (Math.abs(worldX - badge.cx) <= badge.w / 2 && Math.abs(worldY - badge.cy) <= badge.h / 2) {
-                    return badge.targetNode;
-                }
-            }
-        }
-
-        // 2. 判定点击房间节点自身
+        // 判定点击房间节点自身 (留有 18px 容错边缘，保障移动端触控精度)
         const layout = this.getLayout();
         const boxSize = layout.boxSize;
-        const half = boxSize / 2 + 16;
+        const half = boxSize / 2 + 18;
 
         for (const node of Object.values(levelMap.nodes)) {
             const p = this.getNodeCenter(node);
@@ -4503,6 +4493,23 @@ class MapRenderer {
             ctx.restore();
         });
 
+        // 预先建立当前房间与相邻可移动房间的方向映射表
+        const connectedDirMap = {};
+        if (currentNodeId && nodes[currentNodeId]) {
+            const curConns = nodes[currentNodeId].connections || {};
+            const dirLabels = {
+                forward: "前 ⬆",
+                backward: "后 ⬇",
+                left: "左 ⬅",
+                right: "右 ➡"
+            };
+            Object.entries(curConns).forEach(([dir, targetId]) => {
+                if (targetId) {
+                    connectedDirMap[targetId] = dirLabels[dir] || dir;
+                }
+            });
+        }
+
         // 6. 绘制各个开放舱室 (专属甲板色彩、厚重装甲外壁、门部门斗、内部微缩设备)
         Object.values(nodes).forEach(node => {
             if (!revealedSet.has(node.id)) return;
@@ -4512,6 +4519,7 @@ class MapRenderer {
             const isDestination = animatedMarker && (node.id === animatedMarker.toId);
             const isVisited = visitedSet.has(node.id);
             const isHovered = options.hoveredNodeId === node.id;
+            const adjacentDir = connectedDirMap[node.id];
             const shape = node.shape || "rect";
             const equipment = node.equipment;
 
@@ -4537,10 +4545,10 @@ class MapRenderer {
                 ctx.strokeStyle = theme.border;
                 ctx.lineWidth = 2.2;
             } else {
-                ctx.fillStyle = "rgba(15, 23, 42, 0.65)";
-                ctx.strokeStyle = "rgba(148, 163, 184, 0.4)";
-                ctx.lineWidth = 1.5;
-                ctx.setLineDash([4, 3]);
+                ctx.fillStyle = adjacentDir ? "rgba(15, 23, 42, 0.85)" : "rgba(15, 23, 42, 0.65)";
+                ctx.strokeStyle = adjacentDir ? "rgba(56, 189, 248, 0.85)" : "rgba(148, 163, 184, 0.4)";
+                ctx.lineWidth = adjacentDir ? 2.0 : 1.5;
+                if (!adjacentDir) ctx.setLineDash([4, 3]);
             }
 
             drawRoomPolygon(ctx, shape, x, y, boxSize, boxSize);
@@ -4592,55 +4600,113 @@ class MapRenderer {
                 drawRoomPolygon(ctx, shape, x - 1, y - 1, boxSize + 2, boxSize + 2);
                 ctx.stroke();
                 ctx.shadowBlur = 0;
+            } else if (adjacentDir && !animatedMarker) {
+                // 相邻可行进房间微光呼应
+                ctx.shadowColor = isVisited ? "#4ade80" : "#38bdf8";
+                ctx.shadowBlur = 10;
+                ctx.strokeStyle = isVisited ? "rgba(74, 222, 128, 0.9)" : "rgba(56, 189, 248, 0.9)";
+                ctx.lineWidth = 2.0;
+                drawRoomPolygon(ctx, shape, x - 0.5, y - 0.5, boxSize + 1, boxSize + 1);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
             }
 
-            // 6.6 舱室文字标注
+            // 6.6 舱室文字标注 (直接在房间中央绘制名称与未探索/方向标记，杜绝外部浮动胶囊遮挡)
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
+
+            const cleanName = (node.name || "").replace(/【.*?】/, "").trim() || (node.name || "").replace(/[【】]/g, "").trim() || "舱室";
 
             let label = "";
             let subLabel = "";
             let tagColor = "#ffffff";
-            const showSub = boxSize >= 40;
+            let subTagColor = "#94a3b8";
+            const showSub = boxSize >= 38;
 
-            if (isVisited || (animatedMarker && node.id === animatedMarker.toId)) {
+            if (isCurrent) {
+                label = (node.id === "room_start" || node.isStart || (levelMap && node.id === levelMap.startNodeId)) ? "起点" : cleanName;
+                subLabel = showSub ? "当前位置" : "";
+                tagColor = "#38bdf8";
+                subTagColor = "#7dd3fc";
+            } else if (isVisited || (animatedMarker && node.id === animatedMarker.toId)) {
                 if (node.id === "room_start" || node.isStart || (levelMap && node.id === levelMap.startNodeId)) {
-                    label = "起点"; subLabel = showSub ? "出发点" : ""; tagColor = "#93c5fd";
-                } else if (node.id === "room_npc1") {
-                    label = "NPC1"; subLabel = showSub ? "卡泽" : ""; tagColor = "#60a5fa";
-                } else if (node.id === "room_npc2") {
-                    label = "NPC2"; subLabel = showSub ? "邵可欣" : ""; tagColor = "#f472b6";
-                } else if (node.id === "room_npc3") {
-                    label = "NPC3"; subLabel = showSub ? "莫德" : ""; tagColor = "#c084fc";
+                    label = "起点";
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 出发点` : "出发点") : "";
+                    tagColor = "#93c5fd";
+                    subTagColor = adjacentDir ? "#60a5fa" : "#93c5fd";
+                } else if (node.id === "room_npc1" || (node.event && node.event.npcId === "kaze")) {
+                    label = "卡泽";
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 同伴` : "同伴") : "";
+                    tagColor = "#60a5fa";
+                    subTagColor = adjacentDir ? "#93c5fd" : "#bfdbfe";
+                } else if (node.id === "room_npc2" || (node.event && node.event.npcId === "shaokexin")) {
+                    label = "邵可欣";
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 同伴` : "同伴") : "";
+                    tagColor = "#f472b6";
+                    subTagColor = adjacentDir ? "#f472b6" : "#fbcfe8";
+                } else if (node.id === "room_npc3" || (node.event && node.event.npcId === "mode")) {
+                    label = "莫德";
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 同伴` : "同伴") : "";
+                    tagColor = "#c084fc";
+                    subTagColor = adjacentDir ? "#c084fc" : "#e9d5ff";
                 } else if (node.isExit || node.id === "room_exit" || (node.event && node.event.type === "exit")) {
-                    label = "终点"; subLabel = showSub ? "折跃门" : ""; tagColor = "#4ade80";
+                    label = "终点";
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 折跃门` : "折跃门") : "";
+                    tagColor = "#4ade80";
+                    subTagColor = adjacentDir ? "#4ade80" : "#86efac";
                 } else if (node.event && node.event.type === "food") {
-                    label = "给养"; subLabel = showSub ? "补给" : ""; tagColor = "#f59e0b";
+                    label = cleanName || "给养";
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 补给` : "补给") : "";
+                    tagColor = "#f59e0b";
+                    subTagColor = adjacentDir ? "#f59e0b" : "#fde68a";
                 } else if (node.event && node.event.type === "npc") {
-                    label = "NPC"; subLabel = showSub ? (node.event.npcId || "同伴") : ""; tagColor = "#c084fc";
+                    label = cleanName || "同伴";
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 成员` : "同伴") : "";
+                    tagColor = "#c084fc";
+                    subTagColor = adjacentDir ? "#c084fc" : "#e9d5ff";
                 } else {
-                    const cleanName = (node.name || "").replace(/【.*?】/, "");
-                    label = cleanName ? cleanName.slice(0, 3) : "舱室";
+                    label = cleanName;
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 已探明` : "已探明") : "";
                     tagColor = "#e2e8f0";
+                    subTagColor = adjacentDir ? "#38bdf8" : "rgba(148, 163, 184, 0.75)";
                 }
             } else {
-                label = "？";
-                subLabel = showSub ? "待探明" : "";
-                tagColor = "rgba(148, 163, 184, 0.75)";
+                // 未探索房间：直接显示房间名称，并清晰标注 [未探索] 或 [方向 · 未探索]
+                label = cleanName;
+                subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 未探索` : "未探索") : "";
+                if (adjacentDir) {
+                    tagColor = "#ffffff";
+                    subTagColor = "#38bdf8"; // 高亮青色，提示用户点击即可行进
+                } else {
+                    tagColor = "rgba(203, 213, 225, 0.85)";
+                    subTagColor = "rgba(148, 163, 184, 0.65)";
+                }
             }
 
-            const mainFontSize = Math.max(Math.min(Math.floor(boxSize * 0.26), 13), 9);
-            const subFontSize = Math.max(mainFontSize - 2, 8);
+            // 根据文字长度自适应字号
+            let mainFontSize = Math.max(Math.min(Math.floor(boxSize * 0.24), 13), 9);
+            if (label.length >= 6) {
+                mainFontSize = Math.min(mainFontSize, 9);
+            } else if (label.length >= 5) {
+                mainFontSize = Math.min(mainFontSize, 10);
+            } else if (label.length >= 4) {
+                mainFontSize = Math.min(mainFontSize, 11);
+            }
+
+            let subFontSize = Math.max(mainFontSize - 2, 8);
+            if (subLabel.length >= 8) {
+                subFontSize = 7.5;
+            } else if (subLabel.length >= 6) {
+                subFontSize = 8;
+            }
 
             ctx.font = `bold ${mainFontSize}px 'PingFang SC', sans-serif`;
             ctx.fillStyle = tagColor;
             ctx.fillText(label, p.x, p.y - (subLabel ? Math.round(subFontSize * 0.65) : 0));
 
             if (subLabel) {
-                ctx.font = `${subFontSize}px 'PingFang SC', sans-serif`;
-                ctx.fillStyle = (isVisited || (animatedMarker && node.id === animatedMarker.toId))
-                    ? tagColor
-                    : "rgba(148, 163, 184, 0.6)";
+                ctx.font = `bold ${subFontSize}px 'PingFang SC', sans-serif`;
+                ctx.fillStyle = subTagColor;
                 ctx.fillText(subLabel, p.x, p.y + Math.round(mainFontSize * 0.85));
             }
 
@@ -4650,7 +4716,7 @@ class MapRenderer {
                 const hereFontSize = Math.max(Math.min(Math.floor(boxSize * 0.2), 10), 8);
                 ctx.font = `bold ${hereFontSize}px 'Orbitron', monospace`;
                 ctx.fillText(boxSize >= 40 ? "📍HERE" : "📍", p.x, p.y - boxSize / 2 - 8);
-            } else if (options.canFastTravel && isVisited && !animatedMarker) {
+            } else if (options.canFastTravel && isVisited && !adjacentDir && !animatedMarker) {
                 const isHover = options.hoveredNodeId === node.id;
                 ctx.fillStyle = isHover ? "#4ade80" : "rgba(74, 222, 128, 0.9)";
                 const travelFontSize = Math.max(Math.min(Math.floor(boxSize * 0.18), 9), 8);
@@ -4717,80 +4783,6 @@ class MapRenderer {
             ctx.restore();
         }
 
-        // 7.5 直接在画面通路与相邻房间上渲染【前 ⬆】【后 ⬇】【左 ⬅】【右 ➡】方向与房间名科技标牌
-        this.directionBadges = [];
-
-        if (currentNodeId && nodes[currentNodeId] && !animatedMarker) {
-            const curN = nodes[currentNodeId];
-            const conns = curN.connections || {};
-            const dirMeta = {
-                forward:  { label: "前 ⬆", theme: "#38bdf8" },
-                backward: { label: "后 ⬇", theme: "#60a5fa" },
-                left:     { label: "左 ⬅", theme: "#a78bfa" },
-                right:    { label: "右 ➡", theme: "#34d399" }
-            };
-
-            const cp = this.getNodeCenter(curN);
-
-            Object.entries(conns).forEach(([dir, targetId]) => {
-                const targetN = nodes[targetId];
-                if (!targetN) return;
-                const tp = this.getNodeCenter(targetN);
-                const meta = dirMeta[dir] || { label: dir, theme: "#38bdf8" };
-
-                const isTargetVisited = visitedSet.has(targetId);
-                const targetCleanName = (targetN.name || "").replace(/【.*?】/, "");
-                const statusTag = isTargetVisited ? "(已探明)" : "(未探索)";
-
-                // 标牌位置放置在当前房间与目标房间走廊的 65% 处（偏向目标房间）
-                const badgeX = Math.round(cp.x * 0.35 + tp.x * 0.65);
-                const badgeY = Math.round(cp.y * 0.35 + tp.y * 0.65);
-
-                const badgeText = `${meta.label} ${targetCleanName || "区域"} ${statusTag}`;
-
-                ctx.save();
-                ctx.font = "bold 11px 'PingFang SC', sans-serif";
-                const textWidth = ctx.measureText(badgeText).width;
-                const badgeW = Math.max(90, textWidth + 18);
-                const badgeH = 26;
-
-                // 记录点击命中框
-                this.directionBadges.push({
-                    dir,
-                    targetId,
-                    targetNode: targetN,
-                    cx: badgeX,
-                    cy: badgeY,
-                    w: badgeW + 8,
-                    h: badgeH + 8
-                });
-
-                // 绘制高科技胶囊发光底框
-                const accentColor = isTargetVisited ? "#4ade80" : meta.theme;
-                ctx.fillStyle = "rgba(11, 19, 36, 0.94)";
-                ctx.strokeStyle = accentColor;
-                ctx.lineWidth = 1.8;
-                ctx.shadowColor = accentColor;
-                ctx.shadowBlur = 10;
-
-                const bx = badgeX - badgeW / 2;
-                const by = badgeY - badgeH / 2;
-                if (ctx.roundRect) ctx.roundRect(bx, by, badgeW, badgeH, 13);
-                else ctx.rect(bx, by, badgeW, badgeH);
-                ctx.fill();
-                ctx.stroke();
-                ctx.shadowBlur = 0;
-
-                // 标牌文字
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillStyle = isTargetVisited ? "#86efac" : "#ffffff";
-                ctx.fillText(badgeText, badgeX, badgeY);
-
-                ctx.restore();
-            });
-        }
-
         ctx.restore(); // 恢复变换矩阵
 
         // 8. 绘制屏幕固定 HUD (底部提示与缩放指示，自适应手机与桌面)
@@ -4806,8 +4798,8 @@ class MapRenderer {
         ctx.textAlign = "center";
         ctx.fillStyle = "#cbd5e1";
         const hudMsg = displayW < 600
-            ? `👆 直击方向标牌/房间移动 ｜ 🤏 双指缩放 [${zoomPercent}%]`
-            : `👆 点击画面上标牌或相邻房间直接移动 ｜ 🖱️/🤏 拖拽平移 & 滚轮/双指缩放 [${zoomPercent}%] ｜ ⚡ 点击已探明舱室快速往返`;
+            ? `👆 点击相邻房间直接移动 ｜ 🤏 双指缩放 [${zoomPercent}%]`
+            : `👆 点击相邻房间直接移动 ｜ 🖱️/🤏 拖拽平移 & 滚轮/双指缩放 [${zoomPercent}%] ｜ ⚡ 点击已探明舱室快速往返`;
         ctx.fillText(hudMsg, displayW / 2, displayH - hudH / 2 - 2);
     }
 
