@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-06T12:08:52.165Z
+ * 自动生成于 2026-09-06T16:28:57.760Z
  */
 (function() {
     'use strict';
@@ -1428,12 +1428,12 @@ const MASTER_ROOM_DEFS = {
     },
     "room_comm_center": {
         id: "room_comm_center",
-        name: "【量子通信总站】深空信标井",
+        name: "【全舰应急广播总站】避难通牒发射台",
         zone: "bow",
         coord: { x: 6, y: 0 },
         shape: "comm_tower",
         equipment: "comm_station",
-        desc: "高频纠缠光子发射管直指天顶，应急警报红光断断续续闪烁。"
+        desc: "全舰高音强光应急广播主控台。红色广播麦克风仍保持在【紧急全舰通播】档位，记录着主角在爆炸发生前向全员下达'全员立即撤往休眠舱'的最后避难通牒！"
     },
     "room_observation": {
         id: "room_observation",
@@ -1450,12 +1450,12 @@ const MASTER_ROOM_DEFS = {
     // =========================================================================
     "room_specimen_vault": {
         id: "room_specimen_vault",
-        name: "【异构标本保全库】高危冷藏间",
+        name: "【异构标本特种库】高危冷藏间（盗货目标物）",
         zone: "research",
         coord: { x: 0, y: 1 },
         shape: "specimen_vault",
         equipment: "cargo_grid",
-        desc: "多重气锁密封的低温样本柜中，散发着微弱荧光的未知晶体被安全束缚。"
+        desc: "多重气锁密封的低温样本柜中，存放着价值连城的未知深空异构高熵晶体。防盗锁上有被激光切割尝试撬动的痕迹，这正是作案者铤而走险的真正盗货动因！"
     },
     // Level 1 原版节点 13: 终点脱离大门
     "room_exit": {
@@ -1509,21 +1509,21 @@ const MASTER_ROOM_DEFS = {
     },
     "room_cryo_stasis": {
         id: "room_cryo_stasis",
-        name: "【深潜冷冻基阵】休眠矩阵",
+        name: "【深潜休眠矩阵舱】全员撤离与神经接驳原点",
         zone: "living",
         coord: { x: 6, y: 1 },
         shape: "cryo_array",
         equipment: "cryo_pods",
-        desc: "数十具人体工学冷冻舱整齐排布，冰雾在透明面罩上结成晶莹白霜。"
+        desc: "数十具人体工学冷冻舱整齐排布。在全舰过热爆炸危机中，全员依照广播指令撤入此地冷冻休眠。中央接驳台上电极紧贴主角头部，24 次跨时空切片还原正是从这里启动！"
     },
     "room_decon_airlock": {
         id: "room_decon_airlock",
-        name: "【洗消减压气闸】外勤洗消间",
-        zone: "living",
+        name: "【前沿技术科室】黑匣子神经定格站（二号芯片失窃点）",
+        zone: "research",
         coord: { x: 7, y: 1 },
         shape: "airlock_dock",
-        equipment: "airlock_dock",
-        desc: "大功率紫外线与等离子洗消环门，用于阻绝外界拟态孢子渗入生活区。"
+        equipment: "server_rack",
+        desc: "休眠舱隔壁的绝密新技术科室。这里研发了【黑匣子时空定格技术】——可在停电与受创瞬间全景记录全员位置！然而中央控制台的【二号校验芯片】已被盗走，残留下的恶性数据 Bug 阻碍着真相重现！"
     },
 
     // =========================================================================
@@ -1622,12 +1622,12 @@ const MASTER_ROOM_DEFS = {
     // Level 1 原版节点 8: 西侧尽头 (食物)
     "room_west_end": {
         id: "room_west_end",
-        name: "【西端休歇舱】配电副室",
+        name: "【主配电值班舱】全舰停电始发地",
         zone: "hub",
         coord: { x: 0, y: 3 },
         shape: "airlock_dock_w",
         equipment: "cargo_grid",
-        desc: "角落里的储物柜中藏着未受损的能量棒与电解质水饮料！"
+        desc: "全舰高压配电分流箱与紧急断路总闸坐落于此。此刻电闸手柄被暴力拉下，保护锁被硬物砸毁，全舰大断电与时空定格的作案第一现场！角落储物柜还幸存着未受损的能量棒。"
     },
     // Level 1 原版节点 7: NPC 1 卡泽房间
     "room_npc1": {
@@ -1652,12 +1652,12 @@ const MASTER_ROOM_DEFS = {
     // Level 1 原版节点 1: 起点
     "room_start": {
         id: "room_start",
-        name: "【起点】苏醒密封厅",
+        name: "【起点】苏醒密封厅（神经切片投影处）",
         zone: "hub",
         coord: { x: 3, y: 3 },
         shape: "hub_central_oct",
         equipment: "airlock_dock",
-        desc: "你从剧烈的震荡中醒来，周围是变形的金属支架。空气中充满烧焦的味道。"
+        desc: "主角在神经接驳中意识投影的初始落脚点。由于关键芯片失窃与程序 Bug，记忆发生严重逆向断片，只记得周围剧烈的震荡、火光与烧焦味道。"
     },
     // Level 1 原版节点 2: 右下拐角
     "room_corner_se": {
@@ -1765,12 +1765,12 @@ const MASTER_ROOM_DEFS = {
     },
     "room_life_support": {
         id: "room_life_support",
-        name: "【生命支持总控中继】环境机房",
+        name: "【维生环境总控机房】一号核心芯片失窃点",
         zone: "ecology",
         coord: { x: 6, y: 4 },
         shape: "life_support_hex",
         equipment: "server_rack",
-        desc: "二氧化碳吸收器与氧氮混合气瓶整齐排布，空气净化风扇高速运转。"
+        desc: "维生循环主机机柜被暴力撬开，原本控制全舰大气与主冷却配比的【一号核心芯片】已被拔走！气流紊乱，直接诱发了底层聚变堆的严重失衡与连锁过热！"
     },
     "room_air_recycler": {
         id: "room_air_recycler",
@@ -1823,21 +1823,21 @@ const MASTER_ROOM_DEFS = {
     },
     "room_plasma_manifold": {
         id: "room_plasma_manifold",
-        name: "【等离子能量汇流总管】主输能干线",
+        name: "【等离子能量汇流总管】过热管涌破裂走廊",
         zone: "engineering",
         coord: { x: 3, y: 5 },
         shape: "plasma_conduit",
         equipment: "workshop_tools",
-        desc: "粗大的发光输能管道贯穿舱壁，炽烈的紫金色等离子体向推进器汹涌输送。"
+        desc: "反应堆连锁过热导致的能量回涌在此冲破了管道壁，炽烈的紫金色等离子火焰将合金舱壁熔穿大半，电火花在断裂管线间疯狂跳跃！"
     },
     "room_main_reactor": {
         id: "room_main_reactor",
-        name: "【重核聚变主反应堆】全舰心脏",
+        name: "【重核聚变主反应堆】过热连锁爆炸灾源核心",
         zone: "propulsion",
         coord: { x: 4, y: 5 },
         shape: "tokamak_reactor",
         equipment: "reactor_core",
-        desc: "巍峨的托卡马克环形聚变炉在中央静默悬浮，金色引力等离子环如太阳般耀眼！"
+        desc: "巍峨的托卡马克聚变炉外壳严重焦黑龟裂！因环境机房芯片被盗导致冷却断流，主反应堆在此发生剧烈过热爆燃，烈焰撕裂了周围多个走廊，造成全舰致命创伤！"
     },
     "room_coolant_tank": {
         id: "room_coolant_tank",
@@ -1850,12 +1850,12 @@ const MASTER_ROOM_DEFS = {
     },
     "room_warp_field_gen": {
         id: "room_warp_field_gen",
-        name: "【超弦跃迁场稳定器】时空定锚舱",
+        name: "【时空定锚偏折中枢】跃迁走私路线篡改处",
         zone: "propulsion",
         coord: { x: 6, y: 5 },
         shape: "warp_nacelle",
         equipment: "shield_coil",
-        desc: "环状引力发生线圈在低速旋转，周围空间的光线产生明显的微弱弯折。"
+        desc: "环状引力发生线圈闪烁着危险的红光，航行定锚坐标已被非法覆写！原本锁定的地球归航航道被篡改为了未知黑市走私空域——作案者意图盗运货物的铁证！"
     },
     "room_armored_corridor": {
         id: "room_armored_corridor",
