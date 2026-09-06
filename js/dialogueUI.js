@@ -57,6 +57,7 @@ export class DialogueUI {
         this.fullTextOfCurrentLine = "";
 
         this.bindEvents();
+        this.hideBox(); // 初始默认隐藏对话框，不占用任何探索界面与导航按键空间
     }
 
     bindEvents() {
@@ -74,6 +75,7 @@ export class DialogueUI {
      */
     playSequence(dialogueLines, onComplete = null) {
         if (!dialogueLines || dialogueLines.length === 0) {
+            this.hideBox();
             if (onComplete) onComplete();
             return;
         }
@@ -89,12 +91,21 @@ export class DialogueUI {
      * 快捷播放单条对话
      */
     say(speaker, text, onComplete = null) {
+        if (!text || (typeof text === "string" && text.trim() === "")) {
+            this.hideBox();
+            if (onComplete) onComplete();
+            return;
+        }
         this.playSequence([{ speaker, text }], onComplete);
     }
 
     showBox() {
         if (this.boxElement) {
             this.boxElement.classList.remove("vn-hidden");
+        }
+        const screenGame = document.getElementById("screen-game");
+        if (screenGame) {
+            screenGame.classList.add("has-dialogue-active");
         }
     }
 
@@ -107,6 +118,10 @@ export class DialogueUI {
         }
         if (this.cornerAvatarElement) {
             this.cornerAvatarElement.classList.add("portrait-hidden");
+        }
+        const screenGame = document.getElementById("screen-game");
+        if (screenGame) {
+            screenGame.classList.remove("has-dialogue-active");
         }
     }
 

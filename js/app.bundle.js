@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-06T06:55:19.077Z
+ * 自动生成于 2026-09-06T07:12:18.875Z
  */
 (function() {
     'use strict';
@@ -2957,6 +2957,7 @@ class DialogueUI {
         this.fullTextOfCurrentLine = "";
 
         this.bindEvents();
+        this.hideBox(); // 初始默认隐藏对话框，不占用任何探索界面与导航按键空间
     }
 
     bindEvents() {
@@ -2974,6 +2975,7 @@ class DialogueUI {
      */
     playSequence(dialogueLines, onComplete = null) {
         if (!dialogueLines || dialogueLines.length === 0) {
+            this.hideBox();
             if (onComplete) onComplete();
             return;
         }
@@ -2989,12 +2991,21 @@ class DialogueUI {
      * 快捷播放单条对话
      */
     say(speaker, text, onComplete = null) {
+        if (!text || (typeof text === "string" && text.trim() === "")) {
+            this.hideBox();
+            if (onComplete) onComplete();
+            return;
+        }
         this.playSequence([{ speaker, text }], onComplete);
     }
 
     showBox() {
         if (this.boxElement) {
             this.boxElement.classList.remove("vn-hidden");
+        }
+        const screenGame = document.getElementById("screen-game");
+        if (screenGame) {
+            screenGame.classList.add("has-dialogue-active");
         }
     }
 
@@ -3007,6 +3018,10 @@ class DialogueUI {
         }
         if (this.cornerAvatarElement) {
             this.cornerAvatarElement.classList.add("portrait-hidden");
+        }
+        const screenGame = document.getElementById("screen-game");
+        if (screenGame) {
+            screenGame.classList.remove("has-dialogue-active");
         }
     }
 
