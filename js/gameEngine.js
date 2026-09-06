@@ -231,17 +231,24 @@ export class GameEngine {
             }
         };
 
-        // 逐一异步加载资源，超时保底避免死锁
-        assetTasks.forEach(task => {
+        // 采用受控并发池逐一异步加载资源，彻底移除900ms假冒完成，确保立绘真实加载解码完毕
+        let cursor = 0;
+        const CONCURRENCY = 4; // 移动端最优并发通道数，避免网络请求拥塞与套接字耗尽
+
+        const loadNext = () => {
+            if (cursor >= assetTasks.length) return;
+            const task = assetTasks[cursor++];
             let finished = false;
             const onDone = () => {
                 if (finished) return;
                 finished = true;
                 loadedCount++;
                 updateUI(task.name);
+                loadNext(); // 推进下一个资源
             };
 
-            const timer = setTimeout(onDone, 900);
+            // 真实网络保底超时（15秒，仅防极端断网死锁，杜绝提前假报完成）
+            const timer = setTimeout(onDone, 15000);
 
             if (task.type === "audio") {
                 if (typeof Sound !== "undefined" && Sound.preloadAudio) {
@@ -250,9 +257,14 @@ export class GameEngine {
                 try {
                     const a = new Audio(encodeURI(task.url));
                     a.preload = "auto";
-                    a.addEventListener("canplaythrough", () => { clearTimeout(timer); onDone(); }, { once: true });
-                    a.addEventListener("loadeddata", () => { clearTimeout(timer); onDone(); }, { once: true });
-                    a.addEventListener("error", () => { clearTimeout(timer); onDone(); }, { once: true });
+                    const doneAudio = () => { clearTimeout(timer); onDone(); };
+                    if (typeof a.addEventListener === "function") {
+                        a.addEventListener("canplaythrough", doneAudio, { once: true });
+                        a.addEventListener("loadeddata", doneAudio, { once: true });
+                        a.addEventListener("error", doneAudio, { once: true });
+                    } else {
+                        doneAudio();
+                    }
                     if (a.load) a.load();
                 } catch (e) {
                     clearTimeout(timer);
@@ -260,23 +272,36 @@ export class GameEngine {
                 }
             } else if (task.type === "image") {
                 if (typeof CharacterRegistry !== "undefined" && CharacterRegistry.preloadImage) {
-                    CharacterRegistry.preloadImage(task.url);
-                }
-                try {
-                    const img = new Image();
-                    img.src = encodeURI(task.url);
-                    if (typeof img.decode === "function") {
-                        img.decode().then(() => { clearTimeout(timer); onDone(); }).catch(() => { clearTimeout(timer); onDone(); });
-                    } else {
-                        img.onload = () => { clearTimeout(timer); onDone(); };
-                        img.onerror = () => { clearTimeout(timer); onDone(); };
+                    CharacterRegistry.preloadImage(task.url).then(() => {
+                        clearTimeout(timer);
+                        onDone();
+                    }).catch(() => {
+                        clearTimeout(timer);
+                        onDone();
+                    });
+                } else {
+                    try {
+                        const img = new Image();
+                        img.src = encodeURI(task.url);
+                        const doneImg = () => { clearTimeout(timer); onDone(); };
+                        if (typeof img.decode === "function") {
+                            img.decode().then(doneImg).catch(doneImg);
+                        } else {
+                            img.onload = doneImg;
+                            img.onerror = doneImg;
+                        }
+                    } catch (e) {
+                        clearTimeout(timer);
+                        onDone();
                     }
-                } catch (e) {
-                    clearTimeout(timer);
-                    onDone();
                 }
             }
-        });
+        };
+
+        const initialWorkers = Math.min(CONCURRENCY, assetTasks.length);
+        for (let i = 0; i < initialWorkers; i++) {
+            loadNext();
+        }
     }
 
     onInitialLoadingComplete() {

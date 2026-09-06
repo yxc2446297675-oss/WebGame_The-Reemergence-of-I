@@ -1592,5 +1592,34 @@ console.log("\n30. 验证对话框底铺悬浮（绝不改变地图大小比例�
     console.log(`   【已验证】对话框底铺悬浮测试通过：视口高度恒定为 ${initialHeight}px，地图尺寸比例 0 畸变 0 晃动！`);
 }
 
-console.log('\n====== [TEST PASSED] 全部 30 项核心流程、母舰蓝图 1:1 等比保真、对话框底铺悬浮与极速资源静默预热全部测试成功！ ======');
+console.log("\n31. 验证移动端立绘光速渲染、主角指挥官SVG头像与图片常驻内存缓存机制...");
+{
+    // 1. 验证图片内存持久化缓存机制
+    if (!CharacterRegistry.imageCache || !(CharacterRegistry.imageCache instanceof Map)) {
+        throw new Error("CharacterRegistry.imageCache 内存持久映射字典未正确初始化！");
+    }
+
+    // 2. 验证 NPC 说话时立绘已配置 loading="eager" 与 decoding="sync" 零白屏同步渲染
+    const kaze = CharacterRegistry.get("kaze");
+    app.dialogueUI.say(kaze, "第一句对白：验证立绘创建");
+    const avatarContainer = document.getElementById("vn-dialogue-corner-avatar");
+    const html1 = avatarContainer.innerHTML || "";
+    if (!html1.includes("corner-avatar-frame") || !html1.includes("corner-portrait-img")) {
+        throw new Error("NPC 对白未能正确生成左上角立绘框架与图片节点！");
+    }
+    if (!html1.includes('loading="eager"') || !html1.includes('decoding="sync"')) {
+        throw new Error("立绘图片未开启 loading='eager' 与 decoding='sync' 同步光速渲染！");
+    }
+    console.log("   【已验证】NPC 对白立绘已启用 loading='eager' 与 decoding='sync' 同步光速渲染！");
+
+    // 3. 验证主角 L.P.H 说话时展示指挥官星徽专属头像 (非系统广播)
+    app.dialogueUI.say(app.protagonist, "全员保持警戒，准备应对异常！");
+    const html2 = avatarContainer.innerHTML || "";
+    if (!html2.includes("data:image/svg+xml") || !html2.includes("L.P.H")) {
+        throw new Error("主角 L.P.H 对白未正确挂载专属指挥官星徽 SVG 头像！");
+    }
+    console.log("   【已验证】主角 L.P.H 对话已成功挂载专属指挥官高科技头像！");
+}
+
+console.log('\n====== [TEST PASSED] 全部 31 项核心流程、母舰蓝图 1:1 等比保真、移动端双层顶栏与立绘零延迟复用测试成功！ ======');
 

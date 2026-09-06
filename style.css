@@ -1710,53 +1710,132 @@ html, body {
 }
 
 @media (max-width: 768px) {
-    /* 移动端顶栏精简化 */
+    /* 移动端顶栏全新双层高科技战术布局 (彻底根治功能键挤压、体力值遮挡问题) */
     .game-top-bar {
-        height: 44px;
-        padding: 0 8px;
-        gap: 4px;
+        height: auto !important;
+        min-height: 72px !important;
+        padding: 6px 8px 5px 8px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        gap: 5px !important;
+        background: rgba(10, 16, 32, 0.96) !important;
+        backdrop-filter: blur(12px) !important;
+        border-bottom: 1px solid rgba(56, 189, 248, 0.25) !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
     }
+
+    /* 第一层：核心状态栏 (当前位置、体力血条、当前循环) */
     .top-left-status {
-        gap: 4px;
-        min-width: 0;
-        flex: 1;
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 6px !important;
+        margin: 0 !important;
     }
+
     .status-box {
-        padding: 2px 6px;
-        font-size: 0.72rem;
-        gap: 3px;
-        white-space: nowrap;
+        padding: 3px 7px !important;
+        font-size: 0.74rem !important;
+        gap: 4px !important;
+        background: rgba(15, 23, 42, 0.8) !important;
+        border: 1px solid rgba(56, 189, 248, 0.25) !important;
+        border-radius: 6px !important;
+        white-space: nowrap !important;
     }
+
+    .location-box {
+        flex: 1 !important;
+        min-width: 0 !important;
+        max-width: 46% !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
     .location-name {
-        max-width: 76px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        max-width: 100% !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        font-size: 0.74rem !important;
+        color: #38bdf8 !important;
+        font-weight: 600 !important;
     }
-    .stamina-track {
-        width: 46px;
-        height: 7px;
+
+    /* 体力指示框：醒目居中、100%完全展示、绝不被遮挡 */
+    .stamina-box {
+        flex: 1 !important;
+        max-width: 42% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: rgba(15, 23, 42, 0.9) !important;
+        border-color: rgba(56, 189, 248, 0.4) !important;
     }
+
     .stamina-label {
-        display: none;
+        display: none !important;
     }
+
+    .stamina-track {
+        width: 46px !important;
+        height: 8px !important;
+        background: #0f172a !important;
+        border-radius: 4px !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    }
+
     .stamina-num {
-        font-size: 0.72rem;
+        font-size: 0.72rem !important;
+        font-weight: 700 !important;
+        color: #e2e8f0 !important;
+        font-family: var(--font-hud) !important;
     }
-    .team-box {
-        display: none; /* 留给体力与位置 */
+
+    .day-box {
+        padding: 3px 6px !important;
     }
+
     .day-badge {
-        font-size: 0.74rem;
+        font-size: 0.72rem !important;
+        color: var(--accent-gold) !important;
+        font-weight: 700 !important;
     }
+
+    .team-box {
+        display: none !important; /* 手机端留出空间给体力与地点 */
+    }
+
+    /* 第二层：功能操作条 (日志、任务、地图、存档、退出 均匀分布全宽) */
     .top-right-tools {
-        gap: 4px;
-        flex-shrink: 0;
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 5px !important;
+        margin: 0 !important;
     }
+
     .tool-btn {
-        padding: 4px 6px;
-        font-size: 0.75rem;
-        border-radius: 4px;
+        flex: 1 !important;
+        padding: 5px 2px !important;
+        font-size: 0.75rem !important;
+        border-radius: 6px !important;
+        text-align: center !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: rgba(30, 41, 59, 0.75) !important;
+        border: 1px solid rgba(56, 189, 248, 0.25) !important;
+        color: #f1f5f9 !important;
+        white-space: nowrap !important;
+        transition: background 0.15s, border-color 0.15s !important;
+    }
+
+    .tool-btn:active {
+        background: rgba(56, 189, 248, 0.35) !important;
+        border-color: #38bdf8 !important;
     }
 
     /* 移动端抽屉式侧边栏 (彻底消灭顶部黑块遮挡) */

@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-06T08:11:48.462Z
+ * 自动生成于 2026-09-06T08:23:43.395Z
  */
 (function() {
     'use strict';
@@ -1182,20 +1182,22 @@ const CharacterRegistry = {
      */
     getAvatarSvg(character, expression = "clam") {
         if (!character) return "";
-        if (character.isProtagonist || character.isBroadcast || character.isSystem ||
-            character.id === "lph" || character.id === "system" || character.id === "broadcast" ||
+        // 广播播报人、系统通知、终端等严禁展示任何立绘
+        if (character.isBroadcast || character.isSystem ||
+            character.id === "system" || character.id === "broadcast" ||
             /广播|系统|终端|通信|审决|全员/i.test(character.name || "")) {
             return "";
         }
         const color = character.themeColor || "#38bdf8";
         const nameInitial = character.name ? character.name.charAt(0) : "L";
         const isFemale = character.gender === "女";
+        const isCap = character.isProtagonist || character.id === "lph";
         const exp = this.normalizeExpression(expression);
         
-        const headRadius = isFemale ? 44 : 48;
+        const headRadius = isFemale ? 44 : (isCap ? 46 : 48);
         const shoulderWidth = isFemale ? 34 : 42;
 
-        // 表情特征小标
+        // 表情特征小标 (主角展示指挥官星徽，NPC展示状态标识)
         const emojiMap = {
             clam: "•_•",
             calm: "•_•",
@@ -1209,20 +1211,7 @@ const CharacterRegistry = {
             shock: "❗",
             dead: "💀"
         };
-        const badge = emojiMap[exp] || "•_•";
-
-        const expCnMap = {
-            clam: "平静",
-            calm: "平静",
-            normal: "正常",
-            happy: "开心",
-            sad: "悲伤",
-            angry: "生气",
-            doubt: "疑惑",
-            shock: "震惊",
-            dead: "已遇害"
-        };
-        const expLabel = expCnMap[exp] || exp;
+        const badge = isCap ? "⭐" : (emojiMap[exp] || "•_•");
 
         const svg = `
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
@@ -1247,13 +1236,13 @@ const CharacterRegistry = {
             <text x="100" y="93" font-family="'Orbitron', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="34" font-weight="bold" fill="#ffffff" text-anchor="middle" filter="drop-shadow(0px 2px 5px rgba(0,0,0,0.9))">
                 ${nameInitial}
             </text>
-            <!-- 表情徽章气泡 -->
+            <!-- 徽章气泡 -->
             <circle cx="152" cy="48" r="18" fill="#0b1120" stroke="${color}" stroke-width="1.5"/>
             <text x="152" y="54" font-size="14" text-anchor="middle">${badge}</text>
-            <!-- 底部姓名牌 -->
+            <!-- 底部姓名牌 (严禁标注任何“平静/生气”等情绪文字，仅保留角色名) -->
             <rect x="25" y="165" width="150" height="22" rx="4" fill="#000000" opacity="0.75" stroke="${color}" stroke-width="1"/>
             <text x="100" y="180" font-family="'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="12" font-weight="bold" fill="${color}" text-anchor="middle" letter-spacing="1.5">
-                ${character.name} · ${expLabel}
+                ${character.name}
             </text>
         </svg>
         `;
@@ -1272,32 +1261,48 @@ const CharacterRegistry = {
 
     // 资源极低成本静默预加载系统 (零主线程消耗、即点即现)
     preloadedImages: new Set(),
+    imageCache: (typeof Map !== "undefined") ? new Map() : null,
 
     preloadImage(url) {
-        if (!url || typeof Image === "undefined" || this.preloadedImages.has(url)) return;
-        this.preloadedImages.add(url);
-        try {
-            const img = new Image();
-            img.src = encodeURI(url);
-            // 现代浏览器支持异步离线解码，彻底避免首次渲染的主线程掉帧卡顿
-            if (typeof img.decode === "function") {
-                img.decode().catch(() => {});
-            }
-        } catch (e) {
-            // ignore
+        if (!url || typeof Image === "undefined") return Promise.resolve(null);
+        if (this.imageCache && this.imageCache.has(url)) {
+            return Promise.resolve(this.imageCache.get(url));
         }
+        if (this.preloadedImages.has(url)) return Promise.resolve(null);
+        this.preloadedImages.add(url);
+
+        return new Promise((resolve) => {
+            try {
+                const img = new Image();
+                img.src = encodeURI(url);
+                if (this.imageCache) {
+                    this.imageCache.set(url, img);
+                }
+                // 现代浏览器支持异步离线解码，彻底避免首次渲染的主线程掉帧卡顿
+                if (typeof img.decode === "function") {
+                    img.decode().then(() => resolve(img)).catch(() => resolve(img));
+                } else {
+                    img.onload = () => resolve(img);
+                    img.onerror = () => resolve(img);
+                }
+            } catch (e) {
+                resolve(null);
+            }
+        });
     },
 
     preloadCharacter(character) {
-        if (!character) return;
-        if (character.avatarUrl) this.preloadImage(character.avatarUrl);
+        if (!character) return Promise.resolve();
+        const promises = [];
+        if (character.avatarUrl) promises.push(this.preloadImage(character.avatarUrl));
         if (character.expressions) {
             Object.values(character.expressions).forEach(url => {
                 if (url && typeof url === "string") {
-                    this.preloadImage(url);
+                    promises.push(this.preloadImage(url));
                 }
             });
         }
+        return Promise.all(promises);
     },
 
     preloadForLevel(levelConfig) {
@@ -3259,14 +3264,14 @@ class DialogueUI {
 
     isBroadcastOrSystem(speaker) {
         if (!speaker) return true;
-        if (speaker.isProtagonist || speaker.isBroadcast || speaker.isSystem) return true;
-        if (speaker.id === "lph" || speaker.id === "system" || speaker.id === "broadcast") return true;
+        if (speaker.isBroadcast || speaker.isSystem) return true;
+        if (speaker.id === "system" || speaker.id === "broadcast") return true;
         const name = speaker.name || "";
         return /广播|系统|终端|通信|审决|全员/i.test(name);
     }
 
     renderPortrait(speaker, expression = "clam") {
-        // 主角说话时不展示立绘；系统广播、警报广播、终端通知等一律严禁展示立绘
+        // 系统广播、警报广播、终端通知等一律严禁展示立绘
         if (this.isBroadcastOrSystem(speaker)) {
             if (this.cornerAvatarElement) {
                 this.cornerAvatarElement.classList.add("portrait-hidden");
@@ -3281,7 +3286,7 @@ class DialogueUI {
             return;
         }
 
-        // NPC 说话时：立绘展示在对话框左上角！用户明确要求：不要标注“生气/平静”等字样
+        // 角色/NPC 说话时：立绘展示在对话框左上角！用户明确要求：不要标注“生气/平静”等字样
         if (this.cornerAvatarElement) {
             this.cornerAvatarElement.classList.remove("portrait-hidden");
             if (this.boxElement) {
@@ -3312,22 +3317,24 @@ class DialogueUI {
             const primaryUrl = candidates[0] || fallbackSvg;
             const candidatesAttr = JSON.stringify(candidates).replace(/"/g, '&quot;');
 
-            const imgHtml = `
-                <img src="${primaryUrl}"
-                     data-candidates="${candidatesAttr}"
-                     data-index="0"
-                     data-fallback="${fallbackSvg}"
-                     alt="${speaker.name}"
-                     class="corner-portrait-img ${isDead ? 'dead-portrait-img' : ''}"
-                     onerror="window.handlePortraitError && window.handlePortraitError(this)">
-            `;
-
-            // 用户要求：立绘位于左上角，无需任何“生气/平静”标签文字
-            this.cornerAvatarElement.innerHTML = `
-                <div class="corner-avatar-frame ${isDead ? 'avatar-frame-dead' : ''}" style="border-color:${borderColor}; box-shadow:${shadowGlow};">
-                    ${imgHtml}
-                </div>
-            `;
+            // 优化 DOM 节点复用：同角色同表情连续发言时，完全保留已有 DOM 树，杜绝销毁重绘导致的白屏与解码延迟
+            const speakerKey = `${speaker.id || speaker.name || 'char'}_${exp}`;
+            if (this.currentSpeakerKey !== speakerKey || !this.cornerAvatarElement.innerHTML) {
+                this.currentSpeakerKey = speakerKey;
+                this.cornerAvatarElement.innerHTML = `
+                    <div class="corner-avatar-frame ${isDead ? 'avatar-frame-dead' : ''}" style="border-color:${borderColor}; box-shadow:${shadowGlow};">
+                        <img src="${primaryUrl}"
+                             loading="eager"
+                             decoding="sync"
+                             data-candidates="${candidatesAttr}"
+                             data-index="0"
+                             data-fallback="${fallbackSvg}"
+                             alt="${speaker.name}"
+                             class="corner-portrait-img ${isDead ? 'dead-portrait-img' : ''}"
+                             onerror="window.handlePortraitError && window.handlePortraitError(this)">
+                    </div>
+                `;
+            }
         }
     }
 
@@ -6001,17 +6008,24 @@ class GameEngine {
             }
         };
 
-        // 逐一异步加载资源，超时保底避免死锁
-        assetTasks.forEach(task => {
+        // 采用受控并发池逐一异步加载资源，彻底移除900ms假冒完成，确保立绘真实加载解码完毕
+        let cursor = 0;
+        const CONCURRENCY = 4; // 移动端最优并发通道数，避免网络请求拥塞与套接字耗尽
+
+        const loadNext = () => {
+            if (cursor >= assetTasks.length) return;
+            const task = assetTasks[cursor++];
             let finished = false;
             const onDone = () => {
                 if (finished) return;
                 finished = true;
                 loadedCount++;
                 updateUI(task.name);
+                loadNext(); // 推进下一个资源
             };
 
-            const timer = setTimeout(onDone, 900);
+            // 真实网络保底超时（15秒，仅防极端断网死锁，杜绝提前假报完成）
+            const timer = setTimeout(onDone, 15000);
 
             if (task.type === "audio") {
                 if (typeof Sound !== "undefined" && Sound.preloadAudio) {
@@ -6020,9 +6034,14 @@ class GameEngine {
                 try {
                     const a = new Audio(encodeURI(task.url));
                     a.preload = "auto";
-                    a.addEventListener("canplaythrough", () => { clearTimeout(timer); onDone(); }, { once: true });
-                    a.addEventListener("loadeddata", () => { clearTimeout(timer); onDone(); }, { once: true });
-                    a.addEventListener("error", () => { clearTimeout(timer); onDone(); }, { once: true });
+                    const doneAudio = () => { clearTimeout(timer); onDone(); };
+                    if (typeof a.addEventListener === "function") {
+                        a.addEventListener("canplaythrough", doneAudio, { once: true });
+                        a.addEventListener("loadeddata", doneAudio, { once: true });
+                        a.addEventListener("error", doneAudio, { once: true });
+                    } else {
+                        doneAudio();
+                    }
                     if (a.load) a.load();
                 } catch (e) {
                     clearTimeout(timer);
@@ -6030,23 +6049,36 @@ class GameEngine {
                 }
             } else if (task.type === "image") {
                 if (typeof CharacterRegistry !== "undefined" && CharacterRegistry.preloadImage) {
-                    CharacterRegistry.preloadImage(task.url);
-                }
-                try {
-                    const img = new Image();
-                    img.src = encodeURI(task.url);
-                    if (typeof img.decode === "function") {
-                        img.decode().then(() => { clearTimeout(timer); onDone(); }).catch(() => { clearTimeout(timer); onDone(); });
-                    } else {
-                        img.onload = () => { clearTimeout(timer); onDone(); };
-                        img.onerror = () => { clearTimeout(timer); onDone(); };
+                    CharacterRegistry.preloadImage(task.url).then(() => {
+                        clearTimeout(timer);
+                        onDone();
+                    }).catch(() => {
+                        clearTimeout(timer);
+                        onDone();
+                    });
+                } else {
+                    try {
+                        const img = new Image();
+                        img.src = encodeURI(task.url);
+                        const doneImg = () => { clearTimeout(timer); onDone(); };
+                        if (typeof img.decode === "function") {
+                            img.decode().then(doneImg).catch(doneImg);
+                        } else {
+                            img.onload = doneImg;
+                            img.onerror = doneImg;
+                        }
+                    } catch (e) {
+                        clearTimeout(timer);
+                        onDone();
                     }
-                } catch (e) {
-                    clearTimeout(timer);
-                    onDone();
                 }
             }
-        });
+        };
+
+        const initialWorkers = Math.min(CONCURRENCY, assetTasks.length);
+        for (let i = 0; i < initialWorkers; i++) {
+            loadNext();
+        }
     }
 
     onInitialLoadingComplete() {

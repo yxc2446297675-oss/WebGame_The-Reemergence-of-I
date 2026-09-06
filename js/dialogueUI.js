@@ -188,14 +188,14 @@ export class DialogueUI {
 
     isBroadcastOrSystem(speaker) {
         if (!speaker) return true;
-        if (speaker.isProtagonist || speaker.isBroadcast || speaker.isSystem) return true;
-        if (speaker.id === "lph" || speaker.id === "system" || speaker.id === "broadcast") return true;
+        if (speaker.isBroadcast || speaker.isSystem) return true;
+        if (speaker.id === "system" || speaker.id === "broadcast") return true;
         const name = speaker.name || "";
         return /广播|系统|终端|通信|审决|全员/i.test(name);
     }
 
     renderPortrait(speaker, expression = "clam") {
-        // 主角说话时不展示立绘；系统广播、警报广播、终端通知等一律严禁展示立绘
+        // 系统广播、警报广播、终端通知等一律严禁展示立绘
         if (this.isBroadcastOrSystem(speaker)) {
             if (this.cornerAvatarElement) {
                 this.cornerAvatarElement.classList.add("portrait-hidden");
@@ -210,7 +210,7 @@ export class DialogueUI {
             return;
         }
 
-        // NPC 说话时：立绘展示在对话框左上角！用户明确要求：不要标注“生气/平静”等字样
+        // 角色/NPC 说话时：立绘展示在对话框左上角！用户明确要求：不要标注“生气/平静”等字样
         if (this.cornerAvatarElement) {
             this.cornerAvatarElement.classList.remove("portrait-hidden");
             if (this.boxElement) {
@@ -241,22 +241,24 @@ export class DialogueUI {
             const primaryUrl = candidates[0] || fallbackSvg;
             const candidatesAttr = JSON.stringify(candidates).replace(/"/g, '&quot;');
 
-            const imgHtml = `
-                <img src="${primaryUrl}"
-                     data-candidates="${candidatesAttr}"
-                     data-index="0"
-                     data-fallback="${fallbackSvg}"
-                     alt="${speaker.name}"
-                     class="corner-portrait-img ${isDead ? 'dead-portrait-img' : ''}"
-                     onerror="window.handlePortraitError && window.handlePortraitError(this)">
-            `;
-
-            // 用户要求：立绘位于左上角，无需任何“生气/平静”标签文字
-            this.cornerAvatarElement.innerHTML = `
-                <div class="corner-avatar-frame ${isDead ? 'avatar-frame-dead' : ''}" style="border-color:${borderColor}; box-shadow:${shadowGlow};">
-                    ${imgHtml}
-                </div>
-            `;
+            // 优化 DOM 节点复用：同角色同表情连续发言时，完全保留已有 DOM 树，杜绝销毁重绘导致的白屏与解码延迟
+            const speakerKey = `${speaker.id || speaker.name || 'char'}_${exp}`;
+            if (this.currentSpeakerKey !== speakerKey || !this.cornerAvatarElement.innerHTML) {
+                this.currentSpeakerKey = speakerKey;
+                this.cornerAvatarElement.innerHTML = `
+                    <div class="corner-avatar-frame ${isDead ? 'avatar-frame-dead' : ''}" style="border-color:${borderColor}; box-shadow:${shadowGlow};">
+                        <img src="${primaryUrl}"
+                             loading="eager"
+                             decoding="sync"
+                             data-candidates="${candidatesAttr}"
+                             data-index="0"
+                             data-fallback="${fallbackSvg}"
+                             alt="${speaker.name}"
+                             class="corner-portrait-img ${isDead ? 'dead-portrait-img' : ''}"
+                             onerror="window.handlePortraitError && window.handlePortraitError(this)">
+                    </div>
+                `;
+            }
         }
     }
 

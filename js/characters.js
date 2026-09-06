@@ -516,20 +516,22 @@ export const CharacterRegistry = {
      */
     getAvatarSvg(character, expression = "clam") {
         if (!character) return "";
-        if (character.isProtagonist || character.isBroadcast || character.isSystem ||
-            character.id === "lph" || character.id === "system" || character.id === "broadcast" ||
+        // 广播播报人、系统通知、终端等严禁展示任何立绘
+        if (character.isBroadcast || character.isSystem ||
+            character.id === "system" || character.id === "broadcast" ||
             /广播|系统|终端|通信|审决|全员/i.test(character.name || "")) {
             return "";
         }
         const color = character.themeColor || "#38bdf8";
         const nameInitial = character.name ? character.name.charAt(0) : "L";
         const isFemale = character.gender === "女";
+        const isCap = character.isProtagonist || character.id === "lph";
         const exp = this.normalizeExpression(expression);
         
-        const headRadius = isFemale ? 44 : 48;
+        const headRadius = isFemale ? 44 : (isCap ? 46 : 48);
         const shoulderWidth = isFemale ? 34 : 42;
 
-        // 表情特征小标
+        // 表情特征小标 (主角展示指挥官星徽，NPC展示状态标识)
         const emojiMap = {
             clam: "•_•",
             calm: "•_•",
@@ -543,20 +545,7 @@ export const CharacterRegistry = {
             shock: "❗",
             dead: "💀"
         };
-        const badge = emojiMap[exp] || "•_•";
-
-        const expCnMap = {
-            clam: "平静",
-            calm: "平静",
-            normal: "正常",
-            happy: "开心",
-            sad: "悲伤",
-            angry: "生气",
-            doubt: "疑惑",
-            shock: "震惊",
-            dead: "已遇害"
-        };
-        const expLabel = expCnMap[exp] || exp;
+        const badge = isCap ? "⭐" : (emojiMap[exp] || "•_•");
 
         const svg = `
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
@@ -581,13 +570,13 @@ export const CharacterRegistry = {
             <text x="100" y="93" font-family="'Orbitron', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="34" font-weight="bold" fill="#ffffff" text-anchor="middle" filter="drop-shadow(0px 2px 5px rgba(0,0,0,0.9))">
                 ${nameInitial}
             </text>
-            <!-- 表情徽章气泡 -->
+            <!-- 徽章气泡 -->
             <circle cx="152" cy="48" r="18" fill="#0b1120" stroke="${color}" stroke-width="1.5"/>
             <text x="152" y="54" font-size="14" text-anchor="middle">${badge}</text>
-            <!-- 底部姓名牌 -->
+            <!-- 底部姓名牌 (严禁标注任何“平静/生气”等情绪文字，仅保留角色名) -->
             <rect x="25" y="165" width="150" height="22" rx="4" fill="#000000" opacity="0.75" stroke="${color}" stroke-width="1"/>
             <text x="100" y="180" font-family="'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="12" font-weight="bold" fill="${color}" text-anchor="middle" letter-spacing="1.5">
-                ${character.name} · ${expLabel}
+                ${character.name}
             </text>
         </svg>
         `;
@@ -606,32 +595,48 @@ export const CharacterRegistry = {
 
     // 资源极低成本静默预加载系统 (零主线程消耗、即点即现)
     preloadedImages: new Set(),
+    imageCache: (typeof Map !== "undefined") ? new Map() : null,
 
     preloadImage(url) {
-        if (!url || typeof Image === "undefined" || this.preloadedImages.has(url)) return;
-        this.preloadedImages.add(url);
-        try {
-            const img = new Image();
-            img.src = encodeURI(url);
-            // 现代浏览器支持异步离线解码，彻底避免首次渲染的主线程掉帧卡顿
-            if (typeof img.decode === "function") {
-                img.decode().catch(() => {});
-            }
-        } catch (e) {
-            // ignore
+        if (!url || typeof Image === "undefined") return Promise.resolve(null);
+        if (this.imageCache && this.imageCache.has(url)) {
+            return Promise.resolve(this.imageCache.get(url));
         }
+        if (this.preloadedImages.has(url)) return Promise.resolve(null);
+        this.preloadedImages.add(url);
+
+        return new Promise((resolve) => {
+            try {
+                const img = new Image();
+                img.src = encodeURI(url);
+                if (this.imageCache) {
+                    this.imageCache.set(url, img);
+                }
+                // 现代浏览器支持异步离线解码，彻底避免首次渲染的主线程掉帧卡顿
+                if (typeof img.decode === "function") {
+                    img.decode().then(() => resolve(img)).catch(() => resolve(img));
+                } else {
+                    img.onload = () => resolve(img);
+                    img.onerror = () => resolve(img);
+                }
+            } catch (e) {
+                resolve(null);
+            }
+        });
     },
 
     preloadCharacter(character) {
-        if (!character) return;
-        if (character.avatarUrl) this.preloadImage(character.avatarUrl);
+        if (!character) return Promise.resolve();
+        const promises = [];
+        if (character.avatarUrl) promises.push(this.preloadImage(character.avatarUrl));
         if (character.expressions) {
             Object.values(character.expressions).forEach(url => {
                 if (url && typeof url === "string") {
-                    this.preloadImage(url);
+                    promises.push(this.preloadImage(url));
                 }
             });
         }
+        return Promise.all(promises);
     },
 
     preloadForLevel(levelConfig) {
