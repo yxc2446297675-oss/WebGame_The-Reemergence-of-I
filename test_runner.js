@@ -88,6 +88,7 @@ function createMockElement(id, tag = 'div') {
                 moveTo() {}, lineTo() {}, stroke() {}, fill() {}, rect() {},
                 arc() {}, closePath() {}, save() {}, restore() {},
                 setLineDash() {}, clearRect() {},
+                translate() {}, scale() {}, rotate() {}, roundRect() {},
                 createLinearGradient() { return { addColorStop() {} }; },
                 createRadialGradient() { return { addColorStop() {} }; },
                 measureText() { return { width: 50 }; }
@@ -1388,5 +1389,38 @@ if (app.phase === "gameover") {
 }
 console.log("   【已验证】莫德专属被动【防爆坚守】成功挺身拦截伪人暗算，主角保全性命！");
 
-console.log('\n====== [TEST PASSED] 全部 26 项核心流程、雷达悬浮窗与人物记忆图鉴测试全部成功！ ======');
+console.log("\n27. 验证随机伪人数量生成机制 (范围 [1, 3] 验证 1/2/3 均有几率生成；范围 [1, 2] 验证 1/2 均有几率生成)...");
+const testLevel3Pool = {
+    candidateNPCs: [{ id: "kaze" }, { id: "shaokexin" }, { id: "mode" }],
+    wolfCountRange: [1, 3]
+};
+const stats13 = { 1: 0, 2: 0, 3: 0 };
+for (let i = 0; i < 300; i++) {
+    app.initCharactersForLevel(testLevel3Pool);
+    const wolfCount = Array.from(app.allNpcMap.values()).filter(n => n.role === "wolf").length;
+    stats13[wolfCount] = (stats13[wolfCount] || 0) + 1;
+}
+console.log(`   【300次采样检定】范围 [1, 3] 生成分布: 1名伪人=${stats13[1]}次, 2名伪人=${stats13[2]}次, 3名伪人=${stats13[3]}次`);
+if (stats13[1] < 20 || stats13[2] < 20 || stats13[3] < 20) {
+    throw new Error("伪人范围 [1, 3] 分布不均衡或缺失某个数量项！统计: " + JSON.stringify(stats13));
+}
+console.log("   【已验证】设置 [1, 3] 时，1个、2个、3个伪人均有均衡几率随机生成！");
+
+const testLevel2Pool = {
+    candidateNPCs: [{ id: "kaze" }, { id: "shaokexin" }, { id: "mode" }],
+    wolfCountRange: [1, 2]
+};
+const stats12 = { 1: 0, 2: 0, 3: 0 };
+for (let i = 0; i < 200; i++) {
+    app.initCharactersForLevel(testLevel2Pool);
+    const wolfCount = Array.from(app.allNpcMap.values()).filter(n => n.role === "wolf").length;
+    stats12[wolfCount] = (stats12[wolfCount] || 0) + 1;
+}
+console.log(`   【200次采样检定】范围 [1, 2] 生成分布: 1名伪人=${stats12[1]}次, 2名伪人=${stats12[2]}次, 3名伪人=${stats12[3] || 0}次`);
+if (stats12[1] < 20 || stats12[2] < 20 || (stats12[3] && stats12[3] > 0)) {
+    throw new Error("伪人范围 [1, 2] 分布异常！统计: " + JSON.stringify(stats12));
+}
+console.log("   【已验证】设置 [1, 2] 时，1个、2个伪人均有几率生成，绝不固定只有2个伪人！测试通过！");
+
+console.log('\n====== [TEST PASSED] 全部 27 项核心流程、雷达悬浮窗、母舰蓝图与伪人随机生成测试全部成功！ ======');
 

@@ -227,11 +227,28 @@ export class GameEngine {
             }
         });
 
+        // 全屏沉浸式切换
+        const btnToggleFullscreen = document.getElementById("btn-toggle-map-fullscreen");
+        const mapModalBox = document.querySelector(".map-modal-box");
+        btnToggleFullscreen?.addEventListener("click", () => {
+            if (mapModalBox) {
+                mapModalBox.classList.toggle("map-fullscreen");
+                btnToggleFullscreen.textContent = mapModalBox.classList.contains("map-fullscreen") ? "🗗 窗口模式" : "⛶ 全屏模式";
+                setTimeout(() => this.renderLiveMap(), 50);
+            }
+        });
+
+        // 浮动缩放与居中控制条
+        document.getElementById("btn-map-zoom-in")?.addEventListener("click", () => this.mapRenderer?.zoomIn());
+        document.getElementById("btn-map-zoom-out")?.addEventListener("click", () => this.mapRenderer?.zoomOut());
+        document.getElementById("btn-map-center")?.addEventListener("click", () => this.mapRenderer?.resetView());
+
         // 实时地图 Canvas 点击与悬浮快速往返交互
         const liveCanvas = document.getElementById("live-map-canvas");
         liveCanvas?.addEventListener("click", (e) => {
-            // 若当前正在移动动画中，由动画的 skipHandler 负责消费点击
+            // 若当前正在移动动画中或拖拽地图平移后抬手，不触发快速往返
             if (this.isMovingAnimation) return;
+            if (this.mapRenderer && this.mapRenderer.isDragging) return;
 
             const rect = liveCanvas.getBoundingClientRect ? liveCanvas.getBoundingClientRect() : { left: 0, top: 0, width: 680, height: 460 };
             const scaleX = (liveCanvas.width || 680) / (rect.width || 680 || 1);
@@ -646,29 +663,44 @@ export class GameEngine {
         this.allNpcMap.clear();
         this.teamMembers = [this.protagonist];
 
-        // 准备候选NPC
-        const pool = [...levelConfig.candidateNPCs];
+        // 准备候选NPC：深拷贝候选对象，防止状态污染
+        const rawCandidates = levelConfig.candidateNPCs || [];
+        const pool = rawCandidates.map(c => ({
+            id: c.id,
+            assignedRole: c.assignedRole !== undefined ? c.assignedRole : null
+        }));
 
         // 计算本局潜伏伪人的实际数量 (支持随机范围 [min, max] 或固定数值)
         let actualWolfCount = 1;
-        if (Array.isArray(levelConfig.wolfCountRange)) {
-            const min = Math.max(0, levelConfig.wolfCountRange[0] || 0);
-            const max = Math.max(min, levelConfig.wolfCountRange[1] !== undefined ? levelConfig.wolfCountRange[1] : min);
+        let min = 1, max = 1;
+        if (Array.isArray(levelConfig.wolfCountRange) && levelConfig.wolfCountRange.length >= 2) {
+            min = Math.max(0, parseInt(levelConfig.wolfCountRange[0], 10) || 0);
+            max = Math.max(min, parseInt(levelConfig.wolfCountRange[1], 10) || min);
             actualWolfCount = Math.floor(Math.random() * (max - min + 1)) + min;
-        } else if (Array.isArray(levelConfig.wolfCount)) {
-            const min = Math.max(0, levelConfig.wolfCount[0] || 0);
-            const max = Math.max(min, levelConfig.wolfCount[1] !== undefined ? levelConfig.wolfCount[1] : min);
+        } else if (Array.isArray(levelConfig.wolfCount) && levelConfig.wolfCount.length >= 2) {
+            min = Math.max(0, parseInt(levelConfig.wolfCount[0], 10) || 0);
+            max = Math.max(min, parseInt(levelConfig.wolfCount[1], 10) || min);
             actualWolfCount = Math.floor(Math.random() * (max - min + 1)) + min;
         } else if (typeof levelConfig.wolfCount === 'number') {
-            actualWolfCount = levelConfig.wolfCount;
+            min = max = Math.max(0, parseInt(levelConfig.wolfCount, 10));
+            actualWolfCount = min;
+        } else if (typeof levelConfig.wolfCountRange === 'number') {
+            min = max = Math.max(0, parseInt(levelConfig.wolfCountRange, 10));
+            actualWolfCount = min;
         }
 
-        // 边界保护：不超过候选NPC池的总人数
+        // 边界保护：伪人数量不能超过候选NPC池总人数
+        actualWolfCount = Math.max(min, Math.min(max, actualWolfCount));
         actualWolfCount = Math.min(pool.length, actualWolfCount);
-        console.log(`[关卡生成] 候选总数: ${pool.length}, 本局暗中生成的伪人数量: ${actualWolfCount}`);
+        console.log(`[关卡生成] 候选总数: ${pool.length}, 伪人范围: [${min}, ${max}], 本局暗中生成的伪人数量: ${actualWolfCount}`);
 
-        // 随机挑选指定数量作为伪人
-        const shuffled = [...pool].sort(() => 0.5 - Math.random());
+        // 随机挑选指定数量作为伪人 (采用经典 Fisher-Yates 洗牌算法，杜绝非均匀偏差)
+        const shuffled = [...pool];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+
         shuffled.forEach((cand, idx) => {
             const rawChar = CharacterRegistry.npcs[cand.id];
             if (!rawChar) return;

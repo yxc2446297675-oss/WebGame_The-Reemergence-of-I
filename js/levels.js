@@ -30,7 +30,7 @@ export const BaseLevels = [
 
         // 伪人数量配置：支持设置为【随机范围 [min, max]】或【固定数值】
         // 例如设置 [1, 3]：开局将在 1~3 名伪人之间随机生成，充满推理未知性！
-        wolfCountRange: [1, 3],
+        wolfCountRange: [1, 2],
         candidateNPCs: [
             { id: "kaze", assignedRole: null },       // NPC1: 卡泽 (男，蓝框)
             { id: "shaokexin", assignedRole: null },  // NPC2: 邵可欣 (女，粉框)
