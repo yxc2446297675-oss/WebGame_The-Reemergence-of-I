@@ -10,6 +10,7 @@ class SoundEngine {
         this.isMuted = false;
         this.initialized = false;
         this.audioCache = new Map();
+        this.audioBuffers = new Map();
     }
 
     init() {
@@ -190,16 +191,46 @@ class SoundEngine {
         });
     }
 
-    // 异步预加载音频文件到缓存池
+    // 异步预加载音频文件到缓存池 (同时支持 HTML5 Audio 实例预热与 Web Audio API 内存直接解码)
     preloadAudio(primaryUrl) {
-        if (typeof Audio === "undefined" || !primaryUrl || this.audioCache.has(primaryUrl)) return;
-        try {
-            const safeUrl = encodeURI(primaryUrl);
-            const audio = new Audio(safeUrl);
-            audio.preload = "auto";
-            this.audioCache.set(primaryUrl, audio);
-        } catch (e) {
-            // ignore
+        if (!primaryUrl) return;
+
+        // 1. HTML5 Audio 实例预热与 load() 调用 (确保移动端浏览器立刻发起音频数据缓冲)
+        if (typeof Audio !== "undefined" && !this.audioCache.has(primaryUrl)) {
+            try {
+                const safeUrl = encodeURI(primaryUrl);
+                const audio = new Audio(safeUrl);
+                audio.preload = "auto";
+                if (typeof audio.load === "function") {
+                    audio.load();
+                }
+                this.audioCache.set(primaryUrl, audio);
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        // 2. 若 Web Audio 上下文可用，异步抓取二进制并解码至物理内存 AudioBuffer (极速 0ms 硬件发声)
+        if (this.ctx && typeof fetch === "function" && !this.audioBuffers.has(primaryUrl)) {
+            try {
+                const safeUrl = encodeURI(primaryUrl);
+                fetch(safeUrl)
+                    .then(res => (res.ok ? res.arrayBuffer() : null))
+                    .then(arrayBuffer => {
+                        if (arrayBuffer && this.ctx && typeof this.ctx.decodeAudioData === "function") {
+                            return this.ctx.decodeAudioData(arrayBuffer);
+                        }
+                        return null;
+                    })
+                    .then(decodedBuffer => {
+                        if (decodedBuffer) {
+                            this.audioBuffers.set(primaryUrl, decodedBuffer);
+                        }
+                    })
+                    .catch(() => {});
+            } catch (e) {
+                // ignore
+            }
         }
     }
 
@@ -212,10 +243,33 @@ class SoundEngine {
         }
     }
 
-    // 通用外部音频文件播放器（支持中文路径编码、实例池复用与 Web Audio 合成兜底）
+    // 通用外部音频文件播放器（优先使用 0 延迟 Web Audio 解码缓存，降级使用 HTML5 Audio 实例池与程序合成）
     playAudioFile(primaryUrl, volume, fallbackFn, label = "音频") {
         if (this.isMuted) return;
 
+        // 1. 优先使用已解码的 Web Audio 内存缓冲区播放 (移动端 0 延迟、0 并发限制、绝不卡顿)
+        if (this.ctx && this.audioBuffers && this.audioBuffers.has(primaryUrl)) {
+            try {
+                if (this.ctx.state === "suspended") {
+                    this.ctx.resume();
+                }
+                const buffer = this.audioBuffers.get(primaryUrl);
+                if (buffer) {
+                    const source = this.ctx.createBufferSource();
+                    const gain = this.ctx.createGain();
+                    gain.gain.setValueAtTime(Math.max(0, Math.min(1, volume)), this.ctx.currentTime);
+                    source.buffer = buffer;
+                    source.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    source.start(0);
+                    return;
+                }
+            } catch (e) {
+                // 降级使用 HTML5 Audio
+            }
+        }
+
+        // 2. 降级使用 HTML5 Audio 缓存播放
         if (typeof Audio !== "undefined" && primaryUrl) {
             try {
                 let audio = this.audioCache.get(primaryUrl);
@@ -229,6 +283,7 @@ class SoundEngine {
                 } else {
                     const safeUrl = encodeURI(primaryUrl);
                     audio = new Audio(safeUrl);
+                    if (typeof audio.load === "function") audio.load();
                     this.audioCache.set(primaryUrl, audio);
                 }
 
@@ -424,16 +479,27 @@ class SoundEngine {
 
 export const Sound = new SoundEngine();
 
-// 移动端/iOS Safari 首次手势（触摸/点击/轻扫）全局静默激活音频上下文
+// 移动端/iOS Safari 首次手势（触摸/点击/轻扫）全局静默激活音频上下文并预热音频
 if (typeof window !== "undefined") {
     const autoUnlock = () => {
         Sound.unlock();
+        if (typeof Sound.preloadDefaults === "function") {
+            Sound.preloadDefaults();
+        }
         ["touchstart", "touchend", "pointerdown", "click", "keydown"].forEach(evt => {
             window.removeEventListener(evt, autoUnlock, true);
         });
     };
     ["touchstart", "touchend", "pointerdown", "click", "keydown"].forEach(evt => {
         window.addEventListener(evt, autoUnlock, { capture: true, passive: true, once: true });
+    });
+
+    // 浏览器空闲期自动预热核心音效
+    const idlePreload = window.requestIdleCallback || ((cb) => setTimeout(cb, 400));
+    idlePreload(() => {
+        if (typeof Sound.preloadDefaults === "function") {
+            Sound.preloadDefaults();
+        }
     });
 }
 

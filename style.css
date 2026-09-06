@@ -872,9 +872,11 @@ html, body {
    4. 底部全宽视觉小说对话框 (Visual Novel Box)
    ========================================================================== */
 .vn-dialogue-wrapper {
-    position: relative; /* 作为主游戏弹性盒底部的自然抽屉，有对话时弹出，无对话时完全隐藏不占用空间 */
-    width: 100%;
-    flex-shrink: 0;
+    position: absolute; /* 绝对悬浮于舞台底部，彻底杜绝出现/隐藏改变主舞台尺寸与地图缩放比例 */
+    bottom: 0;
+    left: 320px;
+    right: 0;
+    width: auto;
     min-height: 120px;
     max-height: 155px;
     background: rgba(8, 13, 27, 0.96);
@@ -884,7 +886,7 @@ html, body {
     padding: 18px 32px 14px 32px;
     cursor: pointer;
     z-index: 60;
-    transition: all 0.25s ease;
+    transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .vn-dialogue-wrapper.vn-hidden {
@@ -1714,17 +1716,19 @@ html, body {
         font-size: 0.88rem;
     }
 
-    /* 底部视觉小说对话框自适应 */
+    /* 底部视觉小说对话框自适应：移动端底铺绝对悬浮，绝不挤压主视口与地图 */
     .vn-dialogue-wrapper {
-        position: relative !important;
+        position: absolute !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
         width: 100% !important;
-        flex-shrink: 0 !important;
         min-height: 95px !important;
         max-height: 125px !important;
         height: auto !important;
         padding: 14px 14px 8px 14px !important;
         background: linear-gradient(180deg, rgba(8, 14, 28, 0.94) 0%, rgba(3, 7, 18, 0.99) 100%) !important;
-        z-index: 40 !important;
+        z-index: 60 !important;
     }
     .vn-name-badge {
         top: -12px !important;
@@ -3180,16 +3184,18 @@ body.force-landscape .orientation-hint-overlay,
         display: block !important;
     }
 
-    /* 对话框紧凑横屏 */
+    /* 对话框紧凑横屏：绝对悬浮底铺，不挤压地图视口 */
     .vn-dialogue-wrapper {
-        position: relative !important;
+        position: absolute !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
         width: 100% !important;
-        flex-shrink: 0 !important;
         min-height: 64px !important;
         max-height: 80px !important;
         height: auto !important;
         padding: 6px 12px 3px 12px !important;
-        z-index: 30 !important;
+        z-index: 60 !important;
     }
     .vn-name-badge {
         top: -11px !important;

@@ -592,8 +592,79 @@ export const CharacterRegistry = {
         </svg>
         `;
         return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+    },
+
+    get(id) {
+        if (!id || !this.npcs) return null;
+        return this.npcs[id] || null;
+    },
+
+    getAll() {
+        if (!this.npcs) return [];
+        return Object.values(this.npcs);
+    },
+
+    // 资源极低成本静默预加载系统 (零主线程消耗、即点即现)
+    preloadedImages: new Set(),
+
+    preloadImage(url) {
+        if (!url || typeof Image === "undefined" || this.preloadedImages.has(url)) return;
+        this.preloadedImages.add(url);
+        try {
+            const img = new Image();
+            img.src = encodeURI(url);
+            // 现代浏览器支持异步离线解码，彻底避免首次渲染的主线程掉帧卡顿
+            if (typeof img.decode === "function") {
+                img.decode().catch(() => {});
+            }
+        } catch (e) {
+            // ignore
+        }
+    },
+
+    preloadCharacter(character) {
+        if (!character) return;
+        if (character.avatarUrl) this.preloadImage(character.avatarUrl);
+        if (character.expressions) {
+            Object.values(character.expressions).forEach(url => {
+                if (url && typeof url === "string") {
+                    this.preloadImage(url);
+                }
+            });
+        }
+    },
+
+    preloadForLevel(levelConfig) {
+        // 1. 预加载关卡手绘地图
+        this.preloadImage("assets/level1_sketch.jpg");
+
+        // 2. 预加载本关卡候选NPC全套表情
+        const candidates = (levelConfig && levelConfig.candidateNPCs) || [];
+        if (candidates.length > 0) {
+            candidates.forEach(c => {
+                const char = this.get(c.id);
+                if (char) this.preloadCharacter(char);
+            });
+        } else {
+            this.getAll().forEach(char => this.preloadCharacter(char));
+        }
+    },
+
+    preloadAll() {
+        this.preloadImage("assets/level1_sketch.jpg");
+        this.getAll().forEach(char => this.preloadCharacter(char));
     }
 };
 
 // 保持 morde 与 mode 双重映射兼容性
 CharacterRegistry.npcs.morde = CharacterRegistry.npcs.mode;
+
+// 浏览器空闲期静默预热全部角色立绘资源
+if (typeof window !== "undefined") {
+    const idlePreload = window.requestIdleCallback || ((cb) => setTimeout(cb, 600));
+    idlePreload(() => {
+        if (typeof CharacterRegistry.preloadAll === "function") {
+            CharacterRegistry.preloadAll();
+        }
+    });
+}

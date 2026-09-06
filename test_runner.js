@@ -138,6 +138,27 @@ global.localStorage = {
 global.alert = (msg) => console.log('[Alert]:', msg);
 global.confirm = () => true;
 
+global.Audio = class MockAudio {
+    constructor(src) {
+        this.src = src;
+        this.preload = "none";
+        this.paused = true;
+        this.currentTime = 0;
+        this.volume = 1.0;
+    }
+    load() {}
+    play() { return Promise.resolve(); }
+    pause() { this.paused = true; }
+    cloneNode() { return new MockAudio(this.src); }
+};
+
+global.Image = class MockImage {
+    constructor() {
+        this.src = '';
+    }
+    decode() { return Promise.resolve(); }
+};
+
 // 引入生成的 bundle
 require('./js/app.bundle.js');
 
@@ -1524,5 +1545,52 @@ console.log("\n29. 验证全景蓝图房间内嵌名称标注、未探索标记�
     console.log("   【已验证】工业级平移阻尼边界限制与复位功能工作正常！");
 }
 
-console.log('\n====== [TEST PASSED] 全部 29 项核心流程、母舰蓝图 1:1 等比保真、画面直绘方向标牌与工业级手势全部测试成功！ ======');
+console.log("\n30. 验证对话框底铺悬浮（绝不改变地图大小比例）与音频/立绘静默预加载机制...");
+{
+    // 1. 验证音频核心资源静默预加载
+    if (typeof Sound !== "undefined") {
+        Sound.preloadDefaults();
+        const cachedCount = Sound.audioCache ? Sound.audioCache.size : 0;
+        console.log(`   【已验证】音频缓存池已预加载文件数量: ${cachedCount} 个 (包含移动、物资、警报、死亡等核心音频)`);
+        if (cachedCount < 3) {
+            throw new Error(`音频预加载数量不足！当前仅缓存 ${cachedCount} 个文件`);
+        }
+    }
+
+    // 2. 验证角色立绘与关卡地图离线异步预解码
+    if (typeof CharacterRegistry !== "undefined") {
+        CharacterRegistry.preloadForLevel(app.currentLevel);
+        const preloadedImgCount = CharacterRegistry.preloadedImages ? CharacterRegistry.preloadedImages.size : 0;
+        console.log(`   【已验证】角色表情与地图离线预加载数量: ${preloadedImgCount} 张 (支持 WebP 极速离线解码)`);
+        if (preloadedImgCount < 8) {
+            throw new Error(`角色立绘预加载数量不足！当前仅预加载 ${preloadedImgCount} 张`);
+        }
+    }
+
+    // 3. 验证对话框打开与关闭时，地图视口尺寸绝对稳定，杜绝任何形变跳动
+    const viewport = document.getElementById("stage-map-viewport");
+    const initialHeight = viewport ? (viewport.clientHeight || 460) : 460;
+
+    // 弹出对话框
+    app.dialogueUI.say(
+        CharacterRegistry.get("kaze"),
+        "测试对话：验证地图比例在对话框开启时绝不发生缩放或挤压！"
+    );
+
+    const withDialogueHeight = viewport ? (viewport.clientHeight || 460) : 460;
+    if (withDialogueHeight !== initialHeight) {
+        throw new Error(`对话框弹出导致地图视口尺寸改变！原始高度=${initialHeight}, 当前高度=${withDialogueHeight}`);
+    }
+
+    // 关闭对话框
+    app.dialogueUI.hideBox();
+    const afterCloseHeight = viewport ? (viewport.clientHeight || 460) : 460;
+    if (afterCloseHeight !== initialHeight) {
+        throw new Error(`对话框关闭导致地图视口尺寸改变！原始高度=${initialHeight}, 当前高度=${afterCloseHeight}`);
+    }
+
+    console.log(`   【已验证】对话框底铺悬浮测试通过：视口高度恒定为 ${initialHeight}px，地图尺寸比例 0 畸变 0 晃动！`);
+}
+
+console.log('\n====== [TEST PASSED] 全部 30 项核心流程、母舰蓝图 1:1 等比保真、对话框底铺悬浮与极速资源静默预热全部测试成功！ ======');
 

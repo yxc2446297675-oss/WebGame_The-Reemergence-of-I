@@ -706,9 +706,12 @@ export class GameEngine {
         // 初始化地图
         this.explorationEngine.initLevelMap(levelConfig.map);
 
-        // 异步预加载游戏核心音效资源，保证后续走图与触发事件零卡顿零延迟
+        // 异步预加载游戏核心音效与角色表情立绘资源，保证后续走图、触发事件与NPC交互零卡顿零延迟
         if (typeof Sound !== "undefined" && Sound.preloadDefaults) {
             Sound.preloadDefaults();
+        }
+        if (typeof CharacterRegistry !== "undefined" && CharacterRegistry.preloadForLevel) {
+            CharacterRegistry.preloadForLevel(levelConfig);
         }
 
         // 进入 q1: 黑屏白字
