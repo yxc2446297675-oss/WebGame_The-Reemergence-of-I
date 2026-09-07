@@ -1391,7 +1391,7 @@ export class GameEngine {
         const isWolf = (npc.role === "wolf");
         this.logAction(`【执行禁锢】将同伴 [${npc.name}] 锁入隔离舱禁闭，限制其夜间行动。`);
 
-        // 触发受难历练检定 (如卡泽/莫德被禁锢)
+        // 触发受难历练检定 (如卡罗/莫德被禁锢)
         this.checkPersonaSecretUnlocks("suffer_fate", { charId: npc.id, type: "confined" });
 
         this.dialogueUI.playSequence([
@@ -1416,7 +1416,7 @@ export class GameEngine {
 
         this.logAction(`【执行放逐】将同伴 [${npc.name}] 驱逐出队伍！队伍存活人数变更: ${this.getAliveTeamMembers().length} 人`);
 
-        // 触发放逐伪人历练检定 (卡泽在队且放逐伪人)
+        // 触发放逐伪人历练检定 (卡罗在队且放逐伪人)
         this.checkPersonaSecretUnlocks("exile_wolf_with", { isExiledWolf: npc.role === "wolf", charId: npc.id });
 
         this.dialogueUI.playSequence([
@@ -1760,8 +1760,8 @@ export class GameEngine {
             } else if (this.witchSaved) {
                 survivedReason = "witch_saved"; // 女巫救助
             } else if (this.nightTargetVictimId === "kaze" && this.saveSystem.isCharacterPassiveUnlocked("kaze") && Math.random() < 0.35) {
-                survivedReason = "kaze_counter"; // 卡泽【战术反制】成功化解！
-                this.logAction("【战术反制】卡泽敏锐识破了伪装体的暗夜突袭，凭借特战直觉破门格挡反制，化险为夷！");
+                survivedReason = "kaze_counter"; // 卡罗【战术反制】成功化解！
+                this.logAction("【战术反制】卡罗敏锐识破了伪装体的暗夜突袭，凭借特战直觉破门格挡反制，化险为夷！");
             } else if (this.nightTargetVictimId === this.protagonist.id && this.getAliveNpcTeamMembers().some(m => m.id === "mode") && this.saveSystem.isCharacterPassiveUnlocked("mode")) {
                 survivedReason = "mode_shield"; // 莫德【防爆坚守】挺身格挡！
                 this.logAction("【防爆坚守】潜伏伪装体企图暗算队长！莫德以重装防爆盾死死扼守住舱门，替队长挡下了致命抹杀！");
@@ -1920,7 +1920,7 @@ export class GameEngine {
         const unlockResult = UnlockEvaluator.evaluate(this.currentLevel?.unlockRules || [], evalContext);
         const newlyUnlocked = this.saveSystem.unlockLevels(unlockResult.unlockedLevelIds);
 
-        // 检定同伴撤离深度档案解构 (带领卡泽/邵可欣/莫德撤离)
+        // 检定同伴撤离深度档案解构 (带领卡罗/邵可欣/莫德撤离)
         this.checkPersonaSecretUnlocks("evacuate_with", { evacuatedNpcIds });
 
         let msg = "";
@@ -2166,7 +2166,7 @@ export class GameEngine {
             if (isAlreadyUnlocked || isNpcInTeam) {
                 if (!isAlreadyUnlocked) {
                     this.unlockedNpcRooms.add(roomDef.id);
-                    const ownerNames = { lph: "指挥官", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+                    const ownerNames = { lph: "指挥官", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
                     const ownerName = ownerNames[roomDef.npcOwnerId] || (this.allNpcMap.get(roomDef.npcOwnerId)?.name || roomDef.npcOwnerId);
                     this.logAction(`【舱室解锁】[${roomDef.name}] 经过乘员 [${ownerName}] 信标授权，气闸锁已开启！`);
                     this.showStageToast(`🔓 [${roomDef.name}] 气密锁已授权解除！`);
@@ -2512,9 +2512,9 @@ export class GameEngine {
         const notesElem = document.querySelector(".map-notes");
         if (notesElem && this.currentLevel) {
             if (this.currentLevel.levelId === 2) {
-                notesElem.innerHTML = `<span>起点：深潜次级减压闸</span> ｜ <span>终点：超弦共振核心</span> ｜ <span>深层散落：莫德、邵可欣、卡泽</span>`;
+                notesElem.innerHTML = `<span>起点：深潜次级减压闸</span> ｜ <span>终点：超弦共振核心</span> ｜ <span>深层散落：莫德、邵可欣、卡罗</span>`;
             } else {
-                notesElem.innerHTML = `<span>起点：下层中央大厅</span> ｜ <span>终点：北侧脱离大门</span> ｜ <span>沿途：卡泽(NPC1)、邵可欣(NPC2)、莫德(NPC3)</span>`;
+                notesElem.innerHTML = `<span>起点：下层中央大厅</span> ｜ <span>终点：北侧脱离大门</span> ｜ <span>沿途：卡罗(NPC1)、邵可欣(NPC2)、莫德(NPC3)</span>`;
             }
         }
         const tabSketch = document.getElementById("btn-tab-sketch-map");
@@ -2629,7 +2629,7 @@ export class GameEngine {
         // 2b. 锁闭状态判定与NPC专属舱室解锁交互
         if (node.isLocked) {
             if (node.isNpcRoom) {
-                const ownerNames = { lph: "指挥官", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+                const ownerNames = { lph: "指挥官", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
                 const ownerName = ownerNames[node.npcOwnerId] || "乘员";
                 const isNpcInTeam = node.isProtagonistRoom || node.npcOwnerId === "lph"
                     || this.getAliveTeamMembers().some(m => m.id === node.npcOwnerId);

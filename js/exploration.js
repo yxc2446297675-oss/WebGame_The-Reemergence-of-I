@@ -158,7 +158,7 @@ export class ExplorationEngine {
 
         // C. NPC 专属私人舱室日记读取 (独立翻页弹窗)
         if (node.isNpcRoom && node.diary && Array.isArray(node.diary) && node.diary.length > 0) {
-            const ownerNames = { lph: "L.P.H", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+            const ownerNames = { lph: "L.P.H", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
             const ownerColors = { lph: "#38bdf8", kaze: "#38bdf8", shaokexin: "#f43f5e", mode: "#a855f7" };
             const ownerName = ownerNames[node.npcOwnerId] || node.name;
             const ownerColor = ownerColors[node.npcOwnerId] || "#38bdf8";

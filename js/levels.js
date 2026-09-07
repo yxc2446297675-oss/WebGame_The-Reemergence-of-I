@@ -32,7 +32,7 @@ export const BaseLevels = [
         // 例如设置 [1, 3]：开局将在 1~3 名伪人之间随机生成，充满推理未知性！
         wolfCountRange: [1, 2],
         candidateNPCs: [
-            { id: "kaze", assignedRole: null },       // NPC1: 卡泽 (男，蓝框)
+            { id: "kaze", assignedRole: null },       // NPC1: 卡罗 (男，蓝框)
             { id: "shaokexin", assignedRole: null },  // NPC2: 邵可欣 (女，粉框)
             { id: "mode", assignedRole: null }        // NPC3: 莫德 (男，紫框，文件夹 mode)
         ],
@@ -92,7 +92,7 @@ export const BaseLevels = [
         // 伪人数量配置
         wolfCountRange: [1, 3],
         candidateNPCs: [
-            { id: "kaze", assignedRole: null },       // NPC1: 卡泽 (男，蓝框)
+            { id: "kaze", assignedRole: null },       // NPC1: 卡罗 (男，蓝框)
             { id: "shaokexin", assignedRole: null },  // NPC2: 邵可欣 (女，粉框)
             { id: "mode", assignedRole: null }        // NPC3: 莫德 (男，紫框)
         ],
@@ -131,9 +131,9 @@ export const ExclusiveBranchLevels = [
         isExclusiveBranch: true,
         exclusiveCharId: "kaze",
         title: "扇区 EX-K：孤狼战术突破",
-        subtitle: "卡泽主导视角 · 单兵诱敌潜入回廊",
+        subtitle: "卡罗主导视角 · 单兵诱敌潜入回廊",
         blackScreenText: [
-            "……在第07巡逻区撕裂的烟尘中，卡泽握紧了手中的脉冲震荡匕首。",
+            "……在第07巡逻区撕裂的烟尘中，卡罗握紧了手中的脉冲震荡匕首。",
             "“队长，由我来断后引开主机房聚集的高熵集群，你们立刻前往主闸门。”",
             "“别用那种眼神看着我。我向你保证过，只要我还没倒下，防线就不会崩溃。”",
             "“潜行穿透重构区，摧毁伪装体的信息中枢信标。”",
@@ -154,7 +154,7 @@ export const ExclusiveBranchLevels = [
                 "ex_k_start": {
                     id: "ex_k_start",
                     name: "【前哨突破口】冷凝减压井",
-                    desc: "卡泽端起微型战术冲锋枪在前方引路，四周回荡着机械齿轮的啮合低鸣。",
+                    desc: "卡罗端起微型战术冲锋枪在前方引路，四周回荡着机械齿轮的啮合低鸣。",
                     connections: { right: "ex_k_corridor_1", forward: "ex_k_hub" },
                     coord: { x: 0, y: 3 },
                     isStart: true
@@ -169,7 +169,7 @@ export const ExclusiveBranchLevels = [
                 "ex_k_sub_station": {
                     id: "ex_k_sub_station",
                     name: "【次级整备台】战地补给点",
-                    desc: "角落的锁柜被卡泽用军用匕首撬开，里面留存着高纯度军用肾上腺凝胶与干粮！",
+                    desc: "角落的锁柜被卡罗用军用匕首撬开，里面留存着高纯度军用肾上腺凝胶与干粮！",
                     connections: { backward: "ex_k_corridor_1", left: "ex_k_hub" },
                     event: { type: "food", name: "战地高能补给包" },
                     coord: { x: 1, y: 2 }
@@ -198,9 +198,9 @@ export const ExclusiveBranchLevels = [
                 condition: { type: "clear_any" },
                 unlockLevelIds: [],
                 taskName: "任务一：突破主机房截断信标",
-                taskObjective: "与卡泽并肩作战，突破感染重灾区并破坏广播信标",
+                taskObjective: "与卡罗并肩作战，突破感染重灾区并破坏广播信标",
                 title: "孤狼战术达成",
-                toast: "成功完成卡泽专属突破分支！获得了卡泽的深层因果共鸣印记！"
+                toast: "成功完成卡罗专属突破分支！获得了卡罗的深层因果共鸣印记！"
             }
         ]
     },

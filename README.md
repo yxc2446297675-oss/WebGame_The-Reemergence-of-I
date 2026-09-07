@@ -107,7 +107,7 @@ WebAIGame_Gnosia/
 各个角色拥有自己的独立子文件夹，并在其中存放各表情图片：
 ```
 assets/characters/
-├── kaze/          # 卡泽
+├── kaze/          # 卡罗
 │   ├── clam.png   # 【核心】平静（无指示时的默认照片，亦兼容 calm.png）
 │   ├── happy.png  # 开心 / 微笑
 │   ├── sad.png    # 悲伤 / 沮丧

@@ -209,12 +209,12 @@ while (app.phase !== 'q3_explore' && clickCount < 20) {
 console.log('   当前阶段:', app.phase, '当前位置:', app.explorationEngine.getCurrentNode().name);
 console.log('   当前体力:', app.stamina);
 
-console.log('5. 模拟向左移动探索 (前往NPC1 卡泽房间)...');
+console.log('5. 模拟向左移动探索 (前往NPC1 卡罗房间)...');
 const btnLeft = global.document.getElementById('btn-move-left');
 app.explorationEngine.moveTo('left'); // 走到西侧走廊
 console.log('   移动后位置:', app.explorationEngine.getCurrentNode().name, '剩余体力:', app.stamina);
 
-app.explorationEngine.moveTo('left'); // 走到卡泽房间
+app.explorationEngine.moveTo('left'); // 走到卡罗房间
 console.log('   再次向左移动后位置:', app.explorationEngine.getCurrentNode().name, '剩余体力:', app.stamina);
 
 console.log('6. 检查行动日志数量:', app.actionLogs.length);
@@ -245,9 +245,9 @@ if (parsedCnCalm.expression !== 'clam') {
 
 // 3. 文件夹架构验证
 const kazeClamCandidates = CharacterRegistry.getCharacterImageCandidates(kaze, 'clam');
-console.log('   卡泽[clam]候选路径首选:', kazeClamCandidates[0]);
+console.log('   卡罗[clam]候选路径首选:', kazeClamCandidates[0]);
 if (!kazeClamCandidates[0].includes('assets/characters/kaze/clam')) {
-    throw new Error('卡泽目录结构未采用 kaze/clam: ' + kazeClamCandidates[0]);
+    throw new Error('卡罗目录结构未采用 kaze/clam: ' + kazeClamCandidates[0]);
 }
 
 const shkHappyCandidates = CharacterRegistry.getCharacterImageCandidates(shaokexin, 'happy');
@@ -280,23 +280,23 @@ if (!fs.existsSync(deadJpgPath) && !fs.existsSync(deadPngPath)) {
 }
 // 5. 验证白天得知死亡后随机触发 NPC 特殊反应语句机制
 const kazeReaction = CharacterRegistry.getRandomDeathReaction(kaze, shaokexin);
-console.log('   卡泽目睹邵可欣遇害后的随机反应台词:', kazeReaction);
+console.log('   卡罗目睹邵可欣遇害后的随机反应台词:', kazeReaction);
 if (!kazeReaction || !kazeReaction.text.includes('邵可欣')) {
-    throw new Error('卡泽死亡反应语句未正确注入受害者姓名: ' + JSON.stringify(kazeReaction));
+    throw new Error('卡罗死亡反应语句未正确注入受害者姓名: ' + JSON.stringify(kazeReaction));
 }
 
 const shkReaction = CharacterRegistry.getRandomDeathReaction(shaokexin, kaze);
-console.log('   邵可欣目睹卡泽遇害后的随机反应台词:', shkReaction);
-if (!shkReaction || !shkReaction.text.includes('卡泽')) {
+console.log('   邵可欣目睹卡罗遇害后的随机反应台词:', shkReaction);
+if (!shkReaction || !shkReaction.text.includes('卡罗')) {
     throw new Error('邵可欣死亡反应语句未正确注入受害者姓名: ' + JSON.stringify(shkReaction));
 }
 
 const modeReaction = CharacterRegistry.getRandomDeathReaction(mode, kaze);
-console.log('   莫德目睹卡泽遇害后的随机反应台词:', modeReaction);
-if (!modeReaction || !modeReaction.text.includes('卡泽')) {
+console.log('   莫德目睹卡罗遇害后的随机反应台词:', modeReaction);
+if (!modeReaction || !modeReaction.text.includes('卡罗')) {
     throw new Error('莫德死亡反应语句未正确注入受害者姓名: ' + JSON.stringify(modeReaction));
 }
-// 6. 验证广播通信与系统播报绝对不显示任何角色立绘 (防止广播选择到卡泽立绘)
+// 6. 验证广播通信与系统播报绝对不显示任何角色立绘 (防止广播选择到卡罗立绘)
 console.log('8. 验证系统广播与通信绝不匹配任何角色立绘...');
 const broadcastSpeakers = [
     { name: '黎明广播' },
@@ -322,7 +322,7 @@ for (const speaker of broadcastSpeakers) {
     }
 }
 if (app.dialogueUI.isBroadcastOrSystem(kaze)) {
-    throw new Error('NPC 卡泽被错误识别为了系统/广播！');
+    throw new Error('NPC 卡罗被错误识别为了系统/广播！');
 }
 console.log('   广播与系统播报立绘屏蔽验证全部通过！');
 
@@ -1005,7 +1005,7 @@ if (!resShao.unlockedLevelIds.includes(2) || !resShao.unlockedLevelIds.includes(
 }
 console.log('   【已验证】第一关携带邵可欣撤离：成功触发多重解锁叠加 [第 2 关, 第 14 关]！');
 
-// 3. 单元逻辑检定: 第一关携带邵可欣 + 卡泽撤离 -> 满足包含判定，依然解锁第 2 关与第 14 关
+// 3. 单元逻辑检定: 第一关携带邵可欣 + 卡罗撤离 -> 满足包含判定，依然解锁第 2 关与第 14 关
 const resMulti = UnlockEvaluator.evaluate(allLevels[0].unlockRules, {
     evacuatedNpcIds: ['shaokexin', 'kaze'],
     evacuatedNpcs: [{ id: 'shaokexin', role: 'human' }, { id: 'kaze', role: 'human' }],
@@ -1327,10 +1327,10 @@ if (!personaTabs || !personaDetail) {
 
 console.log("   图鉴当前活跃角色:", app.activePersonaCharId);
 
-// 验证卡泽战术反制与秘密解锁
+// 验证卡罗战术反制与秘密解锁
 app.saveSystem.resetPersonaSecrets();
 if (app.saveSystem.isCharacterPassiveUnlocked("kaze")) {
-    throw new Error("重置后卡泽被动不应为解锁状态！");
+    throw new Error("重置后卡罗被动不应为解锁状态！");
 }
 
 // 模拟触发询问交谈解构秘密
@@ -1344,36 +1344,36 @@ app.allNpcMap.set("kaze", testKaze);
 app.teamMembers = [app.protagonist, testKaze];
 app.executeInquiryDialogue(testKaze); // 达到第 2 次
 if (!app.saveSystem.isPersonaSecretUnlocked("kaze", "kaze_taste")) {
-    throw new Error("交谈达到 2 次后卡泽秘密 [kaze_taste] 未能成功解锁！");
+    throw new Error("交谈达到 2 次后卡罗秘密 [kaze_taste] 未能成功解锁！");
 }
-console.log("   【已验证】傍晚交谈成功解构卡泽深层秘密 [味觉抗拒 (kaze_taste)]！");
+console.log("   【已验证】傍晚交谈成功解构卡罗深层秘密 [味觉抗拒 (kaze_taste)]！");
 
 // 模拟触发放逐伪人
 app.executeExile({ id: "fake_wolf", name: "潜伏伪装体", role: "wolf", status: "active" });
 if (!app.saveSystem.isPersonaSecretUnlocked("kaze", "kaze_instinct")) {
-    throw new Error("放逐伪人后卡泽秘密 [kaze_instinct] 未能成功解锁！");
+    throw new Error("放逐伪人后卡罗秘密 [kaze_instinct] 未能成功解锁！");
 }
-console.log("   【已验证】卡泽在队放逐伪人成功解构 [因果逆流直觉 (kaze_instinct)]！");
+console.log("   【已验证】卡罗在队放逐伪人成功解构 [因果逆流直觉 (kaze_instinct)]！");
 
 // 模拟触发受难 (牺牲)
 app.checkPersonaSecretUnlocks("suffer_fate", { charId: "kaze", type: "dead" });
 if (!app.saveSystem.isPersonaSecretUnlocked("kaze", "kaze_resolve")) {
-    throw new Error("卡泽受难后秘密 [kaze_resolve] 未能成功解锁！");
+    throw new Error("卡罗受难后秘密 [kaze_resolve] 未能成功解锁！");
 }
-console.log("   【已验证】见证牺牲成功解构卡泽秘密 [终末决绝 (kaze_resolve)]！");
+console.log("   【已验证】见证牺牲成功解构卡罗秘密 [终末决绝 (kaze_resolve)]！");
 
 // 模拟通关撤离
 app.checkPersonaSecretUnlocks("evacuate_with", { evacuatedNpcIds: ["kaze"] });
 if (!app.saveSystem.isPersonaSecretUnlocked("kaze", "kaze_scar")) {
-    throw new Error("带领卡泽撤离后秘密 [kaze_scar] 未能成功解锁！");
+    throw new Error("带领卡罗撤离后秘密 [kaze_scar] 未能成功解锁！");
 }
-console.log("   【已验证】带领卡泽撤离成功解构 [战术警惕 (kaze_scar)]！");
+console.log("   【已验证】带领卡罗撤离成功解构 [战术警惕 (kaze_scar)]！");
 
 // 验证全解锁后被动觉醒与专属分支
 if (!app.saveSystem.isCharacterPassiveUnlocked("kaze")) {
-    throw new Error("卡泽 4 项秘密全部解锁后被动技能应觉醒！");
+    throw new Error("卡罗 4 项秘密全部解锁后被动技能应觉醒！");
 }
-console.log("   【已验证】卡泽达成全 4 项记忆拼合，专属特质【战术反制】觉醒！");
+console.log("   【已验证】卡罗达成全 4 项记忆拼合，专属特质【战术反制】觉醒！");
 
 // 重新渲染图鉴面板并点击进入专属分支
 app.renderPersonaLogModal("kaze");
@@ -1384,9 +1384,9 @@ if (!btnLaunchExclusive || !btnLaunchExclusive.classList.contains("enabled")) {
 btnLaunchExclusive.click();
 
 if (app.currentLevel?.levelId !== 101) {
-    throw new Error("点击启动卡泽专属分支未能成功加载扇区 101！当前关卡: " + app.currentLevel?.levelId);
+    throw new Error("点击启动卡罗专属分支未能成功加载扇区 101！当前关卡: " + app.currentLevel?.levelId);
 }
-console.log("   【已验证】成功一键启动卡泽专属分支剧情关卡：", app.currentLevel.title);
+console.log("   【已验证】成功一键启动卡罗专属分支剧情关卡：", app.currentLevel.title);
 
 // 验证莫德被动技能【防爆坚守】拦截主角夜袭
 const modeChar = {
@@ -1714,7 +1714,7 @@ console.log('\n33. 验证 NPC 专属私人舱室规格（预留12个房间结构
             }
         });
     });
-    console.log(`   【已验证】4个专属私人舱室 (L.P.H/卡泽/邵可欣/莫德) 均已配置完整日记篇目！`);
+    console.log(`   【已验证】4个专属私人舱室 (L.P.H/卡罗/邵可欣/莫德) 均已配置完整日记篇目！`);
 
     // 验证规则：每个 NPC 房间只能与一个普通房间相连（单向连接）
     npcRooms.forEach(room => {
@@ -1765,12 +1765,12 @@ console.log('\n34. 验证 NPC 专属房间随行解锁机制与永久通行规�
     }
     console.log(`   【已验证】指挥官常驻随行，主角私人舱 [room_npc_lph] 成功自动授权解锁并注入地图！`);
 
-    // 卡泽不在队内时，卡泽房间不可解锁
+    // 卡罗不在队内时，卡罗房间不可解锁
     if (app.unlockedNpcRooms.has("room_npc_kaze")) {
-        throw new Error("卡泽尚未入队，其私人舱室 room_npc_kaze 不得提前解锁！");
+        throw new Error("卡罗尚未入队，其私人舱室 room_npc_kaze 不得提前解锁！");
     }
 
-    // 进入第三关 (包含 room_tactical_plan，卡泽整备室的连接门户)
+    // 进入第三关 (包含 room_tactical_plan，卡罗整备室的连接门户)
     app.startNewGame(3);
     const kazeNpc = app.getNpcById("kaze");
     kazeNpc.status = "active";
@@ -1778,7 +1778,7 @@ console.log('\n34. 验证 NPC 专属房间随行解锁机制与永久通行规�
     app.checkAndUnlockNpcRooms();
 
     if (!app.unlockedNpcRooms.has("room_npc_kaze")) {
-        throw new Error("卡泽入队后，其专属备勤室 room_npc_kaze 应当被成功解锁！");
+        throw new Error("卡罗入队后，其专属备勤室 room_npc_kaze 应当被成功解锁！");
     }
     if (!app.currentLevel.map.nodes["room_npc_kaze"]) {
         throw new Error("已解锁的 room_npc_kaze 未成功注入第三关地图节点表中！");
@@ -1787,17 +1787,17 @@ console.log('\n34. 验证 NPC 专属房间随行解锁机制与永久通行规�
     if (!kazeNode.connections || !Object.values(kazeNode.connections).includes("room_tactical_plan")) {
         throw new Error("room_npc_kaze 必须与 room_tactical_plan 建立双向气闸连通！");
     }
-    console.log(`   【已验证】卡泽随行在队，[room_npc_kaze] 成功完成验证授权并建立双向气闸通路！`);
+    console.log(`   【已验证】卡罗随行在队，[room_npc_kaze] 成功完成验证授权并建立双向气闸通路！`);
 
     // 核心规则：一旦解锁后续不需要再有这名NPC了也可以经过（例如该NPC牺牲遇害）
     kazeNpc.status = "dead";
     app.checkAndUnlockNpcRooms();
 
     if (!app.unlockedNpcRooms.has("room_npc_kaze")) {
-        throw new Error("卡泽遇害后，已解锁的 room_npc_kaze 不得被重新锁死！");
+        throw new Error("卡罗遇害后，已解锁的 room_npc_kaze 不得被重新锁死！");
     }
     if (!app.currentLevel.map.nodes["room_npc_kaze"]) {
-        throw new Error("卡泽遇害后，room_npc_kaze 必须依然常驻在地图节点表中，支持全队安全通行！");
+        throw new Error("卡罗遇害后，room_npc_kaze 必须依然常驻在地图节点表中，支持全队安全通行！");
     }
     console.log(`   【已验证】即使 NPC 之后遇害离队，已解锁的专属舱室依然保持开放可通行！测试全部通过！`);
 }
@@ -1844,7 +1844,7 @@ console.log('\n35. 验证生化检测室伪人播报、舱室装饰绘制与NPC�
         { title: "前哨纪要 · 第三页", content: "第三页正文测试内容，讲述破局希望。" }
     ];
 
-    app.diaryUI.open("卡泽", "#38bdf8", diaryPages);
+    app.diaryUI.open("卡罗", "#38bdf8", diaryPages);
     if (modalDiary.classList.contains("hidden")) {
         throw new Error("diaryUI.open 后日记弹窗未移除 hidden 显式展现！");
     }
@@ -1897,7 +1897,7 @@ console.log('\n35. 验证生化检测室伪人播报、舱室装饰绘制与NPC�
 // =============================================================================
 console.log('\n36. 验证已探索区域单步与折返移动免除体力消耗 (消耗 0 体力) 与科幻星舰形状覆盖...');
 {
-    // 测试已探索区域移动：在第一关中，当前位于卡泽房间，走廊与起点均已探索
+    // 测试已探索区域移动：在第一关中，当前位于卡罗房间，走廊与起点均已探索
     const currentStamina = app.stamina;
     const prevNodeId = app.explorationEngine.currentNodeId;
 
@@ -1912,7 +1912,7 @@ console.log('\n36. 验证已探索区域单步与折返移动免除体力消耗 
         console.log(`   【已验证】单步折返已探索房间 [${app.explorationEngine.getCurrentNode().name}]，体力保持 ${afterStamina} (消耗 0 点体力)！`);
     }
 
-    // 再次折返至卡泽房间 (已探明)
+    // 再次折返至卡罗房间 (已探明)
     const canMoveLeft = !!app.explorationEngine.getCurrentNode().connections['left'];
     if (canMoveLeft) {
         const staminaBefore = app.stamina;

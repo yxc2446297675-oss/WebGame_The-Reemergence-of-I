@@ -20,11 +20,11 @@ export const CharacterRegistry = {
 
     // 候选NPC角色库 (采用 kaze/, shaokexin/, mode/ 独立文件夹管理)
     npcs: {
-        // NPC 1：卡泽 (男，文字框蓝色，文件夹 kaze)
+        // NPC 1：卡罗 (男，文字框蓝色，文件夹 kaze)
         kaze: {
             id: "kaze",
             folder: "kaze",
-            name: "卡泽",
+            name: "卡罗",
             gender: "男",
             themeColor: "#38bdf8", // 科技明蓝
             boxBorderColor: "rgba(56, 189, 248, 0.9)",
@@ -88,7 +88,7 @@ export const CharacterRegistry = {
                         id: "kaze_scar",
                         title: "战术警惕",
                         desc: "小臂上的撕裂伤痕源于第7巡逻区为了掩护新兵断后，看似冷血寡言，实则对同行队员有着近乎偏执的护短意愿。",
-                        hint: "成功带领卡泽撤离至终点脱出",
+                        hint: "成功带领卡罗撤离至终点脱出",
                         unlockType: "evacuate_with",
                         threshold: 1
                     },
@@ -96,7 +96,7 @@ export const CharacterRegistry = {
                         id: "kaze_instinct",
                         title: "因果逆流直觉",
                         desc: "在过往某次闭环中曾目睹时间逆转的幻象，对拟态伪装体脸部神经的抽搐有着超乎常人的辨识嗅觉。",
-                        hint: "卡泽存活且在队时成功指认或放逐伪人",
+                        hint: "卡罗存活且在队时成功指认或放逐伪人",
                         unlockType: "exile_wolf_with",
                         threshold: 1
                     },
@@ -104,7 +104,7 @@ export const CharacterRegistry = {
                         id: "kaze_resolve",
                         title: "终末决绝",
                         desc: "若自己不幸遭到高熵伪装体同化，会在意识彻底崩解前将自己锁死在减压气阀内，绝不向队友挥动利刃。",
-                        hint: "见证卡泽在黑夜中遇害牺牲或被禁锢",
+                        hint: "见证卡罗在黑夜中遇害牺牲或被禁锢",
                         unlockType: "suffer_fate",
                         threshold: 1
                     }
@@ -112,14 +112,14 @@ export const CharacterRegistry = {
                 passiveSkill: {
                     name: "战术反制 (Tactical Counter)",
                     icon: "🛡️",
-                    desc: "当夜间潜伏伪装体选定卡泽为刺杀目标时，有 35% 概率由卡泽反制脱身，强制转化为平安夜！"
+                    desc: "当夜间潜伏伪装体选定卡罗为刺杀目标时，有 35% 概率由卡罗反制脱身，强制转化为平安夜！"
                 },
                 exclusiveBranch: {
                     levelId: 101,
                     badge: "EX-K",
                     title: "扇区 EX-K：孤狼战术突破",
-                    subtitle: "卡泽主导视角 · 单兵诱敌潜入回廊",
-                    desc: "以卡泽单兵前锋视角展开的特殊突破行动。在重度感染的机房深处开辟通道，直面拟态巢穴。"
+                    subtitle: "卡罗主导视角 · 单兵诱敌潜入回廊",
+                    desc: "以卡罗单兵前锋视角展开的特殊突破行动。在重度感染的机房深处开辟通道，直面拟态巢穴。"
                 }
             }
         },
@@ -435,10 +435,12 @@ export const CharacterRegistry = {
         const folder = character.folder || character.id;
         if (!folder) return [];
         
-        // 支持 mode 与 morde 别名映射
+        // 支持 mode 与 morde, kaze 与 kaluo/caro 别名映射
         const folders = [folder];
         if (folder === "mode") folders.push("morde");
         if (folder === "morde") folders.push("mode");
+        if (folder === "kaze") folders.push("kaluo", "caro", "kalo");
+        if (["kaluo", "caro", "kalo"].includes(folder)) folders.push("kaze");
         if (character.name && !folders.includes(character.name)) {
             folders.push(character.name);
         }

@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-06T16:28:57.760Z
+ * 自动生成于 2026-09-07T06:36:48.508Z
  */
 (function() {
     'use strict';
@@ -707,11 +707,11 @@ const CharacterRegistry = {
 
     // 候选NPC角色库 (采用 kaze/, shaokexin/, mode/ 独立文件夹管理)
     npcs: {
-        // NPC 1：卡泽 (男，文字框蓝色，文件夹 kaze)
+        // NPC 1：卡罗 (男，文字框蓝色，文件夹 kaze)
         kaze: {
             id: "kaze",
             folder: "kaze",
-            name: "卡泽",
+            name: "卡罗",
             gender: "男",
             themeColor: "#38bdf8", // 科技明蓝
             boxBorderColor: "rgba(56, 189, 248, 0.9)",
@@ -775,7 +775,7 @@ const CharacterRegistry = {
                         id: "kaze_scar",
                         title: "战术警惕",
                         desc: "小臂上的撕裂伤痕源于第7巡逻区为了掩护新兵断后，看似冷血寡言，实则对同行队员有着近乎偏执的护短意愿。",
-                        hint: "成功带领卡泽撤离至终点脱出",
+                        hint: "成功带领卡罗撤离至终点脱出",
                         unlockType: "evacuate_with",
                         threshold: 1
                     },
@@ -783,7 +783,7 @@ const CharacterRegistry = {
                         id: "kaze_instinct",
                         title: "因果逆流直觉",
                         desc: "在过往某次闭环中曾目睹时间逆转的幻象，对拟态伪装体脸部神经的抽搐有着超乎常人的辨识嗅觉。",
-                        hint: "卡泽存活且在队时成功指认或放逐伪人",
+                        hint: "卡罗存活且在队时成功指认或放逐伪人",
                         unlockType: "exile_wolf_with",
                         threshold: 1
                     },
@@ -791,7 +791,7 @@ const CharacterRegistry = {
                         id: "kaze_resolve",
                         title: "终末决绝",
                         desc: "若自己不幸遭到高熵伪装体同化，会在意识彻底崩解前将自己锁死在减压气阀内，绝不向队友挥动利刃。",
-                        hint: "见证卡泽在黑夜中遇害牺牲或被禁锢",
+                        hint: "见证卡罗在黑夜中遇害牺牲或被禁锢",
                         unlockType: "suffer_fate",
                         threshold: 1
                     }
@@ -799,14 +799,14 @@ const CharacterRegistry = {
                 passiveSkill: {
                     name: "战术反制 (Tactical Counter)",
                     icon: "🛡️",
-                    desc: "当夜间潜伏伪装体选定卡泽为刺杀目标时，有 35% 概率由卡泽反制脱身，强制转化为平安夜！"
+                    desc: "当夜间潜伏伪装体选定卡罗为刺杀目标时，有 35% 概率由卡罗反制脱身，强制转化为平安夜！"
                 },
                 exclusiveBranch: {
                     levelId: 101,
                     badge: "EX-K",
                     title: "扇区 EX-K：孤狼战术突破",
-                    subtitle: "卡泽主导视角 · 单兵诱敌潜入回廊",
-                    desc: "以卡泽单兵前锋视角展开的特殊突破行动。在重度感染的机房深处开辟通道，直面拟态巢穴。"
+                    subtitle: "卡罗主导视角 · 单兵诱敌潜入回廊",
+                    desc: "以卡罗单兵前锋视角展开的特殊突破行动。在重度感染的机房深处开辟通道，直面拟态巢穴。"
                 }
             }
         },
@@ -1122,10 +1122,12 @@ const CharacterRegistry = {
         const folder = character.folder || character.id;
         if (!folder) return [];
         
-        // 支持 mode 与 morde 别名映射
+        // 支持 mode 与 morde, kaze 与 kaluo/caro 别名映射
         const folders = [folder];
         if (folder === "mode") folders.push("morde");
         if (folder === "morde") folders.push("mode");
+        if (folder === "kaze") folders.push("kaluo", "caro", "kalo");
+        if (["kaluo", "caro", "kalo"].includes(folder)) folders.push("kaze");
         if (character.name && !folders.includes(character.name)) {
             folders.push(character.name);
         }
@@ -1629,7 +1631,7 @@ const MASTER_ROOM_DEFS = {
         equipment: "cargo_grid",
         desc: "全舰高压配电分流箱与紧急断路总闸坐落于此。此刻电闸手柄被暴力拉下，保护锁被硬物砸毁，全舰大断电与时空定格的作案第一现场！角落储物柜还幸存着未受损的能量棒。"
     },
-    // Level 1 原版节点 7: NPC 1 卡泽房间
+    // Level 1 原版节点 7: NPC 1 卡罗房间
     "room_npc1": {
         id: "room_npc1",
         name: "【西区整备间】动力操作台",
@@ -1976,14 +1978,14 @@ const NPC_PRIVATE_QUARTERS = [
             },
             {
                 title: "循环记录 · 第三章",
-                content: "卡泽、邵可欣、莫德——他们每一个人，在某个循环里，曾经救过我，也曾经杀过我。\n\n伪人是随机分配的，没有固定身份，只有这一局的命运。所以我不恨任何一个人。\n\n我只是在寻找这一次——这一次——哪个是真正的人类，站在光明的那一侧。"
+                content: "卡罗、邵可欣、莫德——他们每一个人，在某个循环里，曾经救过我，也曾经杀过我。\n\n伪人是随机分配的，没有固定身份，只有这一局的命运。所以我不恨任何一个人。\n\n我只是在寻找这一次——这一次——哪个是真正的人类，站在光明的那一侧。"
             }
         ]
     },
-    // ── 槽位 02：卡泽（舰艏偏西，x=2,y=-1，连接到 room_tactical_plan）──
+    // ── 槽位 02：卡罗（舰艏偏西，x=2,y=-1，连接到 room_tactical_plan）──
     {
         id: "room_npc_kaze",
-        name: "【前锋战术备勤间】卡泽的整备室",
+        name: "【前锋战术备勤间】卡罗的整备室",
         zone: "bow",
         coord: { x: 2, y: -1 },
         shape: "vanguard_apex",
@@ -2913,7 +2915,7 @@ const BaseLevels = [
         // 例如设置 [1, 3]：开局将在 1~3 名伪人之间随机生成，充满推理未知性！
         wolfCountRange: [1, 2],
         candidateNPCs: [
-            { id: "kaze", assignedRole: null },       // NPC1: 卡泽 (男，蓝框)
+            { id: "kaze", assignedRole: null },       // NPC1: 卡罗 (男，蓝框)
             { id: "shaokexin", assignedRole: null },  // NPC2: 邵可欣 (女，粉框)
             { id: "mode", assignedRole: null }        // NPC3: 莫德 (男，紫框，文件夹 mode)
         ],
@@ -2973,7 +2975,7 @@ const BaseLevels = [
         // 伪人数量配置
         wolfCountRange: [1, 3],
         candidateNPCs: [
-            { id: "kaze", assignedRole: null },       // NPC1: 卡泽 (男，蓝框)
+            { id: "kaze", assignedRole: null },       // NPC1: 卡罗 (男，蓝框)
             { id: "shaokexin", assignedRole: null },  // NPC2: 邵可欣 (女，粉框)
             { id: "mode", assignedRole: null }        // NPC3: 莫德 (男，紫框)
         ],
@@ -3012,9 +3014,9 @@ const ExclusiveBranchLevels = [
         isExclusiveBranch: true,
         exclusiveCharId: "kaze",
         title: "扇区 EX-K：孤狼战术突破",
-        subtitle: "卡泽主导视角 · 单兵诱敌潜入回廊",
+        subtitle: "卡罗主导视角 · 单兵诱敌潜入回廊",
         blackScreenText: [
-            "……在第07巡逻区撕裂的烟尘中，卡泽握紧了手中的脉冲震荡匕首。",
+            "……在第07巡逻区撕裂的烟尘中，卡罗握紧了手中的脉冲震荡匕首。",
             "“队长，由我来断后引开主机房聚集的高熵集群，你们立刻前往主闸门。”",
             "“别用那种眼神看着我。我向你保证过，只要我还没倒下，防线就不会崩溃。”",
             "“潜行穿透重构区，摧毁伪装体的信息中枢信标。”",
@@ -3035,7 +3037,7 @@ const ExclusiveBranchLevels = [
                 "ex_k_start": {
                     id: "ex_k_start",
                     name: "【前哨突破口】冷凝减压井",
-                    desc: "卡泽端起微型战术冲锋枪在前方引路，四周回荡着机械齿轮的啮合低鸣。",
+                    desc: "卡罗端起微型战术冲锋枪在前方引路，四周回荡着机械齿轮的啮合低鸣。",
                     connections: { right: "ex_k_corridor_1", forward: "ex_k_hub" },
                     coord: { x: 0, y: 3 },
                     isStart: true
@@ -3050,7 +3052,7 @@ const ExclusiveBranchLevels = [
                 "ex_k_sub_station": {
                     id: "ex_k_sub_station",
                     name: "【次级整备台】战地补给点",
-                    desc: "角落的锁柜被卡泽用军用匕首撬开，里面留存着高纯度军用肾上腺凝胶与干粮！",
+                    desc: "角落的锁柜被卡罗用军用匕首撬开，里面留存着高纯度军用肾上腺凝胶与干粮！",
                     connections: { backward: "ex_k_corridor_1", left: "ex_k_hub" },
                     event: { type: "food", name: "战地高能补给包" },
                     coord: { x: 1, y: 2 }
@@ -3079,9 +3081,9 @@ const ExclusiveBranchLevels = [
                 condition: { type: "clear_any" },
                 unlockLevelIds: [],
                 taskName: "任务一：突破主机房截断信标",
-                taskObjective: "与卡泽并肩作战，突破感染重灾区并破坏广播信标",
+                taskObjective: "与卡罗并肩作战，突破感染重灾区并破坏广播信标",
                 title: "孤狼战术达成",
-                toast: "成功完成卡泽专属突破分支！获得了卡泽的深层因果共鸣印记！"
+                toast: "成功完成卡罗专属突破分支！获得了卡罗的深层因果共鸣印记！"
             }
         ]
     },
@@ -5437,7 +5439,7 @@ class MapRenderer {
                 shaokexin: "#f43f5e",
                 mode: "#a855f7"
             };
-            const ownerNames = { lph: "指挥官", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+            const ownerNames = { lph: "指挥官", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
             const strokeColor = isNpc ? (npcColors[npcOwnerId] || "#38bdf8") : "#ef4444";
             const ownerName = ownerNames[npcOwnerId] || "乘员";
 
@@ -5612,7 +5614,7 @@ class MapRenderer {
                     tagColor = "#93c5fd";
                     subTagColor = adjacentDir ? "#60a5fa" : "#93c5fd";
                 } else if (node.id === "room_npc1" || (node.event && node.event.npcId === "kaze")) {
-                    label = "卡泽";
+                    label = "卡罗";
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 同伴` : "同伴") : "";
                     tagColor = "#60a5fa";
                     subTagColor = adjacentDir ? "#93c5fd" : "#bfdbfe";
@@ -5642,7 +5644,7 @@ class MapRenderer {
                     tagColor = "#c084fc";
                     subTagColor = adjacentDir ? "#c084fc" : "#e9d5ff";
                 } else if (node.isNpcRoom) {
-                    const ownerNames = { lph: "L.P.H", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+                    const ownerNames = { lph: "L.P.H", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
                     const ownerColors = { lph: "#38bdf8", kaze: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc" };
                     const oName = ownerNames[node.npcOwnerId] || "专属";
                     label = `${oName}舱`;
@@ -5658,7 +5660,7 @@ class MapRenderer {
             } else {
                 // 未探索房间：直接显示房间名称，并清晰标注 [未探索] 或 [方向 · 未探索]
                 if (node.isNpcRoom) {
-                    const ownerNames = { lph: "L.P.H", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+                    const ownerNames = { lph: "L.P.H", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
                     const oName = ownerNames[node.npcOwnerId] || "专属";
                     label = `${oName}舱`;
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 私人舱` : "私人舱") : "";
@@ -6406,7 +6408,7 @@ class ExplorationEngine {
 
         // C. NPC 专属私人舱室日记读取 (独立翻页弹窗)
         if (node.isNpcRoom && node.diary && Array.isArray(node.diary) && node.diary.length > 0) {
-            const ownerNames = { lph: "L.P.H", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+            const ownerNames = { lph: "L.P.H", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
             const ownerColors = { lph: "#38bdf8", kaze: "#38bdf8", shaokexin: "#f43f5e", mode: "#a855f7" };
             const ownerName = ownerNames[node.npcOwnerId] || node.name;
             const ownerColor = ownerColors[node.npcOwnerId] || "#38bdf8";
@@ -8054,7 +8056,7 @@ class GameEngine {
         const isWolf = (npc.role === "wolf");
         this.logAction(`【执行禁锢】将同伴 [${npc.name}] 锁入隔离舱禁闭，限制其夜间行动。`);
 
-        // 触发受难历练检定 (如卡泽/莫德被禁锢)
+        // 触发受难历练检定 (如卡罗/莫德被禁锢)
         this.checkPersonaSecretUnlocks("suffer_fate", { charId: npc.id, type: "confined" });
 
         this.dialogueUI.playSequence([
@@ -8079,7 +8081,7 @@ class GameEngine {
 
         this.logAction(`【执行放逐】将同伴 [${npc.name}] 驱逐出队伍！队伍存活人数变更: ${this.getAliveTeamMembers().length} 人`);
 
-        // 触发放逐伪人历练检定 (卡泽在队且放逐伪人)
+        // 触发放逐伪人历练检定 (卡罗在队且放逐伪人)
         this.checkPersonaSecretUnlocks("exile_wolf_with", { isExiledWolf: npc.role === "wolf", charId: npc.id });
 
         this.dialogueUI.playSequence([
@@ -8423,8 +8425,8 @@ class GameEngine {
             } else if (this.witchSaved) {
                 survivedReason = "witch_saved"; // 女巫救助
             } else if (this.nightTargetVictimId === "kaze" && this.saveSystem.isCharacterPassiveUnlocked("kaze") && Math.random() < 0.35) {
-                survivedReason = "kaze_counter"; // 卡泽【战术反制】成功化解！
-                this.logAction("【战术反制】卡泽敏锐识破了伪装体的暗夜突袭，凭借特战直觉破门格挡反制，化险为夷！");
+                survivedReason = "kaze_counter"; // 卡罗【战术反制】成功化解！
+                this.logAction("【战术反制】卡罗敏锐识破了伪装体的暗夜突袭，凭借特战直觉破门格挡反制，化险为夷！");
             } else if (this.nightTargetVictimId === this.protagonist.id && this.getAliveNpcTeamMembers().some(m => m.id === "mode") && this.saveSystem.isCharacterPassiveUnlocked("mode")) {
                 survivedReason = "mode_shield"; // 莫德【防爆坚守】挺身格挡！
                 this.logAction("【防爆坚守】潜伏伪装体企图暗算队长！莫德以重装防爆盾死死扼守住舱门，替队长挡下了致命抹杀！");
@@ -8583,7 +8585,7 @@ class GameEngine {
         const unlockResult = UnlockEvaluator.evaluate(this.currentLevel?.unlockRules || [], evalContext);
         const newlyUnlocked = this.saveSystem.unlockLevels(unlockResult.unlockedLevelIds);
 
-        // 检定同伴撤离深度档案解构 (带领卡泽/邵可欣/莫德撤离)
+        // 检定同伴撤离深度档案解构 (带领卡罗/邵可欣/莫德撤离)
         this.checkPersonaSecretUnlocks("evacuate_with", { evacuatedNpcIds });
 
         let msg = "";
@@ -8829,7 +8831,7 @@ class GameEngine {
             if (isAlreadyUnlocked || isNpcInTeam) {
                 if (!isAlreadyUnlocked) {
                     this.unlockedNpcRooms.add(roomDef.id);
-                    const ownerNames = { lph: "指挥官", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+                    const ownerNames = { lph: "指挥官", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
                     const ownerName = ownerNames[roomDef.npcOwnerId] || (this.allNpcMap.get(roomDef.npcOwnerId)?.name || roomDef.npcOwnerId);
                     this.logAction(`【舱室解锁】[${roomDef.name}] 经过乘员 [${ownerName}] 信标授权，气闸锁已开启！`);
                     this.showStageToast(`🔓 [${roomDef.name}] 气密锁已授权解除！`);
@@ -9175,9 +9177,9 @@ class GameEngine {
         const notesElem = document.querySelector(".map-notes");
         if (notesElem && this.currentLevel) {
             if (this.currentLevel.levelId === 2) {
-                notesElem.innerHTML = `<span>起点：深潜次级减压闸</span> ｜ <span>终点：超弦共振核心</span> ｜ <span>深层散落：莫德、邵可欣、卡泽</span>`;
+                notesElem.innerHTML = `<span>起点：深潜次级减压闸</span> ｜ <span>终点：超弦共振核心</span> ｜ <span>深层散落：莫德、邵可欣、卡罗</span>`;
             } else {
-                notesElem.innerHTML = `<span>起点：下层中央大厅</span> ｜ <span>终点：北侧脱离大门</span> ｜ <span>沿途：卡泽(NPC1)、邵可欣(NPC2)、莫德(NPC3)</span>`;
+                notesElem.innerHTML = `<span>起点：下层中央大厅</span> ｜ <span>终点：北侧脱离大门</span> ｜ <span>沿途：卡罗(NPC1)、邵可欣(NPC2)、莫德(NPC3)</span>`;
             }
         }
         const tabSketch = document.getElementById("btn-tab-sketch-map");
@@ -9292,7 +9294,7 @@ class GameEngine {
         // 2b. 锁闭状态判定与NPC专属舱室解锁交互
         if (node.isLocked) {
             if (node.isNpcRoom) {
-                const ownerNames = { lph: "指挥官", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+                const ownerNames = { lph: "指挥官", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
                 const ownerName = ownerNames[node.npcOwnerId] || "乘员";
                 const isNpcInTeam = node.isProtagonistRoom || node.npcOwnerId === "lph"
                     || this.getAliveTeamMembers().some(m => m.id === node.npcOwnerId);

@@ -1443,7 +1443,7 @@ export class MapRenderer {
                 shaokexin: "#f43f5e",
                 mode: "#a855f7"
             };
-            const ownerNames = { lph: "指挥官", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+            const ownerNames = { lph: "指挥官", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
             const strokeColor = isNpc ? (npcColors[npcOwnerId] || "#38bdf8") : "#ef4444";
             const ownerName = ownerNames[npcOwnerId] || "乘员";
 
@@ -1618,7 +1618,7 @@ export class MapRenderer {
                     tagColor = "#93c5fd";
                     subTagColor = adjacentDir ? "#60a5fa" : "#93c5fd";
                 } else if (node.id === "room_npc1" || (node.event && node.event.npcId === "kaze")) {
-                    label = "卡泽";
+                    label = "卡罗";
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 同伴` : "同伴") : "";
                     tagColor = "#60a5fa";
                     subTagColor = adjacentDir ? "#93c5fd" : "#bfdbfe";
@@ -1648,7 +1648,7 @@ export class MapRenderer {
                     tagColor = "#c084fc";
                     subTagColor = adjacentDir ? "#c084fc" : "#e9d5ff";
                 } else if (node.isNpcRoom) {
-                    const ownerNames = { lph: "L.P.H", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+                    const ownerNames = { lph: "L.P.H", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
                     const ownerColors = { lph: "#38bdf8", kaze: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc" };
                     const oName = ownerNames[node.npcOwnerId] || "专属";
                     label = `${oName}舱`;
@@ -1664,7 +1664,7 @@ export class MapRenderer {
             } else {
                 // 未探索房间：直接显示房间名称，并清晰标注 [未探索] 或 [方向 · 未探索]
                 if (node.isNpcRoom) {
-                    const ownerNames = { lph: "L.P.H", kaze: "卡泽", shaokexin: "邵可欣", mode: "莫德" };
+                    const ownerNames = { lph: "L.P.H", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
                     const oName = ownerNames[node.npcOwnerId] || "专属";
                     label = `${oName}舱`;
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 私人舱` : "私人舱") : "";
