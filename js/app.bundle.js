@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-07T06:36:48.508Z
+ * 自动生成于 2026-09-07T15:46:38.586Z
  */
 (function() {
     'use strict';
@@ -2153,39 +2153,27 @@ const MASTER_CONNECTIONS = [
     ["room_mess_hall", "room_recreation_gym"],
     ["room_east_observation", "room_east_airlock"],
 
-    // Y=3 <-> Y=4 垂直走廊
-    ["room_west_end", "room_salvage_bay"],
-    ["room_npc1", "room_cargo_lift"],
-    ["room_corridor_w1", "room_sub_generator"],
-    ["room_start", "room_hangar_deck"],
-    ["room_corner_se", "room_machine_shop"],
-    ["room_gravity_well", "room_water_purify"],
-    ["room_armory", "room_life_support"],
-    ["room_recreation_gym", "room_air_recycler"],
-    ["room_east_airlock", "room_eva_staging"],
+    // Y=3 <-> Y=4 垂直主干连线 (已精简：保留核心垂直升降竖井，切断配电室、起居及军械库地板盲连)
+    ["room_corridor_w1", "room_sub_generator"], // 西侧走廊垂直下潜至辅电站
+    ["room_start", "room_hangar_deck"],         // 中央苏醒密封厅直达主穿梭机库
+    ["room_gravity_well", "room_water_purify"], // 重力发生总井贯通净水中心
+    ["room_east_airlock", "room_eva_staging"],  // 东侧外勤气闸连通出舱作业室
 
-    // 下层 Y=4 横向连线
+    // 下层 Y=4 横向连线 (已精简：在发电站-机库、机件加工-生态净水之间增设防火隔离壁)
     ["room_salvage_bay", "room_cargo_lift"],
     ["room_cargo_lift", "room_sub_generator"],
-    ["room_sub_generator", "room_hangar_deck"],
     ["room_hangar_deck", "room_machine_shop"],
-    ["room_machine_shop", "room_water_purify"],
     ["room_water_purify", "room_life_support"],
     ["room_life_support", "room_air_recycler"],
     ["room_air_recycler", "room_eva_staging"],
 
-    // Y=4 <-> Y=5 垂直连线 (通往主反应堆)
-    ["room_salvage_bay", "room_shields_emitter"],
-    ["room_cargo_lift", "room_sub_coolant"],
-    ["room_sub_generator", "room_reactor_control"],
-    ["room_hangar_deck", "room_plasma_manifold"],
-    ["room_machine_shop", "room_main_reactor"],
-    ["room_water_purify", "room_coolant_tank"],
-    ["room_life_support", "room_warp_field_gen"],
-    ["room_air_recycler", "room_armored_corridor"],
-    ["room_eva_staging", "room_starboard_dock"],
+    // Y=4 <-> Y=5 垂直连线 (已精简：保留核心工程维保气闸，移除机库等直坠等离子高温区盲连)
+    ["room_salvage_bay", "room_shields_emitter"], // 材料解构井通向护盾发生核心
+    ["room_machine_shop", "room_main_reactor"],   // 机械锻造工坊直通重核聚变主反应堆
+    ["room_water_purify", "room_coolant_tank"],   // 生态净水中心注入主冷却泵站
+    ["room_eva_staging", "room_starboard_dock"],  // 出舱整备间通向右舷拖曳基座
 
-    // 底层 Y=5 横向连线
+    // 底层 Y=5 横向连线 (反应堆与能源干线)
     ["room_shields_emitter", "room_sub_coolant"],
     ["room_sub_coolant", "room_reactor_control"],
     ["room_reactor_control", "room_plasma_manifold"],
@@ -2195,22 +2183,17 @@ const MASTER_CONNECTIONS = [
     ["room_warp_field_gen", "room_armored_corridor"],
     ["room_armored_corridor", "room_starboard_dock"],
 
-    // Y=5 <-> Y=6 推进与逃生垂直连线
-    ["room_sub_coolant", "room_escape_pod_w"],
-    ["room_reactor_control", "room_ion_thruster_l"],
-    ["room_plasma_manifold", "room_antimatter_tap"],
-    ["room_main_reactor", "room_singularity_gate"],
-    ["room_coolant_tank", "room_matter_stream"],
-    ["room_warp_field_gen", "room_ion_thruster_r"],
-    ["room_armored_corridor", "room_escape_pod_e"],
+    // Y=5 <-> Y=6 推进与逃生垂直连线 (已精简：救生舱单向登艇，保留核心聚变与等离子喷射通道)
+    ["room_sub_coolant", "room_escape_pod_w"],      // 1号救生舱专用登舱口
+    ["room_plasma_manifold", "room_antimatter_tap"],// 等离子总管引流至反物质阀室
+    ["room_main_reactor", "room_singularity_gate"], // 主反应堆直供终焉奇点星门
+    ["room_armored_corridor", "room_escape_pod_e"], // 2号救生舱专用登舱口
 
-    // 舰尾 Y=6 横向连线
-    ["room_escape_pod_w", "room_ion_thruster_l"],
+    // 舰尾 Y=6 横向连线 (已精简：救生舱作为独立逃生单元，不作为横向过道通道)
     ["room_ion_thruster_l", "room_antimatter_tap"],
     ["room_antimatter_tap", "room_singularity_gate"],
     ["room_singularity_gate", "room_matter_stream"],
-    ["room_matter_stream", "room_ion_thruster_r"],
-    ["room_ion_thruster_r", "room_escape_pod_e"]
+    ["room_matter_stream", "room_ion_thruster_r"]
 ];
 
 const MASTER_ADJACENCY = {};
