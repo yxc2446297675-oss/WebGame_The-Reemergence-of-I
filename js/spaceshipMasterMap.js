@@ -976,10 +976,9 @@ export const MASTER_CONNECTIONS = [
     ["room_cryo_stasis", "room_hydro_garden"],
     ["room_decon_airlock", "room_mess_hall"],
 
-    // 东翼 Y=3 横向连线
+    // 东翼 Y=3 横向连线 (已断开军械库与体能仓直接连线，需经水培温室或气闸绕行)
     ["room_corner_se", "room_gravity_well"],
     ["room_gravity_well", "room_armory"],
-    ["room_armory", "room_recreation_gym"],
     ["room_recreation_gym", "room_east_airlock"],
 
     // Y=2 <-> Y=3 垂直走廊
@@ -1282,7 +1281,7 @@ export const LEVEL_SECTOR_SPECS = {
             "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck", "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler",
             "room_shields_emitter", "room_sub_coolant", "room_reactor_control", "room_plasma_manifold", "room_main_reactor", "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor",
             "room_escape_pod_w", "room_ion_thruster_l", "room_antimatter_tap", "room_singularity_gate", "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e",
-            "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se", "room_gravity_well", "room_armory", "room_recreation_gym", "room_hub_n1", "room_npc2", "room_living_quarter", "room_hydro_garden", "room_starboard_dock"
+            "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se", "room_gravity_well", "room_armory", "room_hub_n1", "room_npc2", "room_living_quarter", "room_hydro_garden", "room_starboard_dock"
         ],
         npcPlacements: {
             "room_reactor_control": "kaze",
