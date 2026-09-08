@@ -1310,6 +1310,16 @@ export class MapRenderer {
             revealedSet.add(animatedMarker.toId);
         }
 
+        // 第四关专属：指定要害巡检位置 (停机坪甲板、重力发生核、防护中枢) 直接在地图上提前单独亮起
+        const patrolNodes = levelMap.patrolNodes || (levelMap.masterShip && levelMap.masterShip.patrolNodes) || [];
+        if (patrolNodes.length > 0) {
+            patrolNodes.forEach(pId => {
+                if (levelMap.nodes[pId]) {
+                    revealedSet.add(pId);
+                }
+            });
+        }
+
         const boxSize = layout.boxSize;
         const nodes = levelMap.nodes;
         const masterShip = levelMap.masterShip;
@@ -1518,6 +1528,8 @@ export class MapRenderer {
             const adjacentDir = connectedDirMap[node.id];
             const shape = node.shape || "rect";
             const equipment = node.equipment;
+            const isPatrolTarget = patrolNodes.includes(node.id);
+            const isPatrolDone = options.patrolVisited && options.patrolVisited.has(node.id);
 
             const x = p.x - boxSize / 2;
             const y = p.y - boxSize / 2;
@@ -1525,7 +1537,7 @@ export class MapRenderer {
             // 根据所属分区选取专属地面色彩主题
             let themeKey = node.zone || "hub";
             if (node.isStart || node.id === "room_start" || (levelMap && node.id === levelMap.startNodeId)) themeKey = "start";
-            else if (node.isExit || node.id === "room_exit" || (node.event && node.event.type === "exit")) themeKey = "exit";
+            else if (node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit")))) themeKey = "exit";
             const theme = DECK_THEMES[themeKey] || DECK_THEMES.hub;
 
             ctx.save();
@@ -1538,13 +1550,13 @@ export class MapRenderer {
             // 6.2 舱室内部地坪填色 (区分生活、指挥、医疗、工程等真实质感)
             if (isVisited) {
                 ctx.fillStyle = isHovered ? theme.floorVisited : theme.floor;
-                ctx.strokeStyle = theme.border;
-                ctx.lineWidth = 2.2;
+                ctx.strokeStyle = isPatrolTarget ? (isPatrolDone ? "#22c55e" : "#f59e0b") : theme.border;
+                ctx.lineWidth = isPatrolTarget ? 2.6 : 2.2;
             } else {
-                ctx.fillStyle = adjacentDir ? "rgba(15, 23, 42, 0.85)" : "rgba(15, 23, 42, 0.65)";
-                ctx.strokeStyle = adjacentDir ? "rgba(56, 189, 248, 0.85)" : "rgba(148, 163, 184, 0.4)";
-                ctx.lineWidth = adjacentDir ? 2.0 : 1.5;
-                if (!adjacentDir) ctx.setLineDash([4, 3]);
+                ctx.fillStyle = isPatrolTarget ? "rgba(30, 27, 75, 0.85)" : (adjacentDir ? "rgba(15, 23, 42, 0.85)" : "rgba(15, 23, 42, 0.65)");
+                ctx.strokeStyle = isPatrolTarget ? (isPatrolDone ? "#22c55e" : "#f59e0b") : (adjacentDir ? "rgba(56, 189, 248, 0.85)" : "rgba(148, 163, 184, 0.4)");
+                ctx.lineWidth = isPatrolTarget ? 2.6 : (adjacentDir ? 2.0 : 1.5);
+                if (!adjacentDir && !isPatrolTarget) ctx.setLineDash([4, 3]);
             }
 
             drawRoomPolygon(ctx, shape, x, y, boxSize, boxSize);
@@ -1600,6 +1612,15 @@ export class MapRenderer {
                 drawRoomPolygon(ctx, shape, x - 1, y - 1, boxSize + 2, boxSize + 2);
                 ctx.stroke();
                 ctx.shadowBlur = 0;
+            } else if (isPatrolTarget) {
+                // 第四关专属：巡检目标常驻金色/绿色醒目光晕
+                ctx.shadowColor = isPatrolDone ? "#22c55e" : "#f59e0b";
+                ctx.shadowBlur = 14;
+                ctx.strokeStyle = isPatrolDone ? "#22c55e" : "#f59e0b";
+                ctx.lineWidth = 2.5;
+                drawRoomPolygon(ctx, shape, x - 1, y - 1, boxSize + 2, boxSize + 2);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
             } else if (adjacentDir && !animatedMarker) {
                 // 相邻可行进房间微光呼应
                 ctx.shadowColor = isVisited ? "#4ade80" : "#38bdf8";
@@ -1649,9 +1670,9 @@ export class MapRenderer {
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 同伴` : "同伴") : "";
                     tagColor = "#c084fc";
                     subTagColor = adjacentDir ? "#c084fc" : "#e9d5ff";
-                } else if (node.isExit || node.id === "room_exit" || (node.event && node.event.type === "exit")) {
+                } else if (node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit")))) {
                     label = "终点";
-                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 折跃门` : "折跃门") : "";
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 终点` : "终点") : "";
                     tagColor = "#4ade80";
                     subTagColor = adjacentDir ? "#4ade80" : "#86efac";
                 } else if (node.event && node.event.type === "food") {
@@ -1710,6 +1731,19 @@ export class MapRenderer {
                 } else {
                     tagColor = "rgba(203, 213, 225, 0.85)";
                     subTagColor = "rgba(148, 163, 184, 0.65)";
+                }
+            }
+
+            // 第四关专属：巡检目标显示专属徽标与鲜明色彩
+            if (isPatrolTarget && !isCurrent) {
+                if (isPatrolDone) {
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 已巡检` : "已巡检") : "已巡检";
+                    subTagColor = "#4ade80";
+                    tagColor = "#86efac";
+                } else {
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 待巡检` : "待巡检") : "待巡检";
+                    subTagColor = "#f59e0b";
+                    tagColor = "#fef08a";
                 }
             }
 

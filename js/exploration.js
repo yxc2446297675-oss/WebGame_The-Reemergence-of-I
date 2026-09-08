@@ -99,9 +99,14 @@ export class ExplorationEngine {
         // 立即更新顶部状态栏（房间名、当前体力与百分比）
         this.gameEngine.updateHeaderUI();
 
-        // 3. 终点优先判定：若最后一步踏上的是终点，即使体力耗尽（降至0）也算通过
+        // 3. 终点优先判定：若最后一步踏上的是有效终点，即使体力耗尽（降至0）也算通过
         const isExitNode = !!(nextNode.isExit || (nextNode.event && nextNode.event.type === "exit"));
-        if (isExitNode) {
+        const isPowerRestorationPending = (
+            (this.gameEngine?.currentLevel?.levelId === 2 && !this.gameEngine.level2PowerRestored) ||
+            (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored)
+        );
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending;
+        if (isEffectiveExit) {
             if (!isAlreadyExplored) {
                 this.choiceCount++;
             }
@@ -109,7 +114,7 @@ export class ExplorationEngine {
             return true;
         }
 
-        // 4. 检查体力是否耗尽（非终点情况下体力降至0则倒下）
+        // 4. 检查体力是否耗尽（非有效终点情况下体力降至0则倒下）
         if (this.gameEngine.stamina <= 0) {
             this.gameEngine.triggerGameOver("体力耗尽！你在冰冷黑暗的走廊中耗尽了最后一丝力气，未能生还……");
             return true;
@@ -138,9 +143,71 @@ export class ExplorationEngine {
 
         // A. 终点判定 (走到用户决定的地图终点即宣布成功)
         if (node.isExit || (node.event && node.event.type === "exit")) {
+            // 第二关与第三关专属拦截：若尚未在停电始发地合闸通电，禁止撤离
+            const isPowerRestorationPending = (
+                (this.gameEngine?.currentLevel?.levelId === 2 && !this.gameEngine.level2PowerRestored) ||
+                (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored)
+            );
+            if (isPowerRestorationPending) {
+                this.gameEngine.logAction(`【气动锁未解压】逃生舱主电源处于切断状态！气动锁未解压，无法启动撤离程序。请先前往停电始发地修复电源！`);
+                this.gameEngine.dialogueUI?.say(
+                    { name: "逃生舱控制终端", themeColor: "#f43f5e" },
+                    "【警告：主能源离线】逃生舱主电源处于切断状态，舱门气动锁未解压，逃生折跃引擎无法启动！请前往【停电始发地】合上主电闸修复电源后再来撤离！"
+                );
+                this.gameEngine.renderExplorationControls();
+                if (this.gameEngine.refreshStageMap) {
+                    this.gameEngine.refreshStageMap();
+                }
+                return;
+            }
+
+            // 第四关专属通关校验：必须先行完成三大要害中枢（停机坪甲板、重力发生核、防护中枢）的巡检
+            if (this.gameEngine.currentLevel && this.gameEngine.currentLevel.levelId === 4) {
+                const count = this.gameEngine.level4PatrolVisited ? this.gameEngine.level4PatrolVisited.size : 0;
+                if (count < 3) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast(`⚠️ 巡检任务未完成！三大要害中枢尚有 ${3 - count} 处未排查！`);
+                    }
+                    this.gameEngine.logAction(`【巡检未竟】未完成全舰三大要害中枢巡检（${count}/3），动力操作台终端尚未解锁！`);
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "动力操作台控制终端", themeColor: "#fbbf24" },
+                        `【全舰巡检协议未闭环】巡检任务尚未完成（当前进度: ${count}/3）。在确认停机坪甲板、重力发生核与防护中枢的安全之前，动力操作台控制系统拒绝进入收工阶段！`
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
             this.gameEngine.logAction(`【通关突破】全员成功抵达目的地 [${node.name}]！准备跳跃！`);
             this.gameEngine.triggerVictory(node);
             return;
+        }
+
+        // 第四关专属要害巡检打卡判定 (停机坪甲板、重力发生核、防护中枢)
+        if (this.gameEngine.currentLevel && this.gameEngine.currentLevel.levelId === 4) {
+            const patrolTargets = ["room_hangar_deck", "room_gravity_well", "room_shields_emitter"];
+            if (patrolTargets.includes(node.id)) {
+                if (!this.gameEngine.level4PatrolVisited) {
+                    this.gameEngine.level4PatrolVisited = new Set();
+                }
+                if (!this.gameEngine.level4PatrolVisited.has(node.id)) {
+                    this.gameEngine.level4PatrolVisited.add(node.id);
+                    const targetNames = {
+                        room_hangar_deck: "停机坪甲板",
+                        room_gravity_well: "重力发生核",
+                        room_shields_emitter: "防护中枢"
+                    };
+                    const count = this.gameEngine.level4PatrolVisited.size;
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast(`🎯 [巡检打卡] 已抵达【${targetNames[node.id] || node.name}】(${count}/3)`);
+                    }
+                    this.gameEngine.logAction(`【要害巡视】完成了对三大中枢之一 [${node.name}] 的静默巡查（当前进度: ${count}/3）！`);
+                    this.gameEngine.updateHeaderUI();
+                }
+            }
         }
 
         // B. 特殊生化检测室判定 (获知当前队伍里有几名伪人)
@@ -181,6 +248,44 @@ export class ExplorationEngine {
             }
         }
 
+        // D. 特殊关卡机制：第二关与第三关停电始发地合闸通电特殊确认弹窗
+        // 核心要求：完成修电任务需要有特殊弹窗提示确认，若NPC在上面则先触发修电弹窗再触发NPC选择
+        const isPowerRestoreNeeded = (
+            ((this.gameEngine?.currentLevel?.levelId === 2 && !this.gameEngine.level2PowerRestored) ||
+             (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored)) &&
+            (node.id === "room_west_end" || node.isPowerOrigin)
+        );
+
+        if (isPowerRestoreNeeded) {
+            this.gameEngine.showPowerRestoreModal(node, () => {
+                if (this.gameEngine?.currentLevel?.levelId === 2) {
+                    this.gameEngine.level2PowerRestored = true;
+                } else if (this.gameEngine?.currentLevel?.levelId === 3) {
+                    this.gameEngine.level3PowerRestored = true;
+                }
+                this.gameEngine.logAction(`【电源修复】抵达全舰停电始发地 [${node.name}]！手动合上高压母线总断路器，逃生系统主电网供电成功恢复！`);
+                if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
+                    Sound.playAlarmSound();
+                }
+                if (this.gameEngine.showStageToast) {
+                    this.gameEngine.showStageToast("⚡ [停电始发地] 主电网重合闸成功！逃生舱气动锁已解除！");
+                }
+                if (this.gameEngine.renderMissionsPanel) {
+                    this.gameEngine.renderMissionsPanel();
+                }
+                // 修电确认完成后，再顺序触发该节点内的其他事件（如陆知行 NPC 救援选择）
+                this.processRoomEvents(node, isAlreadyExplored);
+            });
+            return;
+        }
+
+        this.processRoomEvents(node, isAlreadyExplored);
+    }
+
+    /**
+     * 处理房间内的常规事件（食物物资、NPC昏迷救助、傍晚检定）
+     */
+    processRoomEvents(node, isAlreadyExplored) {
         // 检查该节点的事件是否已被触发过
         const eventKey = `${node.id}_event`;
         if (node.event && !this.consumedEvents.has(eventKey)) {
@@ -269,6 +374,12 @@ export class ExplorationEngine {
             return;
         }
 
+        // 第四关专属潜行规避逻辑：不可与任何NPC发生视线接触，若踩到NPC所在区域直接游戏结束“你被他人所凝视，复现失败”
+        if (this.gameEngine.currentLevel && this.gameEngine.currentLevel.levelId === 4) {
+            this.gameEngine.triggerGameOver("你被他人所凝视，复现失败");
+            return;
+        }
+
         if (npc.status === "dead") {
             this.consumedEvents.add(eventKey);
             this.gameEngine.logAction(`【现场勘查】在 [${node.name}] 发现了已遇害的 [${npc.name}] 的遗体。`);
@@ -303,6 +414,12 @@ export class ExplorationEngine {
      * 触发后重置 choiceCount，进入 q4 询问环节
      */
     checkEveningTrigger() {
+        // 第四关专属优化：本关卡为全舰白昼静默巡检，没有黑天时刻，没有死寂降临
+        if (this.gameEngine?.currentLevel?.levelId === 4) {
+            this.gameEngine.renderExplorationControls();
+            return;
+        }
+
         const chance = EveningTriggerConfig.getChance(this.choiceCount);
         const roll = Math.random();
 

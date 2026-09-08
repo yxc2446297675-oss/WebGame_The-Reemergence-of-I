@@ -73,14 +73,15 @@ export const BaseLevels = [
         title: "第二关：深层重叠 · 镜面回廊",
         subtitle: "高维拓扑裂解 · 搜寻深层失散同伴",
 
-        // q1 黑屏中间白字（契合循环重构与更深层迷宫的世界观）
+        // q1 黑屏中间白字（契合停电瞬间与恐惧死寂的世界观）
         blackScreenText: [
-            "……气闸闭合的沉闷重响再次灌入耳道，但重力感却全然错位。",
-            "眼前的合金走廊更加深邃、更加庞大，无数发光的管线如同垂死的神经网络在穹顶蔓延。",
-            "通讯仪中传出断断续续的电流杂音，三个微弱的同伴生命信标再度分散在这片更广袤的结构深处。",
-            "不可思议的是，你隐约感觉眼前发生的一切，你似乎早已在某个未曾抵达的未来‘经历’过……",
-            "潜伏的伪装体并未远去，他们的呼吸声在更暗的角落隐匿。救出同伴，踏向深处的奇点核心。",
-            "——触摸屏幕，踏入第二重回响。"
+            "……周围貌似突然暗了下来。",
+            "刺耳的电火花骤然熄灭，冷白的光线在视野中逐一沉陷，黑暗如重压般毫无预兆地吞没了整片合金回廊。",
+            "恐惧之下你不由得缩在角落里，害怕什么东西到来……",
+            "你在颤栗中等待着，等待着阴影中某些不可名状之物的迫近，屏住呼吸，甚至不敢听见自己的喘息。",
+            "直到周围一片死寂。",
+            "心跳沉重地撞击着冰冷的胸膛。在深邃的静默中，你终于了然自己到底该做些什么……",
+            "——触摸屏幕，踏入静默的深渊。"
         ],
 
         // 初始属性
@@ -90,11 +91,11 @@ export const BaseLevels = [
         defaultProtagonistRole: "seer",
 
         // 伪人数量配置
-        wolfCountRange: [1, 3],
+        wolfCountRange: [1, 2],
         candidateNPCs: [
-            { id: "kaze", assignedRole: null },       // NPC1: 卡罗 (男，蓝框)
-            { id: "shaokexin", assignedRole: null },  // NPC2: 邵可欣 (女，粉框)
-            { id: "mode", assignedRole: null }        // NPC3: 莫德 (男，紫框)
+            { id: "kaze", assignedRole: null },       // NPC1: 卡罗 (动力操作台)
+            { id: "mode", assignedRole: null },        // NPC2: 莫德 (四期隔离舱)
+            { id: "prof_lu", assignedRole: null }     // NPC3: 陆知行 (停电始发地)
         ],
 
         mapImageUrl: null, // 第二关完全基于高精实时战术蓝图呈现
@@ -104,22 +105,137 @@ export const BaseLevels = [
         // 第二关解锁规则列表
         unlockRules: [
             {
-                id: "l2_basic_clear",
+                id: "l2_power_restore_clear",
                 condition: { type: "clear_any" },
                 unlockLevelIds: [3],
-                taskName: "任务一：成功撤离 (镜面穿透)",
-                taskObjective: "突破镜面折射回廊，抵达终点奇点之门并脱出",
-                title: "突破镜面",
-                toast: "成功突破镜面回廊，开放【扇区 03：湮灭奇点】！"
+                taskName: "任务一：经过停电始发地修复电源",
+                taskObjective: "前往【全舰停电始发地】合闸恢复电网，再前往逃生舱脱出",
+                title: "重启电网",
+                toast: "星舰主电源已成功恢复并脱离！开放【第三关】！"
             },
             {
-                id: "l2_all_mimics_escort",
-                condition: { type: "require_all_mimics" },
-                unlockLevelIds: [5],
-                taskName: "任务二：引渡全员伪人撤离 (深渊诱捕)",
-                taskObjective: "同化或引领，携行场上全部潜伏拟态伪装体一同脱出",
-                title: "深渊引渡者",
-                toast: "全员伪人被引渡带出！深层异动引发共鸣，额外开放【扇区 05：拟态深渊】！"
+                id: "l2_kaze_escort",
+                condition: { 
+                    type: "require_npcs", 
+                    npcIds: ["kaze"] 
+                },
+                unlockLevelIds: [14],
+                taskName: "任务二：带离卡罗撤离",
+                taskObjective: "搜寻救醒卡罗，携行卡罗穿越终点共同撤离",
+                title: "战术信标共鸣",
+                toast: "成功护送【卡罗】脱离！其特战战术数据激活隐藏信标，额外开放【第十四关】！"
+            }
+        ]
+    },
+    {
+        levelId: 3,
+        title: "第三关：深渊回响 · 矩阵裂解",
+        subtitle: "高维拓扑裂解 · 搜寻深层失散同伴",
+
+        // q1 黑屏中间白字（契合四段递进留白悬疑要求）
+        blackScreenText: [
+            "……外面……发生了什么？",
+            "隔音舱门外传来了沉闷而怪异的机械呻吟，像是一具庞大钢铁巨兽濒死时的抽搐。",
+            "总感觉……有哪里不对劲。",
+            "备用照明灯泛着惨白的荧光，空气中嗅不到熟悉的循环氧气味，取而代之的是某种微弱的、带着焦糊与湿润的异样气息。",
+            "地板微微的震颤，让你浑身的神经愈发警觉……",
+            "规律的引力引擎脉动不知何时已经停滞。取而代之的，是脚下龙骨深处极细微的金属扭曲声，以及……某些湿润之物划过管网的摩擦声。",
+            "或许……你该出去看看了。",
+            "握紧手心冰凉的把手，在死一般的深渊中，你终于决定推开这道隔离门。",
+            "——触摸屏幕，踏入静默未知的深渊。"
+        ],
+
+        // 初始属性
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量配置：随机 1~2 人
+        wolfCountRange: [1, 2],
+        candidateNPCs: [
+            { id: "kaze", assignedRole: null },       // NPC1: 卡罗 (动力操作台)
+            { id: "prof_lu", assignedRole: null },    // NPC2: 陆知行 (停电始发地)
+            { id: "shaokexin", assignedRole: null },  // NPC3: 邵可欣 (医护角落)
+            { id: "elsa", assignedRole: null },       // NPC4: 艾尔莎 (纳米手术舱)
+            { id: "sophia", assignedRole: null }      // NPC5: 索菲亚 (绿光水培温室)
+        ],
+
+        mapImageUrl: null,
+        // 地图拓扑网络 (基于宇宙飞船母蓝图构建，33间开放舱室)
+        map: buildSpaceshipLevelMap(3),
+
+        // 第三关解锁规则列表
+        unlockRules: [
+            {
+                id: "l3_power_restore_clear",
+                condition: { type: "clear_any" },
+                unlockLevelIds: [4],
+                taskName: "任务一：经过停电始发地修复电源并撤离",
+                taskObjective: "前往【全舰停电始发地】合闸恢复主电网，再前往逃生舱脱出",
+                title: "主电网重合闸",
+                toast: "全舰主电网已彻底恢复并安全脱离！开放【第四关】！"
+            },
+            {
+                id: "l3_four_npcs_escort",
+                condition: { 
+                    type: "require_npc_count", 
+                    count: 4 
+                },
+                unlockLevelIds: [15],
+                taskName: "任务二：带离场景中四名NPC撤离",
+                taskObjective: "搜寻救醒同伴，至少携行四名NPC共同撤离逃生",
+                title: "矩阵大撤离",
+                toast: "成功带领四名同伴突破重围脱离！激活深层坐标，额外开放【第十五关】！"
+            }
+        ]
+    },
+    {
+        levelId: 4,
+        title: "第四关：深空巡检 · 虚妄之瞳",
+        subtitle: "全舰静默巡逻 · 规避一切视线接触",
+
+        // q1 黑屏中间白字（契合静默巡逻与悬疑留白）
+        blackScreenText: [
+            "……一如既往的一天。换气格栅吐着微凉的气流。",
+            "巡逻一圈吧。按照早班排查序列，依次确认要害中枢。",
+            "舱壁依旧冰冷，指示灯按部就班地闪烁……就跟往常一样。",
+            "或者……有可能不一样？（注意：切勿被任何人所凝视）",
+            "——触摸屏幕，开始巡检。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量配置：严格为零
+        wolfCountRange: [0, 0],
+        candidateNPCs: [
+            { id: "shaokexin", assignedRole: null },  // 邵可欣 (医护角落)
+            { id: "elsa", assignedRole: null },       // 艾尔莎 (纳米手术舱)
+            { id: "sophia", assignedRole: null },     // 索菲亚 (绿光水培温室)
+            { id: "mode", assignedRole: null },       // 莫德 (西北隔离舱)
+            { id: "noah", assignedRole: null },       // 诺亚 (体能维持舱)
+            { id: "vivian", assignedRole: null },     // 薇薇安 (二号辅电站)
+            { id: "elena", assignedRole: null },      // 伊莲 (重核聚变主反应堆)
+            { id: "colt", assignedRole: null }        // 柯尔特 (黑市走私特勤套房)
+        ],
+
+        mapImageUrl: null,
+        // 地图拓扑网络 (基于宇宙飞船母蓝图构建，53间开放舱室)
+        map: buildSpaceshipLevelMap(4),
+
+        // 第四关解锁规则列表
+        unlockRules: [
+            {
+                id: "l4_patrol_clear",
+                condition: { type: "clear_any" },
+                unlockLevelIds: [5, 16],
+                taskName: "任务一：全舰静默巡检",
+                taskObjective: "巡视三大要害中枢（停机坪甲板、重力发生核、防护中枢），并在不被任何人凝视的前提下前往动力操作台",
+                title: "静默巡检达成",
+                toast: "成功规避一切视线接触并完成全舰要害巡检！开放【第五关】与【第十六关】！"
             }
         ]
     }

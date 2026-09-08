@@ -205,6 +205,46 @@ html, body {
     animation: deathBadgePulse 2s infinite ease-in-out;
 }
 
+/* 平安夜专属绿光徽章与边框 */
+.death-phase-badge.peaceful-badge {
+    background: rgba(34, 197, 94, 0.2) !important;
+    border-color: #22c55e !important;
+    color: #4ade80 !important;
+    box-shadow: 0 0 18px rgba(34, 197, 94, 0.45) !important;
+    animation: peacefulBadgePulse 2s infinite ease-in-out !important;
+}
+
+@keyframes peacefulBadgePulse {
+    0%, 100% {
+        box-shadow: 0 0 12px rgba(34, 197, 94, 0.35);
+        border-color: #22c55e;
+    }
+    50% {
+        box-shadow: 0 0 24px rgba(34, 197, 94, 0.75);
+        border-color: #86efac;
+    }
+}
+
+.death-portrait-frame.peaceful-frame {
+    border-color: #22c55e !important;
+    box-shadow: 0 0 32px rgba(34, 197, 94, 0.5), inset 0 0 16px rgba(0, 0, 0, 0.85) !important;
+    animation: peacefulFramePulse 2.2s infinite ease-in-out !important;
+}
+
+@keyframes peacefulFramePulse {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(34, 197, 94, 0.4), inset 0 0 12px rgba(0, 0, 0, 0.8);
+    }
+    50% {
+        box-shadow: 0 0 36px rgba(34, 197, 94, 0.75), inset 0 0 20px rgba(34, 197, 94, 0.2);
+    }
+}
+
+.death-victim-title.peaceful-title {
+    color: #4ade80 !important;
+    text-shadow: 0 0 15px rgba(34, 197, 94, 0.5) !important;
+}
+
 @keyframes deathBadgePulse {
     0%, 100% {
         box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
@@ -403,6 +443,182 @@ html, body {
     color: rgba(255, 255, 255, 0.5);
     letter-spacing: 3px;
     animation: promptBlink 1.8s infinite ease-in-out;
+}
+
+/* ==========================================================================
+   第四关专属：直接在星舰大地图上演示的异象转场动画
+   ========================================================================== */
+#screen-game.cinematic-mode .game-top-bar,
+#screen-game.cinematic-mode #action-log-sidebar,
+#screen-game.cinematic-mode #exploration-controls,
+#screen-game.cinematic-mode #team-roster-deck,
+#screen-game.cinematic-mode #sector-telemetry-hud,
+#screen-game.cinematic-mode #stage-mission-card,
+#screen-game.cinematic-mode .stage-map-floating-controls,
+#screen-game.cinematic-mode #stage-toast,
+#screen-game.cinematic-mode #vn-speaker-portrait {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 0.5s ease;
+}
+
+#screen-level4-cutscene.map-cutscene-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    overflow: hidden;
+    pointer-events: auto;
+}
+
+.map-cutscene-blackout {
+    position: absolute;
+    inset: 0;
+    background: #000000;
+    z-index: 5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 1;
+    pointer-events: auto;
+    transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.map-cutscene-blackout.blackout-transparent {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.map-cutscene-typography {
+    font-size: 1.55rem;
+    line-height: 2.3;
+    letter-spacing: 4px;
+    color: #f8fafc;
+    text-shadow: 0 0 18px rgba(255, 255, 255, 0.55), 0 0 35px rgba(56, 189, 248, 0.35);
+    text-align: center;
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1), transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.map-cutscene-typography.show-text {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.map-cutscene-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.map-console-focus-marker {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+/* 动力操作台中心：卡罗专属NPC图标 (无文字/别写名字) */
+.map-kaze-npc-icon {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 2.5px solid #60a5fa;
+    background: rgba(30, 58, 138, 0.85);
+    box-shadow: 0 0 25px rgba(96, 165, 250, 0.85), inset 0 0 12px rgba(96, 165, 250, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    z-index: 10;
+}
+
+.map-kaze-npc-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* 玩家主视角光标与脉冲环 */
+.map-player-perspective {
+    position: absolute;
+    width: 86px;
+    height: 86px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 15;
+}
+
+.map-player-ring {
+    position: absolute;
+    inset: -4px;
+    border: 2.5px dashed #38bdf8;
+    border-radius: 50%;
+    box-shadow: 0 0 22px rgba(56, 189, 248, 0.95);
+    animation: spinPlayerRing 8s linear infinite;
+}
+
+.map-player-crosshair {
+    position: absolute;
+    inset: 0;
+}
+.map-player-crosshair::before,
+.map-player-crosshair::after {
+    content: '';
+    position: absolute;
+    background: rgba(56, 189, 248, 0.8);
+}
+.map-player-crosshair::before {
+    left: 50%;
+    top: -8px;
+    bottom: -8px;
+    width: 2px;
+    transform: translateX(-50%);
+}
+.map-player-crosshair::after {
+    top: 50%;
+    left: -8px;
+    right: -8px;
+    height: 2px;
+    transform: translateY(-50%);
+}
+
+/* X 实体（图一图标） */
+.map-entity-x {
+    position: absolute;
+    width: 76px;
+    height: 76px;
+    right: -130px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 35;
+    transition: right 2.6s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 1.4s ease;
+    filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 35px rgba(239, 68, 68, 0.85));
+}
+
+.map-entity-x img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    animation: pulseEntityX 2s infinite ease-in-out;
+}
+
+/* 移动至主视角且发生局部重叠时停下的类 */
+.map-entity-x.approaching {
+    opacity: 1;
+    right: calc(50% - 38px - 28px); /* 贴近主视角，形成约 35% 重叠部分后停驻 */
 }
 
 @keyframes promptBlink {
@@ -1255,6 +1471,152 @@ html, body {
 
 .modal-close-btn:hover {
     color: #ffffff;
+}
+
+/* ==========================================================================
+   5b. 停电始发地合闸确认弹窗 (Power Restore Modal)
+   ========================================================================== */
+.power-restore-box {
+    max-width: 520px;
+    border: 1.5px solid #0ea5e9;
+    box-shadow: 0 0 35px rgba(14, 165, 233, 0.4), 0 10px 40px rgba(0, 0, 0, 0.85);
+    background: radial-gradient(circle at 50% 20%, rgba(14, 165, 233, 0.12) 0%, rgba(10, 16, 32, 0.98) 75%);
+}
+
+.power-restore-header {
+    border-bottom: 1px solid rgba(14, 165, 233, 0.3);
+}
+
+.power-title-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.power-status-pulse {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(234, 179, 8, 0.2);
+    border: 1.5px solid #eab308;
+    color: #facc15;
+    font-size: 1.25rem;
+    box-shadow: 0 0 16px rgba(234, 179, 8, 0.5);
+    animation: pulsePower 1.5s infinite alternate;
+}
+
+@keyframes pulsePower {
+    from {
+        transform: scale(0.95);
+        box-shadow: 0 0 10px rgba(234, 179, 8, 0.4);
+    }
+    to {
+        transform: scale(1.08);
+        box-shadow: 0 0 22px rgba(234, 179, 8, 0.85);
+    }
+}
+
+.power-restore-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 10px 0;
+}
+
+.power-alert-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+
+.power-warning-badge {
+    color: #f87171;
+    font-size: 0.82rem;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.power-warning-info {
+    color: #cbd5e1;
+    font-size: 0.8rem;
+    line-height: 1.35;
+}
+
+.power-breaker-visual {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+
+.power-switch-slot {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+}
+
+.power-voltage-meter {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.voltage-label {
+    font-size: 0.72rem;
+    color: #94a3b8;
+}
+
+.voltage-val {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.95rem;
+    font-weight: bold;
+    color: #f87171;
+}
+
+.voltage-val.text-green {
+    color: #4ade80;
+}
+
+.power-lever-icon {
+    font-size: 1.3rem;
+    color: #38bdf8;
+    animation: flashLever 1.2s infinite;
+}
+
+@keyframes flashLever {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; transform: scale(1.1); }
+}
+
+.power-desc-text {
+    font-size: 0.88rem;
+    color: #cbd5e1;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.power-confirm-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #0284c7 0%, #0d9488 100%) !important;
+    border-color: #38bdf8 !important;
+    font-size: 0.95rem;
+    font-weight: bold;
+    padding: 12px 16px;
+    box-shadow: 0 0 16px rgba(14, 165, 233, 0.4);
+    transition: all 0.2s ease;
+}
+
+.power-confirm-btn:hover {
+    box-shadow: 0 0 24px rgba(14, 165, 233, 0.7);
+    transform: translateY(-1px);
 }
 
 /* ==========================================================================

@@ -76,6 +76,7 @@ export class GameEngine {
         this.screenBlack = document.getElementById("screen-q1-black");
         this.screenEveningBlack = document.getElementById("screen-evening-black");
         this.screenDeathBlack = document.getElementById("screen-death-black");
+        this.screenLevel4Cutscene = document.getElementById("screen-level4-cutscene");
         this.deathBlackCallback = null;
         this.screenGame = document.getElementById("screen-game");
 
@@ -112,6 +113,8 @@ export class GameEngine {
         this.modalLevelSelect = document.getElementById("modal-level-select");
         this.levelGrid = document.getElementById("level-select-grid");
         this.btnOpenLevelSelect = document.getElementById("btn-menu-select-level");
+        this.modalPowerRestore = document.getElementById("modal-power-restore");
+        this.btnPowerRestoreConfirm = document.getElementById("btn-power-restore-confirm");
 
         // 任务清单 DOM 引用
         this.btnViewMissions = document.getElementById("btn-view-missions");
@@ -692,10 +695,17 @@ export class GameEngine {
         this.screenBlack.classList.add("hidden");
         this.screenEveningBlack?.classList.add("hidden");
         this.screenDeathBlack?.classList.add("hidden");
+        this.screenLevel4Cutscene?.classList.add("hidden");
         this.screenGame.classList.add("hidden");
         this.modalLevelSelect?.classList.add("hidden");
         this.modalMissions?.classList.add("hidden");
         this.modalPersonaLog?.classList.add("hidden");
+        this.modalEncounter?.classList.add("hidden");
+        this.modalPowerRestore?.classList.add("hidden");
+        this.modalInquiry?.classList.add("hidden");
+        this.modalJudgement?.classList.add("hidden");
+        this.modalNight?.classList.add("hidden");
+        this.modalResult?.classList.add("hidden");
         this.hudMiniRadar?.classList.add("hidden");
         this.updateMenuButtons();
     }
@@ -741,8 +751,36 @@ export class GameEngine {
             const cond = rule.condition || { type: "clear_any" };
 
             if (cond.type === "clear_any") {
-                realtimeStatus = "🏃 突破重叠回廊，开启终点折跃气闸即可达成";
-                realtimeClass = "realtime-ready";
+                if (this.currentLevel?.levelId === 2 && rule.id === "l2_power_restore_clear") {
+                    if (this.level2PowerRestored) {
+                        realtimeStatus = "🟢 主电源已合闸通电，抵达逃生舱即可撤离脱出";
+                        realtimeClass = "realtime-ready";
+                    } else {
+                        realtimeStatus = "⚡ 逃生舱主电源切断中（需先前往停电始发地修复电源）";
+                        realtimeClass = "realtime-waiting";
+                    }
+                } else if (this.currentLevel?.levelId === 3 && rule.id === "l3_power_restore_clear") {
+                    if (this.level3PowerRestored) {
+                        realtimeStatus = "🟢 主电网已合闸通电，抵达逃生舱即可撤离脱出";
+                        realtimeClass = "realtime-ready";
+                    } else {
+                        realtimeStatus = "⚡ 逃生舱主电网切断中（需先前往停电始发地修复电源）";
+                        realtimeClass = "realtime-waiting";
+                    }
+                } else {
+                    realtimeStatus = "🏃 突破重叠回廊，开启终点折跃气闸即可达成";
+                    realtimeClass = "realtime-ready";
+                }
+            } else if (cond.type === "require_npc_count") {
+                const reqCount = cond.count || cond.minCount || 4;
+                const currentCount = activeNpcIds.length;
+                if (currentCount >= reqCount) {
+                    realtimeStatus = `🟢 队伍已有 ${currentCount} 名同伴随行（已满足 ≥ ${reqCount} 人撤离要求）`;
+                    realtimeClass = "realtime-ready";
+                } else {
+                    realtimeStatus = `⏳ 队伍现有 ${currentCount}/${reqCount} 名同伴随行（仍需搜寻救助更多同伴）`;
+                    realtimeClass = "realtime-waiting";
+                }
             } else if (cond.type === "require_npcs") {
                 const reqIds = cond.npcIds || [];
                 const allInTeam = reqIds.every(id => activeNpcIds.includes(id));
@@ -921,6 +959,16 @@ export class GameEngine {
         this.stepsWithNpc = {};
         this.nightCounterDeflected = false;
         this.nightModeDefended = false;
+        this.level2PowerRestored = false;
+        this.level3PowerRestored = false;
+        this.level4PatrolVisited = new Set();
+        this.modalEncounter?.classList.add("hidden");
+        this.modalPowerRestore?.classList.add("hidden");
+        this.modalInquiry?.classList.add("hidden");
+        this.modalJudgement?.classList.add("hidden");
+        this.modalNight?.classList.add("hidden");
+        this.modalResult?.classList.add("hidden");
+        this.screenLevel4Cutscene?.classList.add("hidden");
         this.logAction(`【开始新循环】启动关卡：${levelConfig.title}。主角 L.P.H 身份：${WorldviewConfig.roleNames[this.protagonist.role].name}`);
 
         // 初始化地图
@@ -1164,6 +1212,30 @@ export class GameEngine {
             // 触发人物图鉴历练检定 (如邵可欣救援入队)
             this.checkPersonaSecretUnlocks("suffer_fate", { charId: npc.id, type: "rescued" });
 
+            // 【特殊特质：Dr. Elsa / 艾尔莎 战地创伤急救】
+            // 当将其收纳为队友时固定回复 30 体力值，并基于体力增加提示与多重视觉/对白反馈
+            let elsaHealRecovered = 0;
+            if (npc.id === "elsa" || npc.id === "dr_elsa") {
+                const oldStamina = this.stamina;
+                this.stamina = Math.min(StaminaConfig.maxStamina, this.stamina + 30);
+                elsaHealRecovered = this.stamina - oldStamina;
+                this.updateHeaderUI();
+                if (this.headerStaminaFill) {
+                    this.headerStaminaFill.classList.remove("stamina-boost-pulse");
+                    if (this.headerStaminaFill.offsetWidth !== undefined) {
+                        void this.headerStaminaFill.offsetWidth;
+                    }
+                    this.headerStaminaFill.classList.add("stamina-boost-pulse");
+                }
+                if (typeof Sound !== "undefined" && Sound.playFoodSound) {
+                    Sound.playFoodSound();
+                }
+                if (this.showStageToast) {
+                    this.showStageToast(`💉 [战地急救] 主治军医 艾尔莎 为队伍注射高能活性剂，体力恢复 +${elsaHealRecovered}！`);
+                }
+                this.logAction(`【战地急救】主治军医 [${npc.name}] 进行了紧急创伤救治，队伍体力值固定恢复 +${elsaHealRecovered} 点（当前: ${this.stamina}/${StaminaConfig.maxStamina}）！`);
+            }
+
             // 播放入队对话
             const lines = (npc.introDialogue || []).slice(1).map(raw => {
                 const parsed = CharacterRegistry.parseDialogueLine(raw);
@@ -1175,6 +1247,13 @@ export class GameEngine {
             });
             if (lines.length === 0) {
                 lines.push({ speaker: npc, text: `谢谢你救了我，L.P.H！我愿意跟随你一起撤离！`, expression: "happy" });
+            }
+
+            if (npc.id === "elsa" || npc.id === "dr_elsa") {
+                lines.push({
+                    speaker: { name: "战地医疗支援", themeColor: "#06b6d4" },
+                    text: `💉 [战地急救] 艾尔莎为你注入了高能活性复合针剂，全队体力恢复了 +${elsaHealRecovered} 点！（当前体力: ${this.stamina}/${StaminaConfig.maxStamina}）`
+                });
             }
 
             this.dialogueUI.playSequence(lines, () => {
@@ -1195,14 +1274,63 @@ export class GameEngine {
         };
     }
 
+    /**
+     * 第二关全舰停电始发地：特殊高压合闸确认弹窗
+     * 满足要求：先弹出修电弹窗提示确认，合闸后再触发该房间内的NPC选择
+     */
+    showPowerRestoreModal(node, onConfirmed) {
+        if (!this.modalPowerRestore) {
+            this.modalPowerRestore = document.getElementById("modal-power-restore");
+        }
+        if (!this.btnPowerRestoreConfirm) {
+            this.btnPowerRestoreConfirm = document.getElementById("btn-power-restore-confirm");
+        }
+
+        if (!this.modalPowerRestore || !this.btnPowerRestoreConfirm) {
+            if (onConfirmed) onConfirmed();
+            return;
+        }
+
+        this.modalPowerRestore.classList.remove("hidden");
+
+        const handleConfirm = () => {
+            if (this.modalPowerRestore) {
+                this.modalPowerRestore.classList.add("hidden");
+            }
+            if (this.btnPowerRestoreConfirm) {
+                this.btnPowerRestoreConfirm.onclick = null;
+            }
+            if (onConfirmed) onConfirmed();
+        };
+
+        this.btnPowerRestoreConfirm.onclick = handleConfirm;
+    }
+
     // =========================================================================
     // Q4: 傍晚询问环节 (先黑屏白字，点击后再进入)
     // =========================================================================
     enterEveningPhase() {
-        this.phase = "evening_black";
+        // 第四关专属优化：本关卡没有死寂降临，没有黑天时刻，保持探索
+        if (this.currentLevel?.levelId === 4) {
+            this.enterQ3Exploration();
+            return;
+        }
+
         this.eveningInquiryCount = 0;
         this.updateHeaderUI();
 
+        // 核心优化：当队伍里没有NPC时，直接跳过到夜晚时刻，再直接进入死寂降临动画界面
+        if (this.getAliveNpcTeamMembers().length === 0) {
+            this.logAction(`【孤身前行】当前队伍中只有你一人，直接度过傍晚与黑夜……`);
+            this.confinedNpcId = null;
+            this.nightProtectedNpcId = null;
+            this.witchSaved = false;
+            this.nightTargetVictimId = null;
+            this.enterQ7Day();
+            return;
+        }
+
+        this.phase = "evening_black";
         // 切换至全黑屏转场视口 (浮层全屏覆盖，保留底层主舞台DOM杜绝地图缩放形变)
         this.screenEveningBlack?.classList.remove("hidden");
     }
@@ -1439,6 +1567,12 @@ export class GameEngine {
     // Q6: 黑夜阶段 (根据玩家身份发动夜间技能)
     // =========================================================================
     enterQ6Night() {
+        // 第四关专属优化：本关卡没有死寂降临，没有黑天时刻，保持探索
+        if (this.currentLevel?.levelId === 4) {
+            this.enterQ3Exploration();
+            return;
+        }
+
         this.phase = "q6_night";
         this.nightProtectedNpcId = null;
         this.witchSaved = false;
@@ -1626,10 +1760,18 @@ export class GameEngine {
     // =========================================================================
     // Q7: 白天阶段 (公布夜晚结果，伤亡结算，全屏黑屏死亡特写，重置计数回到Q3)
     // =========================================================================
-    enterDeathBlackPhase(victim, onProceed) {
+    enterDeathBlackPhase(victim, onProceed, survivedReason = null) {
+        // 第四关专属优化：本关卡没有死寂降临动画
+        if (this.currentLevel?.levelId === 4) {
+            if (onProceed) onProceed();
+            return;
+        }
+
         this.phase = "death_black";
         this.deathBlackCallback = onProceed;
         this.deathRevealed = false;
+        this.currentDeathVictim = victim;
+        this.currentSurvivedReason = survivedReason;
         if (this.deathRevealTimer) {
             clearTimeout(this.deathRevealTimer);
             this.deathRevealTimer = null;
@@ -1638,36 +1780,111 @@ export class GameEngine {
         const img = document.getElementById("death-portrait-img");
         const titleElem = document.getElementById("death-victim-name");
         const textElem = document.getElementById("death-black-text");
+        const badgeElem = document.getElementById("death-phase-badge") || document.querySelector(".death-phase-badge");
+        const portraitFrame = document.getElementById("death-portrait-frame");
         const suspenseLayer = document.getElementById("death-suspense-layer");
         const contentContainer = document.getElementById("death-content-container");
 
-        if (titleElem) {
-            titleElem.textContent = `【同伴遇害：${victim.name}】`;
-        }
-        if (textElem) {
-            textElem.innerHTML = `生活舱深处传来刺耳的蜂鸣警报，晨曦中发现了一具冰冷的遗体……<br>同伴 [${victim.name}] 昨夜遭遇潜伏伪人残酷袭击，生命体征已完全终止。`;
-        }
+        if (victim) {
+            if (badgeElem) {
+                badgeElem.textContent = "⚠️ 乘员遇害确认 (CASUALTY CONFIRMED)";
+                badgeElem.classList.remove("peaceful-badge");
+            }
+            if (portraitFrame) {
+                portraitFrame.classList.remove("peaceful-frame");
+            }
+            if (titleElem) {
+                titleElem.textContent = `【同伴遇害：${victim.name}】`;
+                titleElem.classList.remove("peaceful-title");
+            }
+            if (textElem) {
+                textElem.innerHTML = `生活舱深处传来刺耳的蜂鸣警报，晨曦中发现了一具冰冷的遗体……<br>同伴 [${victim.name}] 昨夜遭遇潜伏伪人残酷袭击，生命体征已完全终止。`;
+            }
 
-        const exp = "dead";
-        const candidates = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getCharacterImageCandidates)
-            ? CharacterRegistry.getCharacterImageCandidates(victim, exp)
-            : [];
-        const fallbackSvg = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getAvatarSvg)
-            ? CharacterRegistry.getAvatarSvg(victim, exp)
-            : "";
-        if (img) {
-            img.onerror = () => {
-                if (window.handlePortraitError) {
-                    window.handlePortraitError(img);
+            const exp = "dead";
+            const candidates = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getCharacterImageCandidates)
+                ? CharacterRegistry.getCharacterImageCandidates(victim, exp)
+                : [];
+            const fallbackSvg = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getAvatarSvg)
+                ? CharacterRegistry.getAvatarSvg(victim, exp)
+                : "";
+            if (img) {
+                img.onerror = () => {
+                    if (window.handlePortraitError) {
+                        window.handlePortraitError(img);
+                    }
+                };
+                img.setAttribute("data-candidates", JSON.stringify(candidates));
+                img.setAttribute("data-index", "0");
+                img.setAttribute("data-fallback", fallbackSvg);
+                img.src = candidates[0] || fallbackSvg;
+            }
+        } else {
+            // 平安夜无人员遇害模式
+            if (badgeElem) {
+                badgeElem.textContent = "🕊️ 平安无事 (NO CASUALTIES)";
+                badgeElem.classList.add("peaceful-badge");
+            }
+            if (portraitFrame) {
+                portraitFrame.classList.add("peaceful-frame");
+            }
+
+            let title = "【全员生还 · 平安夜】";
+            let desc = "晨曦第一道阳光穿透隔离窗，生活区生命体征读数平稳正常。<br>昨夜没有任何同伴遇害，全员安然迎来晨曦。";
+
+            if (survivedReason === "kaze_counter") {
+                title = "【战术反制 · 全员平安】";
+                desc = "生活区警报静默。卡罗凭借特战直觉破门格挡，成功化解了暗影突袭！<br>昨夜没有任何同伴遇害，全员安然迎来晨曦。";
+            } else if (survivedReason === "mode_shield") {
+                title = "【防爆坚守 · 全员平安】";
+                desc = "重装防爆力场彻底拦截了暗夜突袭！莫德死死扼守住舱门击退潜伏者！<br>昨夜没有任何同伴遇害，全员安然迎来晨曦。";
+            } else if (survivedReason === "guarded") {
+                title = "【护卫守备 · 全员平安】";
+                desc = "护卫防御力场整夜坚固运行，成功化解了潜在抹杀危机！<br>昨夜没有任何同伴遇害，全员安然迎来晨曦。";
+            } else if (survivedReason === "witch_saved") {
+                title = "【歌咏救赎 · 全员平安】";
+                desc = "生命歌咏回路在黑夜中及时咏唱，生体血清成功挽救了遇险同伴！<br>昨夜没有任何同伴遇害，全员安然迎来晨曦。";
+            } else if (survivedReason === "confined") {
+                title = "【行动受制 · 平安无事】";
+                desc = "昨夜被禁锢的目标无法自由行动，舱内整夜未发生任何冲突与伤亡。<br>全员安然迎来晨曦。";
+            }
+
+            if (titleElem) {
+                titleElem.textContent = title;
+                titleElem.classList.add("peaceful-title");
+            }
+            if (textElem) {
+                textElem.innerHTML = desc;
+            }
+
+            // 平安夜展示专属生还徽章
+            const peaceSvg = `data:image/svg+xml;utf8,` + encodeURIComponent(`
+                <svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <radialGradient id="pGlow" cx="50%" cy="45%" r="55%">
+                            <stop offset="0%" stop-color="#22c55e" stop-opacity="0.35"/>
+                            <stop offset="60%" stop-color="#0f2b1d" stop-opacity="0.8"/>
+                            <stop offset="100%" stop-color="#091410" stop-opacity="0.95"/>
+                        </radialGradient>
+                    </defs>
+                    <rect width="200" height="260" fill="url(#pGlow)"/>
+                    <circle cx="100" cy="105" r="46" fill="none" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.7"/>
+                    <circle cx="100" cy="105" r="36" fill="rgba(34,197,94,0.12)" stroke="#4ade80" stroke-width="2"/>
+                    <text x="100" y="118" font-size="38" text-anchor="middle" dominant-baseline="middle">🕊️</text>
+                    <text x="100" y="178" font-size="13" fill="#4ade80" font-weight="bold" letter-spacing="2" text-anchor="middle">PEACEFUL NIGHT</text>
+                    <text x="100" y="200" font-size="11" fill="#86efac" letter-spacing="1" text-anchor="middle">全员生还 · 晨曦破晓</text>
+                </svg>
+            `);
+            if (img) {
+                img.onerror = null;
+                if (typeof img.removeAttribute === "function") {
+                    img.removeAttribute("data-candidates");
                 }
-            };
-            img.setAttribute("data-candidates", JSON.stringify(candidates));
-            img.setAttribute("data-index", "0");
-            img.setAttribute("data-fallback", fallbackSvg);
-            img.src = candidates[0] || fallbackSvg;
+                img.src = peaceSvg;
+            }
         }
 
-        // 核心表现优化：黑夜行动结束后，先纯黑屏2秒，之后再渐渐浮现死者，并播放音效
+        // 核心表现优化：黑夜行动结束后，先纯黑屏2秒，之后再渐渐浮现死者/平安夜卡片，并播放音效
         suspenseLayer?.classList.remove("fade-out");
         contentContainer?.classList.remove("death-content-revealed");
         contentContainer?.classList.add("death-content-hidden");
@@ -1686,7 +1903,7 @@ export class GameEngine {
     }
 
     /**
-     * 2秒黑屏后渐渐浮现死者，并触发相应配置音效
+     * 2秒黑屏后渐渐浮现死者/平安夜卡片，并触发相应配置音效
      */
     revealDeathContent() {
         if (this.deathRevealed) return;
@@ -1704,10 +1921,14 @@ export class GameEngine {
         contentContainer?.classList.remove("death-content-hidden");
         contentContainer?.classList.add("death-content-revealed");
 
-        // 播放死者展示专属音效 (支持用户在 config.js 中自由配置音频文件)
+        // 播放死者展示专属音效或平安夜清脆铃音
         try {
-            if (typeof Sound !== "undefined" && Sound.playDeathSound) {
-                Sound.playDeathSound();
+            if (typeof Sound !== "undefined") {
+                if (this.currentDeathVictim && Sound.playDeathSound) {
+                    Sound.playDeathSound();
+                } else if (!this.currentDeathVictim && Sound.playFoodSound) {
+                    Sound.playFoodSound();
+                }
             }
         } catch (err) {
             console.warn("[DeathSound] 播放音效异常:", err);
@@ -1885,10 +2106,13 @@ export class GameEngine {
 
             this.logAction(`【黎明公布】第 ${this.dayCount} 天：${reasonText}`);
 
-            this.dialogueUI.playSequence(lines, () => {
-                // 循环回到 q3 探索，步数已在傍晚时清零，开启全新一天的选择
-                this.enterQ3Exploration();
-            });
+            // 核心优化：无论是否死人，黑夜转白天均出现“死寂降临”动画界面！
+            this.enterDeathBlackPhase(null, () => {
+                this.dialogueUI.playSequence(lines, () => {
+                    // 循环回到 q3 探索，步数已在傍晚时清零，开启全新一天的选择
+                    this.enterQ3Exploration();
+                });
+            }, prevReason);
         }
     }
 
@@ -1901,6 +2125,18 @@ export class GameEngine {
         const wolfAlive = aliveMembers.filter(m => m.role === "wolf");
         const currentLvlId = this.currentLevel ? this.currentLevel.levelId : 1;
 
+        // 第四关专属通关特殊剧情演出 (渐变黑屏闪现文字 + X异象逼近 + 终焉暗幕)
+        if (currentLvlId === 4) {
+            this.playLevel4EndingCutscene(() => {
+                this.finalizeVictory(exitNode, aliveMembers, wolfAlive);
+            });
+            return;
+        }
+
+        this.finalizeVictory(exitNode, aliveMembers, wolfAlive);
+    }
+
+    finalizeVictory(exitNode, aliveMembers, wolfAlive) {
         // 收集人员撤离与伪人状态上下文
         const evacuatedNpcs = aliveMembers.filter(m => !m.isProtagonist);
         const evacuatedNpcIds = evacuatedNpcs.map(m => m.id);
@@ -1933,8 +2169,133 @@ export class GameEngine {
         this.showResultModal("🌀 奇点坍缩 · 循环重置 (OBSERVATION)", msg, true, { unlockResult, newlyUnlocked });
     }
 
+    /**
+     * 第四关专属通关特殊剧情演出
+     * 1. 渐变黑屏然后闪现文字：
+     *    1：看来今天也与往常一样
+     *    2：没什么区别....
+     *    3：那就到此为止吧...
+     * 2. 三段文字结束后，从屏幕右侧渐变显现进来一个X（图一的图标），然后贴近主视角（此时动力操作台中心也有一个NPC图标来代表卡罗，别写名字），有些重叠部分时X停下
+     * 3. 播放音频（接口预留），2秒之后再渐变黑屏
+     * 4. 显现文字“看来....” “的确有些不一样...” "来不及回头...便陷入无尽的黑暗之中..."
+     */
+    playLevel4EndingCutscene(onComplete) {
+        const screenCutscene = document.getElementById("screen-level4-cutscene");
+        const blackoutLayer = document.getElementById("l4-cutscene-blackout");
+        const textElem = document.getElementById("l4-cutscene-text");
+        const stageLayer = document.getElementById("l4-cutscene-stage-layer");
+        const entityX = document.getElementById("l4-entity-x");
+        const screenGame = document.getElementById("screen-game");
+
+        if (!screenCutscene || !blackoutLayer || !textElem || !stageLayer || !entityX) {
+            if (onComplete) onComplete();
+            return;
+        }
+
+        this.phase = "level4_cutscene";
+
+        // 开启全景电影模式：让周边 HUD 工具条与侧栏隐退，把整个视野留给战术星舰大地图
+        if (screenGame) screenGame.classList.add("cinematic-mode");
+
+        // 确保舞台大地图精准居中并聚焦在【西区整备间】动力操作台 (room_npc1)
+        if (this.stageMapRenderer && this.currentLevel && this.currentLevel.map) {
+            this.stageMapRenderer.viewMode = "focus";
+            this.stageMapRenderer.panX = 0;
+            this.stageMapRenderer.panY = 0;
+            this.stageMapRenderer.zoom = 1.0;
+            this.stageMapRenderer.render(
+                this.currentLevel.map,
+                "room_npc1",
+                this.visitedNodes,
+                this.teamMembers
+            );
+        }
+
+        screenCutscene.classList.remove("hidden");
+        blackoutLayer.classList.remove("blackout-transparent");
+        blackoutLayer.classList.remove("hidden");
+        stageLayer.classList.remove("hidden");
+        entityX.classList.remove("approaching");
+        textElem.innerHTML = "";
+        textElem.classList.remove("show-text");
+
+        let skipTimer = null;
+        const advanceClick = () => {
+            if (skipTimer) skipTimer();
+        };
+        screenCutscene.onclick = advanceClick;
+
+        const waitOrClick = (ms) => {
+            return new Promise(resolve => {
+                let timer = null;
+                const done = () => {
+                    if (timer) clearTimeout(timer);
+                    skipTimer = null;
+                    resolve();
+                };
+                timer = setTimeout(done, ms);
+                skipTimer = done;
+            });
+        };
+
+        const showFlashText = async (text, holdMs) => {
+            textElem.classList.remove("show-text");
+            await waitOrClick(350);
+            textElem.textContent = text;
+            textElem.classList.add("show-text");
+            await waitOrClick(holdMs);
+        };
+
+        (async () => {
+            // 阶段 1：地图上方渐变黑屏，闪现第一组三段文字
+            await showFlashText("看来今天也与往常一样", 1600);
+            await showFlashText("没什么区别....", 1600);
+            await showFlashText("那就到此为止吧...", 1800);
+
+            // 淡出文字
+            textElem.classList.remove("show-text");
+            await waitOrClick(500);
+
+            // 渐变解除黑屏！直接显露出底层的星舰战术大地图！
+            // 此时动力操作台中心正有卡罗专属NPC图标与主视角标记
+            blackoutLayer.classList.add("blackout-transparent");
+            await waitOrClick(600);
+
+            // 阶段 2：未知X实体从屏幕右侧渐变显现并滑入，贴近主视角，局部重叠时停下
+            entityX.classList.add("approaching");
+            await waitOrClick(2600);
+
+            // 停下后立即播放异象音频（预留音频接口，放入 assets/audio/ 即可生效）
+            if (typeof Sound !== "undefined" && Sound.playLevel4EndingSound) {
+                Sound.playLevel4EndingSound();
+            }
+
+            // 2秒之后再渐变黑屏
+            await waitOrClick(2000);
+
+            // 渐变黑屏重临（将地图覆盖进终焉暗幕）
+            blackoutLayer.classList.remove("blackout-transparent");
+            await waitOrClick(900);
+
+            // 阶段 3：终焉暗幕中显现第二组文字“看来....” “的确有些不一样...” "来不及回头...便陷入无尽的黑暗之中..."
+            await showFlashText("看来....", 1600);
+            await showFlashText("的确有些不一样...", 1800);
+            await showFlashText("来不及回头...便陷入无尽的黑暗之中...", 2400);
+
+            textElem.classList.remove("show-text");
+            await waitOrClick(800);
+
+            // 演出完毕，恢复环境
+            screenCutscene.onclick = null;
+            screenCutscene.classList.add("hidden");
+            if (screenGame) screenGame.classList.remove("cinematic-mode");
+            if (onComplete) onComplete();
+        })();
+    }
+
     triggerGameOver(reason) {
         this.phase = "gameover";
+        this.gameOverReason = reason;
         this.logAction(`【任务失败】${reason}`);
         this.showResultModal("💀 探索中止 (GAME OVER)", reason, false);
     }
@@ -2050,7 +2411,10 @@ export class GameEngine {
                 status: npc.status,
                 inquiryCount: npc.inquiryCount
             })),
-            unlockedNpcRooms: Array.from(this.unlockedNpcRooms || [])
+            unlockedNpcRooms: Array.from(this.unlockedNpcRooms || []),
+            level2PowerRestored: !!this.level2PowerRestored,
+            level3PowerRestored: !!this.level3PowerRestored,
+            level4PatrolVisited: Array.from(this.level4PatrolVisited || [])
         };
 
         const success = this.saveSystem.saveGame(state);
@@ -2115,6 +2479,9 @@ export class GameEngine {
         this.explorationEngine.visitedNodes = new Set(data.visitedNodes || []);
         this.explorationEngine.consumedEvents = new Set(data.consumedEvents || []);
         this.unlockedNpcRooms = new Set(data.unlockedNpcRooms || []);
+        this.level2PowerRestored = !!data.level2PowerRestored;
+        this.level3PowerRestored = !!data.level3PowerRestored;
+        this.level4PatrolVisited = new Set(data.level4PatrolVisited || []);
         this.checkAndUnlockNpcRooms();
 
         this.screenMenu.classList.add("hidden");
@@ -2379,9 +2746,14 @@ export class GameEngine {
         if (!nextNode) return;
 
         const isExitNode = !!(nextNode.isExit || (nextNode.event && nextNode.event.type === "exit"));
+        const isPowerRestorationPending = (
+            (this.currentLevel?.levelId === 2 && !this.level2PowerRestored) ||
+            (this.currentLevel?.levelId === 3 && !this.level3PowerRestored)
+        );
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending;
 
-        // 若体力已耗尽且不是通往终点，直接触发结算倒下
-        if (this.stamina <= 0 && !isExitNode) {
+        // 若体力已耗尽且不是通往有效终点，直接触发结算倒下
+        if (this.stamina <= 0 && !isEffectiveExit) {
             this.explorationEngine.moveTo(direction);
             return;
         }
@@ -2519,7 +2891,7 @@ export class GameEngine {
         const notesElem = document.querySelector(".map-notes");
         if (notesElem && this.currentLevel) {
             if (this.currentLevel.levelId === 2) {
-                notesElem.innerHTML = `<span>起点：深潜次级减压闸</span> ｜ <span>终点：超弦共振核心</span> ｜ <span>深层散落：莫德、邵可欣、卡罗</span>`;
+                notesElem.innerHTML = `<span>起点：东侧备勤室（医护角落）</span> ｜ <span>终点：北侧气密逃生舱</span> ｜ <span>深层散落：卡罗、莫德、陆知行</span>`;
             } else {
                 notesElem.innerHTML = `<span>起点：下层中央大厅</span> ｜ <span>终点：北侧脱离大门</span> ｜ <span>沿途：卡罗(NPC1)、邵可欣(NPC2)、莫德(NPC3)</span>`;
             }
@@ -2557,7 +2929,8 @@ export class GameEngine {
                 0,
                 {
                     canFastTravel: this.phase === "q3_explore",
-                    hoveredNodeId: this.hoveredMapNodeId
+                    hoveredNodeId: this.hoveredMapNodeId,
+                    patrolVisited: this.level4PatrolVisited
                 }
             );
         }
@@ -2586,7 +2959,8 @@ export class GameEngine {
                 0,
                 {
                     canFastTravel: this.phase === "q3_explore",
-                    hoveredNodeId: this.hoveredMapNodeId
+                    hoveredNodeId: this.hoveredMapNodeId,
+                    patrolVisited: this.level4PatrolVisited
                 }
             );
         }
@@ -2659,7 +3033,8 @@ export class GameEngine {
                     return;
                 }
             } else {
-                this.showStageToast(`🔒 [${node.name}] 防爆气闸已断电锁死，本区域暂不可通行。`);
+                const reason = node.lockReason || "防爆安全气闸锁死 · 供电切断";
+                this.showStageToast(`🔒 [${node.name}] ${reason}`);
                 if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
                 return;
             }

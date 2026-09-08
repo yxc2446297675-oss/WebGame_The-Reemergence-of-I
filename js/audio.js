@@ -369,6 +369,48 @@ class SoundEngine {
         this.playAudioFile(soundUrl, volume, this.synthesizeMoveStep, "移动音效");
     }
 
+    // 11. 第四关专属通关异象音效 (X实体逼近贴合时触发)
+    playLevel4EndingSound(customUrl = null) {
+        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.level4EndingSoundUrl) || "assets/audio/level4_ending.mp3";
+        const volume = (typeof AudioConfig !== 'undefined' && AudioConfig.level4EndingSoundVolume !== undefined) ? AudioConfig.level4EndingSoundVolume : 0.90;
+        this.playAudioFile(soundUrl, volume, this.synthesizeLevel4Glitch, "第四关异象音效");
+    }
+
+    // 过程式实时合成：深邃未知的低频脉冲与异化共鸣 (Eerie Sub-bass Pulse & Metallic Glitch)
+    synthesizeLevel4Glitch() {
+        this.init();
+        if (this.isMuted || !this.ctx) return;
+
+        const now = this.ctx.currentTime;
+
+        // 1. 低频心悸嗡鸣 (Sawtooth 80Hz -> 25Hz)
+        const subOsc = this.ctx.createOscillator();
+        const subGain = this.ctx.createGain();
+        subOsc.type = "sawtooth";
+        subOsc.frequency.setValueAtTime(80, now);
+        subOsc.frequency.exponentialRampToValueAtTime(25, now + 1.6);
+        subGain.gain.setValueAtTime(0.38, now);
+        subGain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+        subOsc.connect(subGain);
+        subGain.connect(this.ctx.destination);
+        subOsc.start(now);
+        subOsc.stop(now + 1.8);
+
+        // 2. 高频异化回旋共鸣 (Sine dissonance 520Hz <-> 528Hz 拍频)
+        [520, 528].forEach((freq) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(freq, now + 0.1);
+            gain.gain.setValueAtTime(0.12, now + 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + 0.1);
+            osc.stop(now + 1.5);
+        });
+    }
+
     // 过程式实时合成：震撼的死亡警报低频冲击波 (Sub-bass Impact + Alarm Flatline)
     synthesizeDeathImpact() {
         this.init();

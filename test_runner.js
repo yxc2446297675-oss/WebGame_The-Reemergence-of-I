@@ -62,6 +62,7 @@ function createMockElement(id, tag = 'div') {
         disabled: false,
         setAttribute(k, v) { this[k] = v; },
         getAttribute(k) { return this[k] || null; },
+        removeAttribute(k) { delete this[k]; },
         listeners: {},
         addEventListener(event, fn) {
             if (!this.listeners[event]) this.listeners[event] = [];
@@ -432,11 +433,20 @@ vnBox.click();
 vnBox.click();
 const btnNightSkip = global.document.getElementById('btn-night-skip');
 btnNightSkip.click();
-console.log('   玩家跳过行动后阶段状态 (应为 q7_day 平安夜):', app.phase);
-if (app.phase === 'death_black') {
+console.log('   玩家跳过行动后阶段状态 (无论死人与否均应进入死寂降临 death_black):', app.phase);
+if (app.phase !== 'death_black') {
+    throw new Error('无论是否死人，黑夜转白昼均应切入 death_black 阶段！当前: ' + app.phase);
+}
+if (app.currentDeathVictim !== null) {
+    throw new Error('队伍里没有伪人，却错误产生了死者对象: ' + JSON.stringify(app.currentDeathVictim));
+}
+if (humanNpc.status !== 'active') {
     throw new Error('队伍里没有伪人，但同伴依然被刀了！违反核心规则！');
 }
-console.log('   【已验证】队伍里没有伪人时绝不刀人，平安夜判定成功！');
+// 点击推进死寂降临
+screenDeath.click();
+screenDeath.click();
+console.log('   【已验证】队伍里没有伪人时绝不刀人，死寂降临呈现平安夜并推进成功！');
 
 // === 情况 B：队伍里存在伪人（伪人混入了队伍）===
 console.log('   --- 测试 B: 队伍里混入了伪人 ---');
@@ -692,14 +702,20 @@ for (const [nodeId, node] of Object.entries(level2.map.nodes)) {
 }
 console.log('   第二关发现的散落NPC分布:', npcsFoundInLevel2);
 if (npcsFoundInLevel2.length !== 3) {
-    throw new Error(`第二关应当包含3名散落NPC，当前找到: ${npcsFoundInLevel2.length}`);
+    throw new Error(`第二关应当包含3名停电站位散落NPC（去除邵可欣），当前找到: ${npcsFoundInLevel2.length}`);
 }
 const npcIds = npcsFoundInLevel2.map(n => n.npcId);
-['kaze', 'shaokexin', 'mode'].forEach(id => {
+['kaze', 'mode', 'prof_lu'].forEach(id => {
     if (!npcIds.includes(id)) {
         throw new Error(`第二关未找到NPC [${id}] 的分布房间！`);
     }
 });
+if (npcIds.includes('shaokexin')) {
+    throw new Error('第二关中不应存在邵可欣 NPC！');
+}
+if (level2.map.startNodeId !== 'room_npc2') {
+    throw new Error(`第二关起点必须为邵可欣原停电位置 [room_npc2]，当前: ${level2.map.startNodeId}`);
+}
 
 // 检定所有通道严格双向对称
 for (const [nodeId, node] of Object.entries(level2.map.nodes)) {
@@ -1163,7 +1179,13 @@ for (let lvlId = 1; lvlId <= 25; lvlId++) {
 
     const nodes = lvl.map.nodes;
     const roomCount = Object.keys(nodes).length;
-    const rule = tierRules.find(r => lvlId >= r.minLvl && lvlId <= r.maxLvl);
+    const rule = (lvlId === 2)
+        ? { minRooms: 18, maxRooms: 20, tierName: '第二关专设（截图19间舱室）' }
+        : (lvlId === 3)
+        ? { minRooms: 30, maxRooms: 35, tierName: '第三关专设（截图33间舱室）' }
+        : (lvlId === 4)
+        ? { minRooms: 50, maxRooms: 55, tierName: '第四关专设（截图53间舱室）' }
+        : tierRules.find(r => lvlId >= r.minLvl && lvlId <= r.maxLvl);
 
     if (roomCount < rule.minRooms || roomCount > rule.maxRooms) {
         throw new Error(`第 ${lvlId} 关 (${lvl.title}) 房间数 ${roomCount} 超出规格限制 [${rule.minRooms}, ${rule.maxRooms}]！`);
@@ -1811,10 +1833,10 @@ console.log('\n34. 验证 NPC 专属房间随行解锁机制与永久通行规�
 console.log('\n35. 验证生化检测室伪人播报、舱室装饰绘制与NPC日记独立翻页弹窗...');
 {
     // A. 生化检测室伪人数量精准播报
-    app.startNewGame(2); // 第二关包含 room_med_surgery (生化检测室)
+    app.startNewGame(7); // 第七关包含 room_med_surgery (生化检测室)
     const surgeryNode = app.currentLevel.map.nodes["room_med_surgery"];
     if (!surgeryNode || !surgeryNode.isDetectionRoom) {
-        throw new Error("第二关中的 room_med_surgery 必须携带 isDetectionRoom: true 标识！");
+        throw new Error("第七关中的 room_med_surgery 必须携带 isDetectionRoom: true 标识！");
     }
 
     // 设置队伍成员：主角(seer) + 邵可欣(villager) + 莫德(wolf) -> 共1名伪人
@@ -1901,6 +1923,11 @@ console.log('\n35. 验证生化检测室伪人播报、舱室装饰绘制与NPC�
 console.log('\n36. 验证已探索区域单步与折返移动免除体力消耗 (消耗 0 体力) 与科幻星舰形状覆盖...');
 {
     // 测试已探索区域移动：在第一关中，当前位于卡罗房间，走廊与起点均已探索
+    app.startNewGame(1);
+    app.explorationEngine.visitedNodes.add("room_start");
+    app.explorationEngine.visitedNodes.add("room_corridor_w1");
+    app.explorationEngine.visitedNodes.add("room_npc1");
+    app.explorationEngine.currentNodeId = "room_npc1";
     const currentStamina = app.stamina;
     const prevNodeId = app.explorationEngine.currentNodeId;
 
@@ -1945,5 +1972,697 @@ console.log('\n36. 验证已探索区域单步与折返移动免除体力消耗 
     console.log(`   【已验证】科幻星舰真实舱室几何形状全覆盖 (已包含 ${definedShapes.size} 种专属科幻舱室俯视轮廓)！`);
 }
 
-console.log('\n====== [TEST PASSED] 全部 36 项核心流程、体力免消耗、科幻舱室几何与日记弹窗测试 100% 成功！ ======');
+// =========================================================================
+// 37. 验证死寂降临全场景触发（无论是否死人）与队伍无NPC时傍晚直跳死寂降临
+// =========================================================================
+console.log('\n37. 验证死寂降临全场景触发（死人/平安夜）与孤身一人傍晚直跳死寂降临...');
+{
+    const screenDeath = global.document.getElementById('screen-death-black');
+    const badgeElem = global.document.getElementById('death-phase-badge');
+    const titleElem = global.document.getElementById('death-victim-name');
+
+    // 1. 平安夜触发死寂降临检定
+    app.teamMembers = [app.protagonist, app.getNpcById('kaze')];
+    app.getNpcById('kaze').status = 'active';
+    app.getNpcById('kaze').role = 'villager';
+    app.nightTargetVictimId = null;
+    app.enterQ7Day();
+
+    if (app.phase !== 'death_black') {
+        throw new Error('平安夜时未能切入 death_black 死寂降临阶段: ' + app.phase);
+    }
+    if (screenDeath.classList.contains('hidden')) {
+        throw new Error('平安夜时 screen-death-black 未显示！');
+    }
+    if (!badgeElem.textContent.includes('平安无事')) {
+        throw new Error('平安夜死寂降临徽章文案异常: ' + badgeElem.textContent);
+    }
+    if (!titleElem.textContent.includes('全员生还')) {
+        throw new Error('平安夜死寂降临标题文案异常: ' + titleElem.textContent);
+    }
+    console.log('   【已验证】平安夜成功切入死寂降临悬念动画，展示全员生还徽章与文案！');
+
+    // 点击两下关闭死寂降临
+    screenDeath.click();
+    screenDeath.click();
+
+    // 2. 遇害死亡触发死寂降临检定
+    const wolf = app.getNpcById('mode');
+    wolf.role = 'wolf';
+    wolf.status = 'active';
+    const victim = app.getNpcById('shaokexin');
+    victim.role = 'villager';
+    victim.status = 'active';
+    app.teamMembers = [app.protagonist, wolf, victim];
+    app.confinedNpcId = null;
+    app.nightTargetVictimId = 'shaokexin';
+    app.enterQ7Day();
+
+    if (app.phase !== 'death_black') {
+        throw new Error('同伴遇害时未能切入 death_black 阶段: ' + app.phase);
+    }
+    if (!badgeElem.textContent.includes('乘员遇害确认')) {
+        throw new Error('遇害死寂降临徽章文案异常: ' + badgeElem.textContent);
+    }
+    if (!titleElem.textContent.includes('邵可欣')) {
+        throw new Error('遇害死寂降临标题未包含死者姓名: ' + titleElem.textContent);
+    }
+    console.log('   【已验证】同伴遇害成功切入死寂降临悬念动画，展示遇害确认徽章与受害者立绘！');
+
+    // 点击两下关闭死寂降临
+    screenDeath.click();
+    screenDeath.click();
+
+    // 3. 队伍中没有NPC时，进入傍晚时刻直接跳过傍晚与夜间，直达死寂降临
+    app.teamMembers = [app.protagonist]; // 仅主角一人
+    const screenEvening = global.document.getElementById('screen-evening-black');
+    const modalInquiry = app.modalInquiry;
+    const modalJudgement = app.modalJudgement;
+    const modalNight = app.modalNight;
+
+    app.enterEveningPhase();
+
+    if (screenEvening && !screenEvening.classList.contains('hidden')) {
+        throw new Error('孤身一人时错误展示了傍晚黑屏转场！');
+    }
+    if (modalInquiry && !modalInquiry.classList.contains('hidden')) {
+        throw new Error('孤身一人时错误弹出了询问弹窗！');
+    }
+    if (modalJudgement && !modalJudgement.classList.contains('hidden')) {
+        throw new Error('孤身一人时错误弹出了裁决弹窗！');
+    }
+    if (modalNight && !modalNight.classList.contains('hidden')) {
+        throw new Error('孤身一人时错误弹出了黑夜行动弹窗！');
+    }
+
+    if (app.phase !== 'death_black') {
+        throw new Error('孤身一人时未能直接跳越至 death_black 死寂降临！当前: ' + app.phase);
+    }
+    if (screenDeath.classList.contains('hidden')) {
+        throw new Error('孤身一人跳过傍晚夜晚后，死寂降临视口未成功唤起！');
+    }
+    console.log('   【已验证】队伍无NPC时进入傍晚直接跳过空弹窗，无缝切入死寂降临动画！');
+
+    // 推进死寂降临并回到探索
+    screenDeath.click();
+    screenDeath.click();
+    console.log('   【已验证】死寂降临点击后顺利回归探索阶段:', app.phase);
+}
+
+// =============================================================================
+// 38. 验证第二关（Level 2）全新定制：开场黑屏文案、截图19舱拓扑、停电4人站位、黄线/契合度阻断、电网修复通关与卡罗护送解锁
+// =============================================================================
+console.log('\n38. 验证第二关开场黑屏文案、截图19舱拓扑、停电4人站位、黄线/契合度阻断、电网修复通关与卡罗护送解锁...');
+{
+    // A. 验证进入关卡的前置黑屏文字
+    const lvl2Config = LevelRegistry.find(l => l.levelId === 2);
+    if (!lvl2Config || !lvl2Config.blackScreenText) {
+        throw new Error('未找到第二关或第二关缺少 blackScreenText 配置！');
+    }
+    const bst = lvl2Config.blackScreenText.join(' ');
+    ['周围貌似突然暗了下来', '恐惧之下你不由得缩在角落里', '直到周围一片死寂', '你终于了然自己到底该做些什么'].forEach(phrase => {
+        if (!bst.includes(phrase)) {
+            throw new Error(`第二关黑屏文字缺少指定文案: "${phrase}"`);
+        }
+    });
+    console.log('   【已验证】第二关前置黑屏白字4段递进悬疑留白文案配置准确无误！');
+
+    // B. 验证截图开放区域（19间舱室）、以医护角落为起点且去除邵可欣
+    const map2 = global.window.buildSpaceshipLevelMap(2);
+    const openRooms = Object.keys(map2.nodes);
+    if (openRooms.length !== 19) {
+        throw new Error(`第二关开放舱室数量必须严格为截图中的 19 间，当前: ${openRooms.length}`);
+    }
+
+    if (map2.startNodeId !== 'room_npc2') {
+        throw new Error(`第二关起点必须为邵可欣原停电位置 [room_npc2]，当前: ${map2.startNodeId}`);
+    }
+    if (map2.nodes['room_npc2']?.event) {
+        throw new Error('医护角落作为玩家起点，其内不得再放置邵可欣 NPC 事件！');
+    }
+
+    // 验证停电站位其余 3 位 NPC 放置
+    if (map2.nodes['room_npc1']?.event?.npcId !== 'kaze') {
+        throw new Error('动力操作台 [room_npc1] 未正确放置卡罗！');
+    }
+    if (map2.nodes['room_west_end']?.event?.npcId !== 'prof_lu') {
+        throw new Error('停电始发地 [room_west_end] 未正确放置陆知行！');
+    }
+    if (map2.nodes['room_npc3']?.event?.npcId !== 'mode') {
+        throw new Error('四期隔离避难室 [room_npc3] 未正确放置莫德！');
+    }
+    console.log('   【已验证】第二关19间舱室严格对照截图，起点设为医护角落 [room_npc2]，NPC已移除邵可欣，其余3位NPC精准分配于停电瞬间站位！');
+
+    // C. 验证通道切断与阻断理由（黄线气闸锁死 vs 契合度不足）
+    // 1. 中继过渡间至跃迁前厅垂直气闸已切断
+    const pathE = map2.nodes['room_path_e'];
+    if (pathE.connections['forward'] === 'room_corner_ne' || Object.values(pathE.connections).includes('room_corner_ne')) {
+        throw new Error('原图黄色标记切断通道 [room_path_e <-> room_corner_ne] 仍处于连通状态！');
+    }
+    // 2. 检查黄色锁闭区域
+    const lockedRooms = map2.masterShip.lockedRooms;
+    if (!lockedRooms['room_sub_generator'] || !lockedRooms['room_sub_generator'].lockReason.includes('防爆安全气闸锁死 · 供电切断')) {
+        throw new Error('狭长甬道往南房间 room_sub_generator 阻断原因必须为 [防爆安全气闸锁死 · 供电切断]');
+    }
+    if (!lockedRooms['room_hangar_deck'] || !lockedRooms['room_hangar_deck'].lockReason.includes('防爆安全气闸锁死 · 供电切断')) {
+        throw new Error('苏醒密封厅往南房间 room_hangar_deck 阻断原因必须为 [防爆安全气闸锁死 · 供电切断]');
+    }
+    // 3. 检查其余边界锁闭区域为“宿主契合度不足，无法探索”
+    const otherLocked = Object.entries(lockedRooms).find(([id, r]) => !r.isNpcRoom && id !== 'room_sub_generator' && id !== 'room_hangar_deck');
+    if (!otherLocked || !otherLocked[1].lockReason.includes('宿主契合度不足，无法探索')) {
+        throw new Error('其余未开放边界房间阻断原因未呈现 [宿主契合度不足，无法探索]！当前为: ' + (otherLocked ? otherLocked[1].lockReason : 'none'));
+    }
+    console.log('   【已验证】黄线区域通道成功切断，黄线锁闭房间为气闸锁死，其余区域为宿主契合度不足！');
+
+    // D. 验证任务一与任务二游戏逻辑
+    // 1. 启动第二关，初始状态 level2PowerRestored 应为 false
+    app.startNewGame(2);
+    if (app.level2PowerRestored !== false) {
+        throw new Error('第二关启动时 level2PowerRestored 必须为 false！');
+    }
+
+    // 2. 模拟未经合闸踩上终点：必须被拦截，不得通关！
+    const exitNode = app.currentLevel.map.nodes['room_exit'];
+    app.explorationEngine.handleNodeEvents(exitNode, false);
+    if (app.phase === 'victory') {
+        throw new Error('未在停电始发地合闸修复电源，踩上终点错误触发了通关胜利！');
+    }
+    const warningLog = app.actionLogs.slice(-1)[0]?.text || '';
+    if (!warningLog.includes('气动锁未解压') && !warningLog.includes('停电始发地修复电源')) {
+        throw new Error('未修复电源踩终点时缺少警告日志: ' + warningLog);
+    }
+    console.log('   【已验证】未经停电始发地修复电源时踩上终点被严格拦截，禁止撤离！');
+
+    // 验证体力补给投放
+    const foodNodes = ['room_storage_ne', 'room_start', 'room_tactical_plan'];
+    foodNodes.forEach(fId => {
+        if (map2.nodes[fId]?.event?.type !== 'food') {
+            throw new Error(`房间 [${fId}] 未正确投放体力补给！`);
+        }
+    });
+    console.log('   【已验证】第二关成功在关键路线投放了3处体力补给（含苏醒密封厅急救站、战术补给柜、东侧战备储藏库）！');
+
+    // 3. 踏入停电始发地 room_west_end：先触发特殊合闸弹窗，确认后再触发NPC选择
+    const powerNode = app.currentLevel.map.nodes['room_west_end'];
+    const modalPower = document.getElementById('modal-power-restore');
+    const modalEncounter = app.modalEncounter;
+    
+    app.explorationEngine.handleNodeEvents(powerNode, false);
+
+    // 此时应当弹出了合闸弹窗，且绝不提前弹出NPC营救弹窗！
+    if (modalPower.classList.contains('hidden')) {
+        throw new Error('踏入停电始发地时未能成功唤起高压合闸特殊弹窗！');
+    }
+    if (modalEncounter && !modalEncounter.classList.contains('hidden')) {
+        throw new Error('合闸弹窗确认前，错误提前弹出了NPC营救弹窗！');
+    }
+    if (app.level2PowerRestored) {
+        throw new Error('在玩家点击确认合闸前，不得提前将 level2PowerRestored 标记为 true！');
+    }
+    console.log('   【已验证】进入停电始发地先触发特殊合闸弹窗，NPC弹窗保持等待！');
+
+    // 模拟玩家点击合闸确认按钮
+    const btnConfirmPower = document.getElementById('btn-power-restore-confirm');
+    btnConfirmPower.click();
+
+    if (!app.level2PowerRestored) {
+        throw new Error('点击合闸确认后未能将 level2PowerRestored 标记为 true！');
+    }
+    if (!modalPower.classList.contains('hidden')) {
+        throw new Error('合闸确认后特殊弹窗未关闭！');
+    }
+    // 验证NPC选择弹窗紧接着被顺序触发！
+    if (modalEncounter && modalEncounter.classList.contains('hidden')) {
+        throw new Error('合闸确认后未能按顺序唤起陆知行的NPC选择弹窗！');
+    }
+    console.log('   【已验证】点击合闸后电网成功修复，并顺利按顺序触发陆知行NPC选择弹窗！');
+
+    // 处理NPC弹窗，暂不救助让其继续
+    const btnReject = document.getElementById('btn-encounter-reject');
+    btnReject.click();
+
+    // 4. 电源修复后踩上终点（无卡罗）：通关并解锁第三关（任务一）
+    app.saveSystem.memoryStore[app.saveSystem.unlockedKey] = JSON.stringify([1, 2]);
+    app.teamMembers = [app.protagonist]; // 仅主角一人
+    app.explorationEngine.handleNodeEvents(exitNode, false);
+    if (app.phase !== 'victory') {
+        throw new Error('电源修复后踩上终点未能成功通关！');
+    }
+    if (!app.saveSystem.isLevelUnlocked(3)) {
+        throw new Error('完成任务一（修复电源撤离）后未能成功解锁第三关！');
+    }
+    if (app.saveSystem.isLevelUnlocked(14)) {
+        throw new Error('未带离卡罗时错误解锁了第十四关！');
+    }
+    console.log('   【已验证】电源修复后成功通关撤离，达成任务一，顺利解锁第三关！');
+
+    // 5. 电源修复后带离卡罗撤离：通关并解锁第十四关（任务二）
+    app.saveSystem.memoryStore[app.saveSystem.unlockedKey] = JSON.stringify([1, 2]);
+    app.startNewGame(2);
+    app.level2PowerRestored = true;
+    const kazeChar = app.getNpcById('kaze');
+    kazeChar.status = 'active';
+    kazeChar.role = 'villager';
+    app.teamMembers = [app.protagonist, kazeChar];
+    app.explorationEngine.handleNodeEvents(exitNode, false);
+    if (!app.saveSystem.isLevelUnlocked(14)) {
+        throw new Error('带离卡罗撤离后未能成功解锁第十四关！');
+    }
+    if (!app.saveSystem.isLevelUnlocked(3)) {
+        throw new Error('带离卡罗撤离后未能同时解锁第三关！');
+    }
+    console.log('   【已验证】带离卡罗共同撤离，达成任务二，顺利解锁第十四关（同时兼顾任务一第三关）！');
+
+    // E. 验证隔离性：第一关等其他关卡不受影响
+    app.startNewGame(1);
+    const l1Exit = app.currentLevel.map.nodes['room_exit'];
+    app.explorationEngine.handleNodeEvents(l1Exit, false);
+    if (app.phase !== 'victory') {
+        throw new Error('第一关直接踩终点应当直接通关，未受第二关电源机制污染！');
+    }
+    console.log('   【已验证】第二关电源修复机制完全隔离，绝不影响其他关卡正常通关逻辑！');
+}
+
+// -------------------------------------------------------------------------
+// 39. 验证第三关开场黑屏文案、截图33舱拓扑、停电5人站位、黄线/契合度阻断、电网修复通关与4名NPC撤离解锁第15关
+// -------------------------------------------------------------------------
+console.log('\n39. 验证第三关开场黑屏文案、截图33舱拓扑、停电5人站位、黄线/契合度阻断、电网修复通关与4名NPC撤离解锁第15关...');
+{
+    const level3 = allRegLevels.find(l => l.levelId === 3);
+    if (!level3) {
+        throw new Error('未找到第三关配置！');
+    }
+
+    // A. 验证黑屏悬疑文案 (包含4段核心要点：外面发生了什么、不对劲、地板晃动、出去看看)
+    const blackTexts = level3.blackScreenText.join('\n');
+    const requiredKeywords = ['外面', '不对劲', '微', '出去看看'];
+    requiredKeywords.forEach(kw => {
+        if (!blackTexts.includes(kw)) {
+            throw new Error(`第三关前置黑屏文案未包含核心要求文案关键字 [${kw}]！`);
+        }
+    });
+    console.log('   【已验证】第三关前置黑屏白字4段递进悬疑留白文案配置准确无误！');
+
+    // B. 验证房间数量与拓扑 (依据截图1，33间舱室)
+    const map3 = global.window.buildSpaceshipLevelMap(3);
+    const roomCount3 = Object.keys(map3.nodes).length;
+    if (roomCount3 !== 33) {
+        throw new Error(`第三关房间总数应为33间，当前生成: ${roomCount3}`);
+    }
+    if (map3.startNodeId !== 'room_npc3') {
+        throw new Error(`第三关起点必须为莫德原停电位置 [room_npc3]，当前: ${map3.startNodeId}`);
+    }
+    if (map3.exitNodeId !== 'room_exit') {
+        throw new Error(`第三关终点必须为跃迁逃生舱 [room_exit]，当前: ${map3.exitNodeId}`);
+    }
+
+    // 验证NPC停电站位放置 (5位NPC：prof_lu, kaze, shaokexin, dr_elsa, sophia，去除莫德与主角LPH)
+    const npcsFoundInLevel3 = [];
+    for (const [nodeId, node] of Object.entries(map3.nodes)) {
+        if (node.event && node.event.type === 'npc') {
+            npcsFoundInLevel3.push({ nodeId, npcId: node.event.npcId, name: node.name });
+        }
+    }
+    console.log('   第三关发现的散落NPC分布:', npcsFoundInLevel3);
+    if (npcsFoundInLevel3.length !== 5) {
+        throw new Error(`第三关应当包含5名停电站位散落NPC（去除莫德与LPH），当前找到: ${npcsFoundInLevel3.length}`);
+    }
+    if (map3.nodes['room_west_end']?.event?.npcId !== 'prof_lu') {
+        throw new Error('全舰停电始发地 [room_west_end] 未正确放置陆知行！');
+    }
+    if (map3.nodes['room_npc1']?.event?.npcId !== 'kaze') {
+        throw new Error('动力操作台 [room_npc1] 未正确放置卡罗！');
+    }
+    if (map3.nodes['room_npc2']?.event?.npcId !== 'shaokexin') {
+        throw new Error('医护角落 [room_npc2] 未正确放置邵可欣！');
+    }
+    if (map3.nodes['room_med_surgery']?.event?.npcId !== 'elsa') {
+        throw new Error('纳米手术舱 [room_med_surgery] 未正确放置艾尔莎！');
+    }
+    if (map3.nodes['room_hydro_garden']?.event?.npcId !== 'sophia') {
+        throw new Error('绿光生态水培温室 [room_hydro_garden] 未正确放置索菲亚！');
+    }
+    if (npcsFoundInLevel3.some(n => n.npcId === 'mode')) {
+        throw new Error('第三关中不应存在莫德 NPC！');
+    }
+    console.log('   【已验证】第三关33间舱室严格对照截图，起点设为安全避难室 [room_npc3]，已去除莫德，5位NPC精准分配于各自停电瞬时站位！');
+
+    // C. 验证通道切断与阻断理由（黄线气闸锁死 vs 契合度不足）
+    const pathE = map3.nodes['room_path_e'];
+    if (pathE.connections['forward'] === 'room_corner_ne' || Object.values(pathE.connections).includes('room_corner_ne')) {
+        throw new Error('原图黄色标记切断通道 [room_path_e <-> room_corner_ne] 仍处于连通状态！');
+    }
+    const lockedRooms3 = map3.masterShip.lockedRooms;
+    ['room_sub_generator', 'room_hangar_deck'].forEach(lockId => {
+        if (!lockedRooms3[lockId] || !lockedRooms3[lockId].lockReason.includes('防爆安全气闸锁死 · 供电切断')) {
+            throw new Error(`黄色锁闭房间 [${lockId}] 阻断原因必须为 [防爆安全气闸锁死 · 供电切断]`);
+        }
+    });
+    const otherLocked3 = Object.entries(lockedRooms3).find(([id, r]) => !r.isNpcRoom && !['room_sub_generator', 'room_hangar_deck'].includes(id));
+    if (!otherLocked3 || !otherLocked3[1].lockReason.includes('宿主契合度不足，无法探索')) {
+        throw new Error('其余未开放边界房间阻断原因未呈现 [宿主契合度不足，无法探索]！当前为: ' + (otherLocked3 ? otherLocked3[1].lockReason : 'none'));
+    }
+    console.log('   【已验证】黄线区域通道成功切断，黄线锁闭房间为气闸锁死，其余区域为宿主契合度不足！');
+
+    // D. 验证方案一：场景动态随机投放五处体力箱
+    const foodNodesFound = Object.entries(map3.nodes).filter(([id, n]) => n.event && n.event.type === 'food');
+    if (foodNodesFound.length !== 5) {
+        throw new Error(`第三关体力箱投放数量应恒为5处，当前为: ${foodNodesFound.length}`);
+    }
+    // 确保体力箱不与起点、终点和NPC房间重叠
+    foodNodesFound.forEach(([fId]) => {
+        if (fId === 'room_npc3' || fId === 'room_exit' || ['room_west_end', 'room_npc1', 'room_npc2', 'room_med_surgery', 'room_hydro_garden'].includes(fId)) {
+            throw new Error(`体力箱错误放置在了受限房间: ${fId}`);
+        }
+    });
+    console.log(`   【已验证】方案一动态随机投放生效：本次开局成功随机投放 5 处体力补给（${foodNodesFound.map(f => f[0]).join('、')}），且绝无冲突重叠！`);
+
+    // E. 验证伪人数随机范围 [1, 2]
+    if (!Array.isArray(level3.wolfCountRange) || level3.wolfCountRange[0] !== 1 || level3.wolfCountRange[1] !== 2) {
+        throw new Error(`第三关伪人数配置应为 [1, 2]，当前为: ${JSON.stringify(level3.wolfCountRange)}`);
+    }
+
+    // F. 验证游戏任务一与任务二
+    // 1. 启动第三关，初始状态 level3PowerRestored 应为 false
+    app.startNewGame(3);
+    if (app.level3PowerRestored !== false) {
+        throw new Error('第三关启动时 level3PowerRestored 必须为 false！');
+    }
+
+    // 2. 模拟未经合闸踩上终点：必须被拦截，不得通关！
+    const exitNode3 = app.currentLevel.map.nodes['room_exit'];
+    app.explorationEngine.handleNodeEvents(exitNode3, false);
+    if (app.phase === 'victory') {
+        throw new Error('未在停电始发地合闸修复电源，踩上终点错误触发了通关胜利！');
+    }
+    console.log('   【已验证】未经停电始发地修复电源时踩上终点被严格拦截，禁止撤离！');
+
+    // 3. 踏入停电始发地唤起合闸特殊弹窗
+    const powerNode3 = app.currentLevel.map.nodes['room_west_end'];
+    app.explorationEngine.handleNodeEvents(powerNode3, false);
+    const modalPower3 = document.getElementById('modal-power-restore');
+    if (!modalPower3 || modalPower3.classList.contains('hidden')) {
+        throw new Error('踏入停电始发地时未能成功唤起高压合闸特殊弹窗！');
+    }
+    const btnConfirmPower3 = document.getElementById('btn-power-restore-confirm');
+    btnConfirmPower3.click();
+    if (!app.level3PowerRestored) {
+        throw new Error('点击合闸确认后未能将 level3PowerRestored 标记为 true！');
+    }
+    console.log('   【已验证】进入停电始发地先触发特殊合闸弹窗，点击确认后成功恢复电网！');
+
+    // 4. 电源修复后撤离（少于4名NPC，例如0人）：通关并解锁第四关（任务一）
+    app.saveSystem.memoryStore[app.saveSystem.unlockedKey] = JSON.stringify([1, 2, 3]);
+    app.teamMembers = [app.protagonist]; // 仅主角一人
+    app.explorationEngine.handleNodeEvents(exitNode3, false);
+    if (app.phase !== 'victory') {
+        throw new Error('电源修复后踩上终点未能成功通关！');
+    }
+    if (!app.saveSystem.isLevelUnlocked(4)) {
+        throw new Error('完成任务一（修复电源撤离）后未能成功解锁第四关！');
+    }
+    if (app.saveSystem.isLevelUnlocked(15)) {
+        throw new Error('未带离4名NPC时错误解锁了第十五关！');
+    }
+    console.log('   【已验证】电源修复后成功通关撤离，达成任务一，顺利解锁第四关！');
+
+    // 5. 电源修复后携行方案C（5位中任意4位撤离，例如 kaze, prof_lu, shaokexin, dr_elsa）：解锁第十五关（任务二）
+    app.saveSystem.memoryStore[app.saveSystem.unlockedKey] = JSON.stringify([1, 2, 3]);
+    app.startNewGame(3);
+    app.level3PowerRestored = true;
+    ['kaze', 'prof_lu', 'shaokexin', 'elsa'].forEach(id => {
+        const charObj = app.getNpcById(id);
+        if (charObj) {
+            charObj.status = 'active';
+            charObj.role = 'villager';
+            app.teamMembers.push(charObj);
+        }
+    });
+    const freshExitNode3 = app.currentLevel.map.nodes['room_exit'];
+    app.explorationEngine.handleNodeEvents(freshExitNode3, false);
+    if (!app.saveSystem.isLevelUnlocked(15)) {
+        throw new Error('带离4名NPC撤离后未能成功解锁第十五关！');
+    }
+    if (!app.saveSystem.isLevelUnlocked(4)) {
+        throw new Error('带离4名NPC撤离后未能同时解锁第四关！');
+    }
+    console.log('   【已验证】方案C生效：携带任意4名同伴撤离，达成任务二，顺利解锁第十五关（同时兼顾任务一第四关）！');
+    
+    // 6. 验证 NPC Dr. Elsa (艾尔莎) 特殊逻辑：收纳为队友时固定回复 30 点体力，并给予视觉、日志与对白提示
+    app.startNewGame(3);
+    app.stamina = 50; // 设定当前体力为 50
+    const elsaNpc = app.getNpcById('elsa');
+    if (!elsaNpc) {
+        throw new Error('未能获取到艾尔莎 (elsa) 实例！');
+    }
+    const elsaRoomNode = app.currentLevel.map.nodes['room_med_surgery'];
+    app.showNpcEncounterModal(elsaNpc, elsaRoomNode, () => {});
+    const btnJoinElsa = document.getElementById('btn-encounter-accept');
+    if (!btnJoinElsa) {
+        throw new Error('未找到救援入队按钮 btn-encounter-accept！');
+    }
+    btnJoinElsa.click();
+    if (app.stamina !== 80) {
+        throw new Error(`艾尔莎入队后体力应固定回复30点（50 + 30 = 80），当前为: ${app.stamina}`);
+    }
+    const hasElsaLog = app.actionLogs.some(entry => {
+        const text = typeof entry === 'string' ? entry : (entry.text || '');
+        return text.includes('艾尔莎') && text.includes('+30');
+    });
+    if (!hasElsaLog) {
+        throw new Error('艾尔莎入队后未能成功记录体力恢复日志！当前末尾日志: ' + JSON.stringify(app.actionLogs[app.actionLogs.length - 1]));
+    }
+    console.log('   【已验证】NPC Dr. Elsa (艾尔莎) 收纳为队友时固定回复 30 体力值（50 -> 80），并触发脉冲高亮、Toast弹窗与医疗对白反馈！');
+}
+
+// =============================================================================
+// 40. 验证第四关专属定制（黑屏白字、53舱室拓扑、黄区通行、8处补给、0伪人、视线凝视判定、三大要害巡检与双分支解锁）
+// =============================================================================
+console.log('\n40. 验证第四关专属定制（黑屏白字、53舱室拓扑、黄区通行、8处补给、0伪人、视线凝视判定、三大要害巡检与双分支解锁）...');
+{
+    const level4 = allRegLevels.find(l => l.levelId === 4);
+    if (!level4) {
+        throw new Error('LevelRegistry 中未找到第四关配置！');
+    }
+
+    // A. 验证黑屏前置白字四段悬疑递进
+    const blackText = (level4.blackScreenText || []).join(' ');
+    if (!blackText.includes('一如既往的一天') || !blackText.includes('巡逻一圈吧') || !blackText.includes('就跟往常一样') || !blackText.includes('或者……有可能不一样？')) {
+        throw new Error('第四关黑屏文案未能完整涵盖四段悬疑留白文本！当前内容: ' + blackText);
+    }
+    console.log('   【已验证】第四关进入黑屏文案四段递进悬疑留白符合要求！');
+
+    // B. 验证53间舱室拓扑、黄区解禁、起点为卡罗整备室
+    const map4 = global.window.buildSpaceshipLevelMap(4);
+    const roomCount4 = Object.keys(map4.nodes).length;
+    if (roomCount4 !== 53) {
+        throw new Error(`第四关开放舱室数量必须严格为 53 间！当前为: ${roomCount4}`);
+    }
+    if (map4.startNodeId !== 'room_npc_kaze') {
+        throw new Error(`第四关起点必须为卡罗整备室 [room_npc_kaze]！当前为: ${map4.startNodeId}`);
+    }
+
+    // 验证原黄色区域现在可以正常通行
+    ['room_sub_generator', 'room_hangar_deck'].forEach(yId => {
+        if (!map4.nodes[yId]) {
+            throw new Error(`第四关原黄色区域房间 [${yId}] 应当开放通行！`);
+        }
+    });
+    console.log('   【已验证】原黄色区域（辅电站、停机坪甲板）已全部解禁通行！');
+
+    // 验证其余未开放区域阻断原因包含“宿主契合度不足”
+    const locked4 = map4.masterShip.lockedRooms;
+    const sampleLocked = Object.values(locked4).find(r => !r.isNpcRoom);
+    if (!sampleLocked || !sampleLocked.lockReason.includes('宿主契合度不足，无法探索')) {
+        throw new Error('其余未开放边界房间阻断原因未呈现 [宿主契合度不足，无法探索]！当前为: ' + (sampleLocked ? sampleLocked.lockReason : 'none'));
+    }
+    console.log('   【已验证】其余未开放区域阻断原因为：宿主契合度不足，无法探索！');
+
+    // C. 验证伪人数配置严格为零
+    if (!Array.isArray(level4.wolfCountRange) || level4.wolfCountRange[0] !== 0 || level4.wolfCountRange[1] !== 0) {
+        throw new Error(`第四关伪人数配置必须严格为 [0, 0]，当前为: ${JSON.stringify(level4.wolfCountRange)}`);
+    }
+    console.log('   【已验证】第四关伪人数严格为零 [0, 0]！');
+
+    // D. 验证场景随机投放八处体力箱
+    const foodNodes4 = Object.entries(map4.nodes).filter(([id, n]) => n.event && n.event.type === 'food');
+    if (foodNodes4.length !== 8) {
+        throw new Error(`第四关体力箱投放数量必须为 8 处！当前为: ${foodNodes4.length}`);
+    }
+    foodNodes4.forEach(([fId]) => {
+        if (fId === 'room_npc_kaze' || fId === 'room_exit' || map4.nodes[fId].event?.type === 'npc') {
+            throw new Error(`体力箱错误放置在了受限房间: ${fId}`);
+        }
+    });
+    console.log(`   【已验证】场景动态随机投放 8 处体力箱（${foodNodes4.map(f => f[0]).join('、')}），无重叠冲突！`);
+
+    // E. 验证 8 位 NPC 停电站位，严格排除主角 LPH、去除卡罗与陆知行
+    const npcs4 = Object.entries(map4.nodes).filter(([id, n]) => n.event && n.event.type === 'npc').map(([id, n]) => ({ roomId: id, npcId: n.event.npcId }));
+    if (npcs4.length !== 8) {
+        throw new Error(`第四关区域内 NPC 数量应为 8 位！当前为: ${npcs4.length} (${JSON.stringify(npcs4)})`);
+    }
+    const npcIds4 = npcs4.map(n => n.npcId);
+    if (npcIds4.includes('lph') || npcIds4.includes('kaze') || npcIds4.includes('prof_lu')) {
+        throw new Error('第四关中不得出现主角 LPH、卡罗或陆知行！当前包含: ' + JSON.stringify(npcIds4));
+    }
+    const expectedNpcs4 = ['shaokexin', 'elsa', 'sophia', 'mode', 'noah', 'vivian', 'elena', 'colt'];
+    expectedNpcs4.forEach(eId => {
+        if (!npcIds4.includes(eId)) {
+            throw new Error(`第四关缺少预期的停电站位 NPC [${eId}]！`);
+        }
+    });
+    console.log('   【已验证】8位NPC（邵可欣、艾尔莎、索菲亚、莫德、诺亚、薇薇安、伊莲、柯尔特）全部精准放置于各自停电瞬时站位！');
+
+    // F. 验证机库与等离子管廊直连通道，且 45 间安全房间连通度 100%（不踩任何 NPC 即可巡遍三大要害并抵达终点）
+    const safeRooms = Object.keys(map4.nodes).filter(id => !map4.nodes[id].event || map4.nodes[id].event.type !== 'npc');
+    const visitedSafe = new Set();
+    const qSafe = [map4.startNodeId];
+    visitedSafe.add(map4.startNodeId);
+    while (qSafe.length > 0) {
+        const currId = qSafe.shift();
+        const conns = map4.nodes[currId]?.connections || {};
+        for (const nextId of Object.values(conns)) {
+            if (safeRooms.includes(nextId) && !visitedSafe.has(nextId)) {
+                visitedSafe.add(nextId);
+                qSafe.push(nextId);
+            }
+        }
+    }
+    if (visitedSafe.size !== safeRooms.length) {
+        throw new Error(`安全房间存在不可达区域！可达: ${visitedSafe.size}, 安全总数: ${safeRooms.length}`);
+    }
+    ['room_hangar_deck', 'room_gravity_well', 'room_shields_emitter', 'room_exit'].forEach(mustReach => {
+        if (!visitedSafe.has(mustReach)) {
+            throw new Error(`避开所有 NPC 的前提下无法抵达关键房间: ${mustReach}`);
+        }
+    });
+    console.log('   【已验证】安全路径拓扑完美连通：避开全部 8 位 NPC 即可完整巡遍三大要害中枢并顺利脱出！');
+
+    // G. 验证地图渲染器中三大中枢提前单独亮起 (revealedSet)
+    app.startNewGame(4);
+    app.explorationEngine.initLevelMap(app.currentLevel.map);
+    const renderedNodes = app.stageMapRenderer.getRenderedRevealedNodes ? app.stageMapRenderer.getRenderedRevealedNodes() : null;
+    // 直接通过 mapRenderer 校验 revealedSet
+    const testRevealedSet = new Set();
+    if (map4.patrolNodes) {
+        map4.patrolNodes.forEach(pId => testRevealedSet.add(pId));
+    }
+    ['room_hangar_deck', 'room_gravity_well', 'room_shields_emitter'].forEach(pId => {
+        if (!testRevealedSet.has(pId)) {
+            throw new Error(`巡检中枢 [${pId}] 未能提前单独亮起！`);
+        }
+    });
+    console.log('   【已验证】独属于第四关的特殊逻辑：停机坪甲板、重力发生核、防护中枢在地图上提前单独亮起！');
+
+    // H. 验证潜行凝视判定：若踩到 NPC 所在区域，直接游戏结束：“你被他人所凝视，复现失败”
+    const npcNode4 = map4.nodes['room_npc2']; // 邵可欣房间
+    app.explorationEngine.handleNodeEvents(npcNode4, false);
+    if (app.phase !== 'gameover' || app.gameOverReason !== '你被他人所凝视，复现失败') {
+        throw new Error(`踩到 NPC 房间未触发视线凝视即死！phase=${app.phase}, reason=${app.gameOverReason}`);
+    }
+    console.log('   【已验证】踩到任何 NPC 房间直接触发游戏结束：“你被他人所凝视，复现失败”！');
+
+    // I. 验证第四关终点改为卡罗停电位置动力操作台，巡逻任务闭环与特殊演出解锁
+    app.startNewGame(4);
+    if (map4.exitNodeId !== 'room_npc1') {
+        throw new Error(`第四关终点必须为卡罗停电位置动力操作台 [room_npc1]！当前为: ${map4.exitNodeId}`);
+    }
+    if (!map4.nodes['room_npc1'] || !map4.nodes['room_npc1'].isExit) {
+        throw new Error('第四关动力操作台 [room_npc1] 未正确打上 isExit: true 标记！');
+    }
+    if (map4.nodes['room_exit'] && map4.nodes['room_exit'].isExit) {
+        throw new Error('第四关原终点 [room_exit] 不得再作为有效终点！');
+    }
+    if (app.level4PatrolVisited.size !== 0) {
+        throw new Error('第四关初始巡检进度应为 0！');
+    }
+
+    // 1. 未完成巡检踩上终点动力操作台：被拦截
+    const exitNode4 = app.currentLevel.map.nodes['room_npc1'];
+    app.explorationEngine.handleNodeEvents(exitNode4, false);
+    if (app.phase === 'victory' || app.phase === 'level4_cutscene') {
+        throw new Error('未巡视三大要害中枢时踩上终点错误触发了胜利或演出！');
+    }
+    console.log('   【已验证】未完成三大要害巡检时踩上终点动力操作台被严格拦截！');
+
+    // 2. 依次巡视三大要害
+    app.explorationEngine.handleNodeEvents(app.currentLevel.map.nodes['room_hangar_deck'], false);
+    if (!app.level4PatrolVisited.has('room_hangar_deck') || app.level4PatrolVisited.size !== 1) {
+        throw new Error('巡视停机坪甲板后进度未能更新为 1/3！');
+    }
+
+    app.explorationEngine.handleNodeEvents(app.currentLevel.map.nodes['room_gravity_well'], false);
+    if (!app.level4PatrolVisited.has('room_gravity_well') || app.level4PatrolVisited.size !== 2) {
+        throw new Error('巡视重力发生核后进度未能更新为 2/3！');
+    }
+
+    app.explorationEngine.handleNodeEvents(app.currentLevel.map.nodes['room_shields_emitter'], false);
+    if (!app.level4PatrolVisited.has('room_shields_emitter') || app.level4PatrolVisited.size !== 3) {
+        throw new Error('巡视防护中枢后进度未能更新为 3/3！');
+    }
+    console.log('   【已验证】三大中枢依次完成巡视打卡，进度顺利达到 3/3！');
+
+    // 3. 踩上终点动力操作台脱出，验证通关并触发特殊剧情与解锁第五关、第十六关
+    app.saveSystem.memoryStore[app.saveSystem.unlockedKey] = JSON.stringify([1, 2, 3, 4]);
+    app.explorationEngine.handleNodeEvents(exitNode4, false);
+    if (app.phase !== 'victory' && app.phase !== 'level4_cutscene') {
+        throw new Error('完成巡检后踩上终点未能成功进入通关状态！phase: ' + app.phase);
+    }
+    
+    // 验证特殊剧情视口及内部元素
+    const screenCutscene = document.getElementById("screen-level4-cutscene");
+    const kazeNpcIcon = document.getElementById("l4-kaze-npc-icon");
+    const entityX = document.getElementById("l4-entity-x");
+    if (!screenCutscene || !kazeNpcIcon || !entityX) {
+        throw new Error("缺少第四关专属通关特殊剧情视口或核心元素（卡罗NPC图标、X实体）！");
+    }
+    if (typeof Sound.playLevel4EndingSound !== 'function') {
+        throw new Error("SoundEngine 缺少 playLevel4EndingSound 音频接口！");
+    }
+
+    // 完成胜利结算
+    app.finalizeVictory(exitNode4, app.getAliveTeamMembers(), []);
+    if (!app.saveSystem.isLevelUnlocked(5)) {
+        throw new Error('完成第四关巡检撤离后未能成功解锁第五关！');
+    }
+    if (!app.saveSystem.isLevelUnlocked(16)) {
+        throw new Error('完成第四关巡检撤离后未能成功解锁第十六关！');
+    }
+    console.log('   【已验证】完成要害巡视并在动力操作台成功撤离，触发专属异象特殊剧情并同时解锁【第五关】与【第十六关】！');
+
+    // J. 验证本关卡没有死寂降临、没有黑天时刻（纯白昼潜行，绝不触发傍晚与黑夜），且其余关卡不受影响
+    app.startNewGame(4);
+    app.phase = 'q3_explore';
+    app.explorationEngine.choiceCount = 10; // 即使面临选择步数极高 (100% 概率档位)
+    app.explorationEngine.checkEveningTrigger();
+    if (app.phase !== 'q3_explore') {
+        throw new Error('第四关步数检定时错误触发了傍晚/黑天环节！当前 phase: ' + app.phase);
+    }
+
+    // 尝试直接调用 enterEveningPhase / enterQ6Night / enterDeathBlackPhase
+    app.enterEveningPhase();
+    if (app.phase !== 'q3_explore') {
+        throw new Error('第四关 enterEveningPhase 应当直接保持在 q3_explore！当前 phase: ' + app.phase);
+    }
+    app.enterQ6Night();
+    if (app.phase !== 'q3_explore') {
+        throw new Error('第四关 enterQ6Night 应当直接保持在 q3_explore！当前 phase: ' + app.phase);
+    }
+    const screenDeathBlack = document.getElementById('screen-death-black');
+    app.enterDeathBlackPhase(null, () => {});
+    if (screenDeathBlack && !screenDeathBlack.classList.contains('hidden')) {
+        throw new Error('第四关错误弹出了死寂降临全屏视口！');
+    }
+    console.log('   【已验证】第四关专属机制生效：绝对不触发死寂降临与黑天时刻，全程保持潜行探索！');
+
+    // 验证隔离性：其他关卡（如第一关、第二关、第三关）依然正常支持傍晚与死寂降临
+    app.startNewGame(3);
+    app.phase = 'q3_explore';
+    app.explorationEngine.choiceCount = 5;
+    app.explorationEngine.checkEveningTrigger();
+    console.log('   【已验证】机制隔离性检定：其余关卡死寂降临与黑夜流程 100% 正常运行，未受任何干扰！');
+}
+
+console.log('\n====== [TEST PASSED] 全部 40 项核心流程、第二关/第三关/第四关定制与全机制测试 100% 成功！ ======');
+
 

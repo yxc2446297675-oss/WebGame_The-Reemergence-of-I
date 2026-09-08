@@ -1069,55 +1069,113 @@ export const LEVEL_SECTOR_SPECS = {
     },
     2: {
         title: "第二关：深层重叠 · 镜面回廊",
-        subtitle: "生活与生态区 · 搜寻深层失散同伴",
-        startNodeId: "room_living_quarter",
-        exitNodeId: "room_east_airlock",
+        subtitle: "根据战术蓝图构建 · 搜寻深层失散同伴",
+        startNodeId: "room_npc2",
+        exitNodeId: "room_exit",
         openRoomIds: [
-            "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
-            "room_gravity_well", "room_armory", "room_recreation_gym", "room_east_airlock",
-            "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
-            "room_med_surgery", "room_cryo_stasis", "room_decon_airlock", "room_npc2"
-        ],
-        npcPlacements: {
-            "room_med_surgery": "shaokexin",
-            "room_armory": "kaze",
-            "room_cryo_stasis": "mode"
-        },
-        foodPlacements: ["room_mess_hall", "room_hydro_garden"]
-    },
-    3: {
-        title: "第三关：湮灭奇点 · 引力撕裂重构",
-        subtitle: "科研与样本冷藏区 · 引力潮汐裂解",
-        startNodeId: "room_specimen_vault",
-        exitNodeId: "room_bridge_main",
-        openRoomIds: [
-            "room_specimen_vault", "room_sensor_array", "room_tactical_plan", "room_bridge_sub",
-            "room_bridge_main", "room_exit", "room_corner_ne", "room_storage_ne",
-            "room_bio_corridor", "room_junction_nw", "room_path_e", "room_hub_n1", "room_npc3"
-        ],
-        npcPlacements: {
-            "room_tactical_plan": "kaze",
-            "room_storage_ne": "shaokexin",
-            "room_npc3": "mode"
-        },
-        foodPlacements: ["room_storage_ne", "room_specimen_vault"]
-    },
-    4: {
-        title: "第四关：高熵裂隙 · 热力学破缺",
-        subtitle: "重载机库与动力辅机 · 破缺辐射带",
-        startNodeId: "room_salvage_bay",
-        exitNodeId: "room_plasma_manifold",
-        openRoomIds: [
-            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck",
-            "room_machine_shop", "room_shields_emitter", "room_sub_coolant", "room_reactor_control",
-            "room_plasma_manifold", "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se"
+            // Y=0 舰首战术区
+            "room_sensor_array", "room_tactical_plan", "room_bridge_sub", "room_bridge_main",
+            // Y=1 终点与科研走廊
+            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne", "room_bio_corridor",
+            // Y=2 中层枢纽
+            "room_npc3", "room_junction_nw", "room_path_e", "room_hub_n1", "room_npc2",
+            // Y=3 起点与配电区
+            "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se"
         ],
         npcPlacements: {
             "room_npc1": "kaze",
-            "room_hangar_deck": "shaokexin",
-            "room_sub_generator": "mode"
+            "room_npc3": "mode",
+            "room_west_end": "prof_lu"
         },
-        foodPlacements: ["room_west_end", "room_sub_coolant"]
+        foodPlacements: ["room_storage_ne", "room_start", "room_tactical_plan"],
+        mutations: {
+            "room_start": {
+                name: "【苏醒密封厅】应急医疗给养点",
+                desc: "在密封厅内嵌的应急急救柜中发现了完好留存的自热高能战备口粮与纯净水罐！"
+            },
+            "room_tactical_plan": {
+                name: "【战术推演室】战备补给储物柜",
+                desc: "推演沙盘下方的应急配给储物箱内存放着整齐码放的军用能量胶与战备压缩饼干。"
+            }
+        },
+        severedConnections: [
+            ["room_path_e", "room_corner_ne"] // 原图黄色标记：中继过渡间至跃迁前厅垂直气闸阻断
+        ],
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [
+            "room_sub_generator", "room_hangar_deck" // 狭长甬道与苏醒密封厅往南气闸锁死
+        ]
+    },
+    3: {
+        title: "第三关：深渊回响 · 矩阵裂解",
+        subtitle: "根据战术蓝图构建 · 搜寻深层失散同伴",
+        startNodeId: "room_npc3",
+        exitNodeId: "room_exit",
+        openRoomIds: [
+            // Y=0 舰首战术区 (7间)
+            "room_sensor_array", "room_tactical_plan", "room_bridge_sub", "room_bridge_main", "room_ai_core", "room_comm_center", "room_observation",
+            // Y=1 终点、科研与医疗区 (8间)
+            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne", "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
+            // Y=2 中层枢纽与生活生态区 (9间)
+            "room_npc3", "room_junction_nw", "room_path_e", "room_hub_n1", "room_npc2", "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
+            // Y=3 动力控制、重力核与防御区 (9间)
+            "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se", "room_gravity_well", "room_armory", "room_recreation_gym", "room_east_airlock"
+        ],
+        npcPlacements: {
+            "room_west_end": "prof_lu",       // 陆知行 (停电始发地)
+            "room_npc1": "kaze",              // 卡罗 (动力操作台)
+            "room_npc2": "shaokexin",         // 邵可欣 (医护角落)
+            "room_med_surgery": "elsa",       // 艾尔莎 (纳米手术舱)
+            "room_hydro_garden": "sophia"     // 索菲亚 (绿光生态水培温室)
+        },
+        randomFoodCount: 5, // 方案一：场景随机投放五处体力箱
+        foodPlacements: ["room_storage_ne", "room_mess_hall", "room_specimen_vault", "room_recreation_gym", "room_corner_ne"],
+        severedConnections: [
+            ["room_path_e", "room_corner_ne"] // 原图黄色标记：中继过渡间至跃迁前厅垂直气闸阻断
+        ],
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [
+            "room_sub_generator", "room_hangar_deck" // 气闸锁死
+        ]
+    },
+    4: {
+        title: "第四关：深空巡检 · 虚妄之瞳",
+        subtitle: "全舰静默巡逻 · 规避一切视线接触",
+        startNodeId: "room_npc_kaze", // 卡罗的整备室
+        exitNodeId: "room_npc1",      // 卡罗的停电位置动力操作台
+        openRoomIds: [
+            // Y=-1 卡罗整备室 (1间)
+            "room_npc_kaze",
+            // Y=0 舰首战术区 (7间)
+            "room_sensor_array", "room_tactical_plan", "room_bridge_sub", "room_bridge_main", "room_ai_core", "room_comm_center", "room_observation",
+            // Y=1 终点、科研与医疗区 (8间)
+            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne", "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
+            // Y=2 中层枢纽与生活生态区 (9间)
+            "room_npc3", "room_junction_nw", "room_path_e", "room_hub_n1", "room_npc2", "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
+            // Y=3 动力控制、重力核与防御区 (9间)
+            "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se", "room_gravity_well", "room_armory", "room_recreation_gym", "room_east_airlock",
+            // Y=4 机库、工坊与维生辅机区 (9间)
+            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck", "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
+            // Y=5 护盾、聚变反应堆与能源干线区 (10间)
+            "room_shields_emitter", "room_sub_coolant", "room_reactor_control", "room_plasma_manifold", "room_main_reactor", "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock", "room_npc_colt_barnes"
+        ],
+        npcPlacements: {
+            "room_npc2": "shaokexin",                 // 邵可欣 (医护角落)
+            "room_med_surgery": "elsa",               // 艾尔莎 (纳米手术舱)
+            "room_hydro_garden": "sophia",             // 索菲亚 (立体水培温室)
+            "room_npc3": "mode",                      // 莫德 (西北隔离舱)
+            "room_recreation_gym": "noah",            // 诺亚 (体能维持舱)
+            "room_sub_generator": "vivian",           // 薇薇安 (二号辅电站)
+            "room_main_reactor": "elena",             // 伊莲 (重核聚变主反应堆)
+            "room_npc_colt_barnes": "colt"            // 柯尔特 (黑市走私特勤套房)
+        },
+        patrolNodes: ["room_hangar_deck", "room_gravity_well", "room_shields_emitter"], // 巡逻指定三大要害位置
+        randomFoodCount: 8, // 场景随机投放八处体力箱
+        additionalConnections: [
+            ["room_hangar_deck", "room_plasma_manifold"] // 穿梭机库与等离子管廊直通垂直竖井 (确保规避巡逻通路畅通)
+        ],
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [] // 原图黄色区域现在可以通行
     },
     5: {
         title: "第五关：拟态深渊 · 凝视视界",
@@ -1520,6 +1578,23 @@ export function buildSpaceshipLevelMap(levelId) {
     const openSet = new Set(openRoomIds);
     const nodes = {};
 
+    // 决定食物投放位置 (支持固定配置或动态随机抽取投放)
+    let finalFoodRooms = new Set(spec.foodPlacements || []);
+    if (spec.randomFoodCount && spec.randomFoodCount > 0) {
+        // 方案一：场景动态随机抽取指定数量的房间投放体力箱 (排除起点、终点和已放置NPC的房间)
+        const eligibleRooms = openRoomIds.filter(id =>
+            id !== spec.startNodeId &&
+            id !== spec.exitNodeId &&
+            !(spec.npcPlacements && spec.npcPlacements[id])
+        );
+        const shuffled = [...eligibleRooms];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        finalFoodRooms = new Set(shuffled.slice(0, spec.randomFoodCount));
+    }
+
     openRoomIds.forEach(id => {
         const baseDef = MASTER_ROOM_DEFS[id];
         if (!baseDef) return;
@@ -1541,9 +1616,15 @@ export function buildSpaceshipLevelMap(levelId) {
             connections: {}
         };
 
-        if (baseDef.isExit || id === spec.exitNodeId) {
+        const isDesignatedExit = spec.exitNodeId ? (id === spec.exitNodeId) : (baseDef.isExit || id === "room_exit");
+        if (isDesignatedExit) {
             node.isExit = true;
-            node.event = { type: "exit", name: "终点气密大门" };
+            node.event = { type: "exit", name: (id === "room_npc1" ? "动力操作台" : "终点气密大门") };
+        } else {
+            node.isExit = false;
+            if (node.event && node.event.type === "exit") {
+                delete node.event;
+            }
         }
 
         if (id === spec.startNodeId) {
@@ -1557,7 +1638,7 @@ export function buildSpaceshipLevelMap(levelId) {
             };
         }
 
-        if (spec.foodPlacements && spec.foodPlacements.includes(id)) {
+        if (finalFoodRooms.has(id)) {
             node.event = {
                 type: "food",
                 name: "高能浓缩战备配给"
@@ -1567,8 +1648,20 @@ export function buildSpaceshipLevelMap(levelId) {
         nodes[id] = node;
     });
 
-    MASTER_CONNECTIONS.forEach(([a, b]) => {
+    const severedSet = new Set();
+    if (spec.severedConnections && Array.isArray(spec.severedConnections)) {
+        spec.severedConnections.forEach(([a, b]) => {
+            severedSet.add(`${a}_${b}`);
+            severedSet.add(`${b}_${a}`);
+        });
+    }
+
+    const allConns = [...MASTER_CONNECTIONS, ...(spec.additionalConnections || [])];
+    allConns.forEach(([a, b]) => {
         if (openSet.has(a) && openSet.has(b)) {
+            if (severedSet.has(`${a}_${b}`)) {
+                return; // 切断两房间连接通道
+            }
             const nodeA = nodes[a];
             const nodeB = nodes[b];
             if (nodeA && nodeB) {
@@ -1597,6 +1690,14 @@ export function buildSpaceshipLevelMap(levelId) {
         }
 
         if (isAdjacentToOpen) {
+            let lockReason = "防爆安全气闸锁死 · 供电切断";
+            if (def.isNpcRoom) {
+                lockReason = "专属舱室上锁 · 需该乘员随行";
+            } else if (spec.useHostCompatibilityLock) {
+                const isYellow = spec.yellowLockRoomIds && spec.yellowLockRoomIds.includes(id);
+                lockReason = isYellow ? "防爆安全气闸锁死 · 供电切断" : "宿主契合度不足，无法探索";
+            }
+
             lockedRooms[id] = {
                 id: def.id,
                 name: def.name,
@@ -1608,7 +1709,7 @@ export function buildSpaceshipLevelMap(levelId) {
                 diary: def.diary,
                 connectsTo: def.connectsTo,
                 state: def.isNpcRoom ? "npc_locked" : "locked",
-                lockReason: def.isNpcRoom ? `专属舱室上锁 · 需该乘员随行` : "防爆安全气闸锁死 · 供电切断"
+                lockReason: lockReason
             };
         } else {
             fogRooms[id] = {
@@ -1623,12 +1724,14 @@ export function buildSpaceshipLevelMap(levelId) {
         startNodeId: spec.startNodeId,
         exitNodeId: spec.exitNodeId,
         nodes,
+        patrolNodes: spec.patrolNodes || [],
         masterShip: {
             allRooms: MASTER_ROOM_DEFS,
-            allConnections: MASTER_CONNECTIONS,
+            allConnections: allConns,
             openRoomIds: openRoomIds,
             lockedRooms,
-            fogRooms
+            fogRooms,
+            patrolNodes: spec.patrolNodes || []
         }
     };
 }

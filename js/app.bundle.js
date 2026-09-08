@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-08T12:22:12.734Z
+ * 自动生成于 2026-09-08T16:12:18.201Z
  */
 (function() {
     'use strict';
@@ -137,6 +137,10 @@ const AudioConfig = {
     // 4. 移动探索时的脚步/位移音效文件路径
     moveSoundUrl: "assets/audio/移动.wav",
     moveSoundVolume: 0.65,
+
+    // 5. 第四关专属通关异象音效 (放入 assets/audio/ 文件夹即可自动播放，支持 mp3/wav/ogg)
+    level4EndingSoundUrl: "assets/audio/level4_ending.mp3",
+    level4EndingSoundVolume: 0.90,
 
     // 是否在自定义音效文件未就绪时，使用内置的高质科幻合成音效作为兜底发声
     useFallbackSynthesizer: true
@@ -523,6 +527,48 @@ class SoundEngine {
         const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.moveSoundUrl) || "assets/audio/移动.wav";
         const volume = (typeof AudioConfig !== 'undefined' && AudioConfig.moveSoundVolume !== undefined) ? AudioConfig.moveSoundVolume : 0.65;
         this.playAudioFile(soundUrl, volume, this.synthesizeMoveStep, "移动音效");
+    }
+
+    // 11. 第四关专属通关异象音效 (X实体逼近贴合时触发)
+    playLevel4EndingSound(customUrl = null) {
+        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.level4EndingSoundUrl) || "assets/audio/level4_ending.mp3";
+        const volume = (typeof AudioConfig !== 'undefined' && AudioConfig.level4EndingSoundVolume !== undefined) ? AudioConfig.level4EndingSoundVolume : 0.90;
+        this.playAudioFile(soundUrl, volume, this.synthesizeLevel4Glitch, "第四关异象音效");
+    }
+
+    // 过程式实时合成：深邃未知的低频脉冲与异化共鸣 (Eerie Sub-bass Pulse & Metallic Glitch)
+    synthesizeLevel4Glitch() {
+        this.init();
+        if (this.isMuted || !this.ctx) return;
+
+        const now = this.ctx.currentTime;
+
+        // 1. 低频心悸嗡鸣 (Sawtooth 80Hz -> 25Hz)
+        const subOsc = this.ctx.createOscillator();
+        const subGain = this.ctx.createGain();
+        subOsc.type = "sawtooth";
+        subOsc.frequency.setValueAtTime(80, now);
+        subOsc.frequency.exponentialRampToValueAtTime(25, now + 1.6);
+        subGain.gain.setValueAtTime(0.38, now);
+        subGain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+        subOsc.connect(subGain);
+        subGain.connect(this.ctx.destination);
+        subOsc.start(now);
+        subOsc.stop(now + 1.8);
+
+        // 2. 高频异化回旋共鸣 (Sine dissonance 520Hz <-> 528Hz 拍频)
+        [520, 528].forEach((freq) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(freq, now + 0.1);
+            gain.gain.setValueAtTime(0.12, now + 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + 0.1);
+            osc.stop(now + 1.5);
+        });
     }
 
     // 过程式实时合成：震撼的死亡警报低频冲击波 (Sub-bass Impact + Alarm Flatline)
@@ -2883,55 +2929,113 @@ const LEVEL_SECTOR_SPECS = {
     },
     2: {
         title: "第二关：深层重叠 · 镜面回廊",
-        subtitle: "生活与生态区 · 搜寻深层失散同伴",
-        startNodeId: "room_living_quarter",
-        exitNodeId: "room_east_airlock",
+        subtitle: "根据战术蓝图构建 · 搜寻深层失散同伴",
+        startNodeId: "room_npc2",
+        exitNodeId: "room_exit",
         openRoomIds: [
-            "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
-            "room_gravity_well", "room_armory", "room_recreation_gym", "room_east_airlock",
-            "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
-            "room_med_surgery", "room_cryo_stasis", "room_decon_airlock", "room_npc2"
-        ],
-        npcPlacements: {
-            "room_med_surgery": "shaokexin",
-            "room_armory": "kaze",
-            "room_cryo_stasis": "mode"
-        },
-        foodPlacements: ["room_mess_hall", "room_hydro_garden"]
-    },
-    3: {
-        title: "第三关：湮灭奇点 · 引力撕裂重构",
-        subtitle: "科研与样本冷藏区 · 引力潮汐裂解",
-        startNodeId: "room_specimen_vault",
-        exitNodeId: "room_bridge_main",
-        openRoomIds: [
-            "room_specimen_vault", "room_sensor_array", "room_tactical_plan", "room_bridge_sub",
-            "room_bridge_main", "room_exit", "room_corner_ne", "room_storage_ne",
-            "room_bio_corridor", "room_junction_nw", "room_path_e", "room_hub_n1", "room_npc3"
-        ],
-        npcPlacements: {
-            "room_tactical_plan": "kaze",
-            "room_storage_ne": "shaokexin",
-            "room_npc3": "mode"
-        },
-        foodPlacements: ["room_storage_ne", "room_specimen_vault"]
-    },
-    4: {
-        title: "第四关：高熵裂隙 · 热力学破缺",
-        subtitle: "重载机库与动力辅机 · 破缺辐射带",
-        startNodeId: "room_salvage_bay",
-        exitNodeId: "room_plasma_manifold",
-        openRoomIds: [
-            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck",
-            "room_machine_shop", "room_shields_emitter", "room_sub_coolant", "room_reactor_control",
-            "room_plasma_manifold", "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se"
+            // Y=0 舰首战术区
+            "room_sensor_array", "room_tactical_plan", "room_bridge_sub", "room_bridge_main",
+            // Y=1 终点与科研走廊
+            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne", "room_bio_corridor",
+            // Y=2 中层枢纽
+            "room_npc3", "room_junction_nw", "room_path_e", "room_hub_n1", "room_npc2",
+            // Y=3 起点与配电区
+            "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se"
         ],
         npcPlacements: {
             "room_npc1": "kaze",
-            "room_hangar_deck": "shaokexin",
-            "room_sub_generator": "mode"
+            "room_npc3": "mode",
+            "room_west_end": "prof_lu"
         },
-        foodPlacements: ["room_west_end", "room_sub_coolant"]
+        foodPlacements: ["room_storage_ne", "room_start", "room_tactical_plan"],
+        mutations: {
+            "room_start": {
+                name: "【苏醒密封厅】应急医疗给养点",
+                desc: "在密封厅内嵌的应急急救柜中发现了完好留存的自热高能战备口粮与纯净水罐！"
+            },
+            "room_tactical_plan": {
+                name: "【战术推演室】战备补给储物柜",
+                desc: "推演沙盘下方的应急配给储物箱内存放着整齐码放的军用能量胶与战备压缩饼干。"
+            }
+        },
+        severedConnections: [
+            ["room_path_e", "room_corner_ne"] // 原图黄色标记：中继过渡间至跃迁前厅垂直气闸阻断
+        ],
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [
+            "room_sub_generator", "room_hangar_deck" // 狭长甬道与苏醒密封厅往南气闸锁死
+        ]
+    },
+    3: {
+        title: "第三关：深渊回响 · 矩阵裂解",
+        subtitle: "根据战术蓝图构建 · 搜寻深层失散同伴",
+        startNodeId: "room_npc3",
+        exitNodeId: "room_exit",
+        openRoomIds: [
+            // Y=0 舰首战术区 (7间)
+            "room_sensor_array", "room_tactical_plan", "room_bridge_sub", "room_bridge_main", "room_ai_core", "room_comm_center", "room_observation",
+            // Y=1 终点、科研与医疗区 (8间)
+            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne", "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
+            // Y=2 中层枢纽与生活生态区 (9间)
+            "room_npc3", "room_junction_nw", "room_path_e", "room_hub_n1", "room_npc2", "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
+            // Y=3 动力控制、重力核与防御区 (9间)
+            "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se", "room_gravity_well", "room_armory", "room_recreation_gym", "room_east_airlock"
+        ],
+        npcPlacements: {
+            "room_west_end": "prof_lu",       // 陆知行 (停电始发地)
+            "room_npc1": "kaze",              // 卡罗 (动力操作台)
+            "room_npc2": "shaokexin",         // 邵可欣 (医护角落)
+            "room_med_surgery": "elsa",       // 艾尔莎 (纳米手术舱)
+            "room_hydro_garden": "sophia"     // 索菲亚 (绿光生态水培温室)
+        },
+        randomFoodCount: 5, // 方案一：场景随机投放五处体力箱
+        foodPlacements: ["room_storage_ne", "room_mess_hall", "room_specimen_vault", "room_recreation_gym", "room_corner_ne"],
+        severedConnections: [
+            ["room_path_e", "room_corner_ne"] // 原图黄色标记：中继过渡间至跃迁前厅垂直气闸阻断
+        ],
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [
+            "room_sub_generator", "room_hangar_deck" // 气闸锁死
+        ]
+    },
+    4: {
+        title: "第四关：深空巡检 · 虚妄之瞳",
+        subtitle: "全舰静默巡逻 · 规避一切视线接触",
+        startNodeId: "room_npc_kaze", // 卡罗的整备室
+        exitNodeId: "room_npc1",      // 卡罗的停电位置动力操作台
+        openRoomIds: [
+            // Y=-1 卡罗整备室 (1间)
+            "room_npc_kaze",
+            // Y=0 舰首战术区 (7间)
+            "room_sensor_array", "room_tactical_plan", "room_bridge_sub", "room_bridge_main", "room_ai_core", "room_comm_center", "room_observation",
+            // Y=1 终点、科研与医疗区 (8间)
+            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne", "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
+            // Y=2 中层枢纽与生活生态区 (9间)
+            "room_npc3", "room_junction_nw", "room_path_e", "room_hub_n1", "room_npc2", "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
+            // Y=3 动力控制、重力核与防御区 (9间)
+            "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se", "room_gravity_well", "room_armory", "room_recreation_gym", "room_east_airlock",
+            // Y=4 机库、工坊与维生辅机区 (9间)
+            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck", "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
+            // Y=5 护盾、聚变反应堆与能源干线区 (10间)
+            "room_shields_emitter", "room_sub_coolant", "room_reactor_control", "room_plasma_manifold", "room_main_reactor", "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock", "room_npc_colt_barnes"
+        ],
+        npcPlacements: {
+            "room_npc2": "shaokexin",                 // 邵可欣 (医护角落)
+            "room_med_surgery": "elsa",               // 艾尔莎 (纳米手术舱)
+            "room_hydro_garden": "sophia",             // 索菲亚 (立体水培温室)
+            "room_npc3": "mode",                      // 莫德 (西北隔离舱)
+            "room_recreation_gym": "noah",            // 诺亚 (体能维持舱)
+            "room_sub_generator": "vivian",           // 薇薇安 (二号辅电站)
+            "room_main_reactor": "elena",             // 伊莲 (重核聚变主反应堆)
+            "room_npc_colt_barnes": "colt"            // 柯尔特 (黑市走私特勤套房)
+        },
+        patrolNodes: ["room_hangar_deck", "room_gravity_well", "room_shields_emitter"], // 巡逻指定三大要害位置
+        randomFoodCount: 8, // 场景随机投放八处体力箱
+        additionalConnections: [
+            ["room_hangar_deck", "room_plasma_manifold"] // 穿梭机库与等离子管廊直通垂直竖井 (确保规避巡逻通路畅通)
+        ],
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [] // 原图黄色区域现在可以通行
     },
     5: {
         title: "第五关：拟态深渊 · 凝视视界",
@@ -3334,6 +3438,23 @@ function buildSpaceshipLevelMap(levelId) {
     const openSet = new Set(openRoomIds);
     const nodes = {};
 
+    // 决定食物投放位置 (支持固定配置或动态随机抽取投放)
+    let finalFoodRooms = new Set(spec.foodPlacements || []);
+    if (spec.randomFoodCount && spec.randomFoodCount > 0) {
+        // 方案一：场景动态随机抽取指定数量的房间投放体力箱 (排除起点、终点和已放置NPC的房间)
+        const eligibleRooms = openRoomIds.filter(id =>
+            id !== spec.startNodeId &&
+            id !== spec.exitNodeId &&
+            !(spec.npcPlacements && spec.npcPlacements[id])
+        );
+        const shuffled = [...eligibleRooms];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        finalFoodRooms = new Set(shuffled.slice(0, spec.randomFoodCount));
+    }
+
     openRoomIds.forEach(id => {
         const baseDef = MASTER_ROOM_DEFS[id];
         if (!baseDef) return;
@@ -3355,9 +3476,15 @@ function buildSpaceshipLevelMap(levelId) {
             connections: {}
         };
 
-        if (baseDef.isExit || id === spec.exitNodeId) {
+        const isDesignatedExit = spec.exitNodeId ? (id === spec.exitNodeId) : (baseDef.isExit || id === "room_exit");
+        if (isDesignatedExit) {
             node.isExit = true;
-            node.event = { type: "exit", name: "终点气密大门" };
+            node.event = { type: "exit", name: (id === "room_npc1" ? "动力操作台" : "终点气密大门") };
+        } else {
+            node.isExit = false;
+            if (node.event && node.event.type === "exit") {
+                delete node.event;
+            }
         }
 
         if (id === spec.startNodeId) {
@@ -3371,7 +3498,7 @@ function buildSpaceshipLevelMap(levelId) {
             };
         }
 
-        if (spec.foodPlacements && spec.foodPlacements.includes(id)) {
+        if (finalFoodRooms.has(id)) {
             node.event = {
                 type: "food",
                 name: "高能浓缩战备配给"
@@ -3381,8 +3508,20 @@ function buildSpaceshipLevelMap(levelId) {
         nodes[id] = node;
     });
 
-    MASTER_CONNECTIONS.forEach(([a, b]) => {
+    const severedSet = new Set();
+    if (spec.severedConnections && Array.isArray(spec.severedConnections)) {
+        spec.severedConnections.forEach(([a, b]) => {
+            severedSet.add(`${a}_${b}`);
+            severedSet.add(`${b}_${a}`);
+        });
+    }
+
+    const allConns = [...MASTER_CONNECTIONS, ...(spec.additionalConnections || [])];
+    allConns.forEach(([a, b]) => {
         if (openSet.has(a) && openSet.has(b)) {
+            if (severedSet.has(`${a}_${b}`)) {
+                return; // 切断两房间连接通道
+            }
             const nodeA = nodes[a];
             const nodeB = nodes[b];
             if (nodeA && nodeB) {
@@ -3411,6 +3550,14 @@ function buildSpaceshipLevelMap(levelId) {
         }
 
         if (isAdjacentToOpen) {
+            let lockReason = "防爆安全气闸锁死 · 供电切断";
+            if (def.isNpcRoom) {
+                lockReason = "专属舱室上锁 · 需该乘员随行";
+            } else if (spec.useHostCompatibilityLock) {
+                const isYellow = spec.yellowLockRoomIds && spec.yellowLockRoomIds.includes(id);
+                lockReason = isYellow ? "防爆安全气闸锁死 · 供电切断" : "宿主契合度不足，无法探索";
+            }
+
             lockedRooms[id] = {
                 id: def.id,
                 name: def.name,
@@ -3422,7 +3569,7 @@ function buildSpaceshipLevelMap(levelId) {
                 diary: def.diary,
                 connectsTo: def.connectsTo,
                 state: def.isNpcRoom ? "npc_locked" : "locked",
-                lockReason: def.isNpcRoom ? `专属舱室上锁 · 需该乘员随行` : "防爆安全气闸锁死 · 供电切断"
+                lockReason: lockReason
             };
         } else {
             fogRooms[id] = {
@@ -3437,12 +3584,14 @@ function buildSpaceshipLevelMap(levelId) {
         startNodeId: spec.startNodeId,
         exitNodeId: spec.exitNodeId,
         nodes,
+        patrolNodes: spec.patrolNodes || [],
         masterShip: {
             allRooms: MASTER_ROOM_DEFS,
-            allConnections: MASTER_CONNECTIONS,
+            allConnections: allConns,
             openRoomIds: openRoomIds,
             lockedRooms,
-            fogRooms
+            fogRooms,
+            patrolNodes: spec.patrolNodes || []
         }
     };
 }
@@ -3465,7 +3614,7 @@ function buildSpaceshipLevelMap(levelId) {
 
 const GeneratedLevels = [];
 
-for (let lvlId = 3; lvlId <= 25; lvlId++) {
+for (let lvlId = 5; lvlId <= 25; lvlId++) {
     const spec = LEVEL_SECTOR_SPECS[lvlId] || LEVEL_SECTOR_SPECS[1];
     const lvlMap = buildSpaceshipLevelMap(lvlId);
 
@@ -3587,14 +3736,15 @@ const BaseLevels = [
         title: "第二关：深层重叠 · 镜面回廊",
         subtitle: "高维拓扑裂解 · 搜寻深层失散同伴",
 
-        // q1 黑屏中间白字（契合循环重构与更深层迷宫的世界观）
+        // q1 黑屏中间白字（契合停电瞬间与恐惧死寂的世界观）
         blackScreenText: [
-            "……气闸闭合的沉闷重响再次灌入耳道，但重力感却全然错位。",
-            "眼前的合金走廊更加深邃、更加庞大，无数发光的管线如同垂死的神经网络在穹顶蔓延。",
-            "通讯仪中传出断断续续的电流杂音，三个微弱的同伴生命信标再度分散在这片更广袤的结构深处。",
-            "不可思议的是，你隐约感觉眼前发生的一切，你似乎早已在某个未曾抵达的未来‘经历’过……",
-            "潜伏的伪装体并未远去，他们的呼吸声在更暗的角落隐匿。救出同伴，踏向深处的奇点核心。",
-            "——触摸屏幕，踏入第二重回响。"
+            "……周围貌似突然暗了下来。",
+            "刺耳的电火花骤然熄灭，冷白的光线在视野中逐一沉陷，黑暗如重压般毫无预兆地吞没了整片合金回廊。",
+            "恐惧之下你不由得缩在角落里，害怕什么东西到来……",
+            "你在颤栗中等待着，等待着阴影中某些不可名状之物的迫近，屏住呼吸，甚至不敢听见自己的喘息。",
+            "直到周围一片死寂。",
+            "心跳沉重地撞击着冰冷的胸膛。在深邃的静默中，你终于了然自己到底该做些什么……",
+            "——触摸屏幕，踏入静默的深渊。"
         ],
 
         // 初始属性
@@ -3604,11 +3754,11 @@ const BaseLevels = [
         defaultProtagonistRole: "seer",
 
         // 伪人数量配置
-        wolfCountRange: [1, 3],
+        wolfCountRange: [1, 2],
         candidateNPCs: [
-            { id: "kaze", assignedRole: null },       // NPC1: 卡罗 (男，蓝框)
-            { id: "shaokexin", assignedRole: null },  // NPC2: 邵可欣 (女，粉框)
-            { id: "mode", assignedRole: null }        // NPC3: 莫德 (男，紫框)
+            { id: "kaze", assignedRole: null },       // NPC1: 卡罗 (动力操作台)
+            { id: "mode", assignedRole: null },        // NPC2: 莫德 (四期隔离舱)
+            { id: "prof_lu", assignedRole: null }     // NPC3: 陆知行 (停电始发地)
         ],
 
         mapImageUrl: null, // 第二关完全基于高精实时战术蓝图呈现
@@ -3618,22 +3768,137 @@ const BaseLevels = [
         // 第二关解锁规则列表
         unlockRules: [
             {
-                id: "l2_basic_clear",
+                id: "l2_power_restore_clear",
                 condition: { type: "clear_any" },
                 unlockLevelIds: [3],
-                taskName: "任务一：成功撤离 (镜面穿透)",
-                taskObjective: "突破镜面折射回廊，抵达终点奇点之门并脱出",
-                title: "突破镜面",
-                toast: "成功突破镜面回廊，开放【扇区 03：湮灭奇点】！"
+                taskName: "任务一：经过停电始发地修复电源",
+                taskObjective: "前往【全舰停电始发地】合闸恢复电网，再前往逃生舱脱出",
+                title: "重启电网",
+                toast: "星舰主电源已成功恢复并脱离！开放【第三关】！"
             },
             {
-                id: "l2_all_mimics_escort",
-                condition: { type: "require_all_mimics" },
-                unlockLevelIds: [5],
-                taskName: "任务二：引渡全员伪人撤离 (深渊诱捕)",
-                taskObjective: "同化或引领，携行场上全部潜伏拟态伪装体一同脱出",
-                title: "深渊引渡者",
-                toast: "全员伪人被引渡带出！深层异动引发共鸣，额外开放【扇区 05：拟态深渊】！"
+                id: "l2_kaze_escort",
+                condition: { 
+                    type: "require_npcs", 
+                    npcIds: ["kaze"] 
+                },
+                unlockLevelIds: [14],
+                taskName: "任务二：带离卡罗撤离",
+                taskObjective: "搜寻救醒卡罗，携行卡罗穿越终点共同撤离",
+                title: "战术信标共鸣",
+                toast: "成功护送【卡罗】脱离！其特战战术数据激活隐藏信标，额外开放【第十四关】！"
+            }
+        ]
+    },
+    {
+        levelId: 3,
+        title: "第三关：深渊回响 · 矩阵裂解",
+        subtitle: "高维拓扑裂解 · 搜寻深层失散同伴",
+
+        // q1 黑屏中间白字（契合四段递进留白悬疑要求）
+        blackScreenText: [
+            "……外面……发生了什么？",
+            "隔音舱门外传来了沉闷而怪异的机械呻吟，像是一具庞大钢铁巨兽濒死时的抽搐。",
+            "总感觉……有哪里不对劲。",
+            "备用照明灯泛着惨白的荧光，空气中嗅不到熟悉的循环氧气味，取而代之的是某种微弱的、带着焦糊与湿润的异样气息。",
+            "地板微微的震颤，让你浑身的神经愈发警觉……",
+            "规律的引力引擎脉动不知何时已经停滞。取而代之的，是脚下龙骨深处极细微的金属扭曲声，以及……某些湿润之物划过管网的摩擦声。",
+            "或许……你该出去看看了。",
+            "握紧手心冰凉的把手，在死一般的深渊中，你终于决定推开这道隔离门。",
+            "——触摸屏幕，踏入静默未知的深渊。"
+        ],
+
+        // 初始属性
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量配置：随机 1~2 人
+        wolfCountRange: [1, 2],
+        candidateNPCs: [
+            { id: "kaze", assignedRole: null },       // NPC1: 卡罗 (动力操作台)
+            { id: "prof_lu", assignedRole: null },    // NPC2: 陆知行 (停电始发地)
+            { id: "shaokexin", assignedRole: null },  // NPC3: 邵可欣 (医护角落)
+            { id: "elsa", assignedRole: null },       // NPC4: 艾尔莎 (纳米手术舱)
+            { id: "sophia", assignedRole: null }      // NPC5: 索菲亚 (绿光水培温室)
+        ],
+
+        mapImageUrl: null,
+        // 地图拓扑网络 (基于宇宙飞船母蓝图构建，33间开放舱室)
+        map: buildSpaceshipLevelMap(3),
+
+        // 第三关解锁规则列表
+        unlockRules: [
+            {
+                id: "l3_power_restore_clear",
+                condition: { type: "clear_any" },
+                unlockLevelIds: [4],
+                taskName: "任务一：经过停电始发地修复电源并撤离",
+                taskObjective: "前往【全舰停电始发地】合闸恢复主电网，再前往逃生舱脱出",
+                title: "主电网重合闸",
+                toast: "全舰主电网已彻底恢复并安全脱离！开放【第四关】！"
+            },
+            {
+                id: "l3_four_npcs_escort",
+                condition: { 
+                    type: "require_npc_count", 
+                    count: 4 
+                },
+                unlockLevelIds: [15],
+                taskName: "任务二：带离场景中四名NPC撤离",
+                taskObjective: "搜寻救醒同伴，至少携行四名NPC共同撤离逃生",
+                title: "矩阵大撤离",
+                toast: "成功带领四名同伴突破重围脱离！激活深层坐标，额外开放【第十五关】！"
+            }
+        ]
+    },
+    {
+        levelId: 4,
+        title: "第四关：深空巡检 · 虚妄之瞳",
+        subtitle: "全舰静默巡逻 · 规避一切视线接触",
+
+        // q1 黑屏中间白字（契合静默巡逻与悬疑留白）
+        blackScreenText: [
+            "……一如既往的一天。换气格栅吐着微凉的气流。",
+            "巡逻一圈吧。按照早班排查序列，依次确认要害中枢。",
+            "舱壁依旧冰冷，指示灯按部就班地闪烁……就跟往常一样。",
+            "或者……有可能不一样？（注意：切勿被任何人所凝视）",
+            "——触摸屏幕，开始巡检。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量配置：严格为零
+        wolfCountRange: [0, 0],
+        candidateNPCs: [
+            { id: "shaokexin", assignedRole: null },  // 邵可欣 (医护角落)
+            { id: "elsa", assignedRole: null },       // 艾尔莎 (纳米手术舱)
+            { id: "sophia", assignedRole: null },     // 索菲亚 (绿光水培温室)
+            { id: "mode", assignedRole: null },       // 莫德 (西北隔离舱)
+            { id: "noah", assignedRole: null },       // 诺亚 (体能维持舱)
+            { id: "vivian", assignedRole: null },     // 薇薇安 (二号辅电站)
+            { id: "elena", assignedRole: null },      // 伊莲 (重核聚变主反应堆)
+            { id: "colt", assignedRole: null }        // 柯尔特 (黑市走私特勤套房)
+        ],
+
+        mapImageUrl: null,
+        // 地图拓扑网络 (基于宇宙飞船母蓝图构建，53间开放舱室)
+        map: buildSpaceshipLevelMap(4),
+
+        // 第四关解锁规则列表
+        unlockRules: [
+            {
+                id: "l4_patrol_clear",
+                condition: { type: "clear_any" },
+                unlockLevelIds: [5, 16],
+                taskName: "任务一：全舰静默巡检",
+                taskObjective: "巡视三大要害中枢（停机坪甲板、重力发生核、防护中枢），并在不被任何人凝视的前提下前往动力操作台",
+                title: "静默巡检达成",
+                toast: "成功规避一切视线接触并完成全舰要害巡检！开放【第五关】与【第十六关】！"
             }
         ]
     }
@@ -5937,6 +6202,16 @@ class MapRenderer {
             revealedSet.add(animatedMarker.toId);
         }
 
+        // 第四关专属：指定要害巡检位置 (停机坪甲板、重力发生核、防护中枢) 直接在地图上提前单独亮起
+        const patrolNodes = levelMap.patrolNodes || (levelMap.masterShip && levelMap.masterShip.patrolNodes) || [];
+        if (patrolNodes.length > 0) {
+            patrolNodes.forEach(pId => {
+                if (levelMap.nodes[pId]) {
+                    revealedSet.add(pId);
+                }
+            });
+        }
+
         const boxSize = layout.boxSize;
         const nodes = levelMap.nodes;
         const masterShip = levelMap.masterShip;
@@ -6145,6 +6420,8 @@ class MapRenderer {
             const adjacentDir = connectedDirMap[node.id];
             const shape = node.shape || "rect";
             const equipment = node.equipment;
+            const isPatrolTarget = patrolNodes.includes(node.id);
+            const isPatrolDone = options.patrolVisited && options.patrolVisited.has(node.id);
 
             const x = p.x - boxSize / 2;
             const y = p.y - boxSize / 2;
@@ -6152,7 +6429,7 @@ class MapRenderer {
             // 根据所属分区选取专属地面色彩主题
             let themeKey = node.zone || "hub";
             if (node.isStart || node.id === "room_start" || (levelMap && node.id === levelMap.startNodeId)) themeKey = "start";
-            else if (node.isExit || node.id === "room_exit" || (node.event && node.event.type === "exit")) themeKey = "exit";
+            else if (node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit")))) themeKey = "exit";
             const theme = DECK_THEMES[themeKey] || DECK_THEMES.hub;
 
             ctx.save();
@@ -6165,13 +6442,13 @@ class MapRenderer {
             // 6.2 舱室内部地坪填色 (区分生活、指挥、医疗、工程等真实质感)
             if (isVisited) {
                 ctx.fillStyle = isHovered ? theme.floorVisited : theme.floor;
-                ctx.strokeStyle = theme.border;
-                ctx.lineWidth = 2.2;
+                ctx.strokeStyle = isPatrolTarget ? (isPatrolDone ? "#22c55e" : "#f59e0b") : theme.border;
+                ctx.lineWidth = isPatrolTarget ? 2.6 : 2.2;
             } else {
-                ctx.fillStyle = adjacentDir ? "rgba(15, 23, 42, 0.85)" : "rgba(15, 23, 42, 0.65)";
-                ctx.strokeStyle = adjacentDir ? "rgba(56, 189, 248, 0.85)" : "rgba(148, 163, 184, 0.4)";
-                ctx.lineWidth = adjacentDir ? 2.0 : 1.5;
-                if (!adjacentDir) ctx.setLineDash([4, 3]);
+                ctx.fillStyle = isPatrolTarget ? "rgba(30, 27, 75, 0.85)" : (adjacentDir ? "rgba(15, 23, 42, 0.85)" : "rgba(15, 23, 42, 0.65)");
+                ctx.strokeStyle = isPatrolTarget ? (isPatrolDone ? "#22c55e" : "#f59e0b") : (adjacentDir ? "rgba(56, 189, 248, 0.85)" : "rgba(148, 163, 184, 0.4)");
+                ctx.lineWidth = isPatrolTarget ? 2.6 : (adjacentDir ? 2.0 : 1.5);
+                if (!adjacentDir && !isPatrolTarget) ctx.setLineDash([4, 3]);
             }
 
             drawRoomPolygon(ctx, shape, x, y, boxSize, boxSize);
@@ -6227,6 +6504,15 @@ class MapRenderer {
                 drawRoomPolygon(ctx, shape, x - 1, y - 1, boxSize + 2, boxSize + 2);
                 ctx.stroke();
                 ctx.shadowBlur = 0;
+            } else if (isPatrolTarget) {
+                // 第四关专属：巡检目标常驻金色/绿色醒目光晕
+                ctx.shadowColor = isPatrolDone ? "#22c55e" : "#f59e0b";
+                ctx.shadowBlur = 14;
+                ctx.strokeStyle = isPatrolDone ? "#22c55e" : "#f59e0b";
+                ctx.lineWidth = 2.5;
+                drawRoomPolygon(ctx, shape, x - 1, y - 1, boxSize + 2, boxSize + 2);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
             } else if (adjacentDir && !animatedMarker) {
                 // 相邻可行进房间微光呼应
                 ctx.shadowColor = isVisited ? "#4ade80" : "#38bdf8";
@@ -6276,9 +6562,9 @@ class MapRenderer {
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 同伴` : "同伴") : "";
                     tagColor = "#c084fc";
                     subTagColor = adjacentDir ? "#c084fc" : "#e9d5ff";
-                } else if (node.isExit || node.id === "room_exit" || (node.event && node.event.type === "exit")) {
+                } else if (node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit")))) {
                     label = "终点";
-                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 折跃门` : "折跃门") : "";
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 终点` : "终点") : "";
                     tagColor = "#4ade80";
                     subTagColor = adjacentDir ? "#4ade80" : "#86efac";
                 } else if (node.event && node.event.type === "food") {
@@ -6337,6 +6623,19 @@ class MapRenderer {
                 } else {
                     tagColor = "rgba(203, 213, 225, 0.85)";
                     subTagColor = "rgba(148, 163, 184, 0.65)";
+                }
+            }
+
+            // 第四关专属：巡检目标显示专属徽标与鲜明色彩
+            if (isPatrolTarget && !isCurrent) {
+                if (isPatrolDone) {
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 已巡检` : "已巡检") : "已巡检";
+                    subTagColor = "#4ade80";
+                    tagColor = "#86efac";
+                } else {
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 待巡检` : "待巡检") : "待巡检";
+                    subTagColor = "#f59e0b";
+                    tagColor = "#fef08a";
                 }
             }
 
@@ -6875,7 +7174,14 @@ class UnlockEvaluator {
                     break;
                 }
 
-                // 6. 自定义回调判定
+                // 6. 存活撤离的 NPC 数量检定 (例如至少带出 4 名同伴)
+                case "require_npc_count": {
+                    const minCount = condition.count || condition.minCount || 1;
+                    isSatisfied = evacuatedNpcIds.length >= minCount;
+                    break;
+                }
+
+                // 7. 自定义回调判定
                 case "custom": {
                     if (typeof condition.matcher === "function") {
                         isSatisfied = !!condition.matcher(context);
@@ -7012,9 +7318,14 @@ class ExplorationEngine {
         // 立即更新顶部状态栏（房间名、当前体力与百分比）
         this.gameEngine.updateHeaderUI();
 
-        // 3. 终点优先判定：若最后一步踏上的是终点，即使体力耗尽（降至0）也算通过
+        // 3. 终点优先判定：若最后一步踏上的是有效终点，即使体力耗尽（降至0）也算通过
         const isExitNode = !!(nextNode.isExit || (nextNode.event && nextNode.event.type === "exit"));
-        if (isExitNode) {
+        const isPowerRestorationPending = (
+            (this.gameEngine?.currentLevel?.levelId === 2 && !this.gameEngine.level2PowerRestored) ||
+            (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored)
+        );
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending;
+        if (isEffectiveExit) {
             if (!isAlreadyExplored) {
                 this.choiceCount++;
             }
@@ -7022,7 +7333,7 @@ class ExplorationEngine {
             return true;
         }
 
-        // 4. 检查体力是否耗尽（非终点情况下体力降至0则倒下）
+        // 4. 检查体力是否耗尽（非有效终点情况下体力降至0则倒下）
         if (this.gameEngine.stamina <= 0) {
             this.gameEngine.triggerGameOver("体力耗尽！你在冰冷黑暗的走廊中耗尽了最后一丝力气，未能生还……");
             return true;
@@ -7051,9 +7362,71 @@ class ExplorationEngine {
 
         // A. 终点判定 (走到用户决定的地图终点即宣布成功)
         if (node.isExit || (node.event && node.event.type === "exit")) {
+            // 第二关与第三关专属拦截：若尚未在停电始发地合闸通电，禁止撤离
+            const isPowerRestorationPending = (
+                (this.gameEngine?.currentLevel?.levelId === 2 && !this.gameEngine.level2PowerRestored) ||
+                (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored)
+            );
+            if (isPowerRestorationPending) {
+                this.gameEngine.logAction(`【气动锁未解压】逃生舱主电源处于切断状态！气动锁未解压，无法启动撤离程序。请先前往停电始发地修复电源！`);
+                this.gameEngine.dialogueUI?.say(
+                    { name: "逃生舱控制终端", themeColor: "#f43f5e" },
+                    "【警告：主能源离线】逃生舱主电源处于切断状态，舱门气动锁未解压，逃生折跃引擎无法启动！请前往【停电始发地】合上主电闸修复电源后再来撤离！"
+                );
+                this.gameEngine.renderExplorationControls();
+                if (this.gameEngine.refreshStageMap) {
+                    this.gameEngine.refreshStageMap();
+                }
+                return;
+            }
+
+            // 第四关专属通关校验：必须先行完成三大要害中枢（停机坪甲板、重力发生核、防护中枢）的巡检
+            if (this.gameEngine.currentLevel && this.gameEngine.currentLevel.levelId === 4) {
+                const count = this.gameEngine.level4PatrolVisited ? this.gameEngine.level4PatrolVisited.size : 0;
+                if (count < 3) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast(`⚠️ 巡检任务未完成！三大要害中枢尚有 ${3 - count} 处未排查！`);
+                    }
+                    this.gameEngine.logAction(`【巡检未竟】未完成全舰三大要害中枢巡检（${count}/3），动力操作台终端尚未解锁！`);
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "动力操作台控制终端", themeColor: "#fbbf24" },
+                        `【全舰巡检协议未闭环】巡检任务尚未完成（当前进度: ${count}/3）。在确认停机坪甲板、重力发生核与防护中枢的安全之前，动力操作台控制系统拒绝进入收工阶段！`
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
             this.gameEngine.logAction(`【通关突破】全员成功抵达目的地 [${node.name}]！准备跳跃！`);
             this.gameEngine.triggerVictory(node);
             return;
+        }
+
+        // 第四关专属要害巡检打卡判定 (停机坪甲板、重力发生核、防护中枢)
+        if (this.gameEngine.currentLevel && this.gameEngine.currentLevel.levelId === 4) {
+            const patrolTargets = ["room_hangar_deck", "room_gravity_well", "room_shields_emitter"];
+            if (patrolTargets.includes(node.id)) {
+                if (!this.gameEngine.level4PatrolVisited) {
+                    this.gameEngine.level4PatrolVisited = new Set();
+                }
+                if (!this.gameEngine.level4PatrolVisited.has(node.id)) {
+                    this.gameEngine.level4PatrolVisited.add(node.id);
+                    const targetNames = {
+                        room_hangar_deck: "停机坪甲板",
+                        room_gravity_well: "重力发生核",
+                        room_shields_emitter: "防护中枢"
+                    };
+                    const count = this.gameEngine.level4PatrolVisited.size;
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast(`🎯 [巡检打卡] 已抵达【${targetNames[node.id] || node.name}】(${count}/3)`);
+                    }
+                    this.gameEngine.logAction(`【要害巡视】完成了对三大中枢之一 [${node.name}] 的静默巡查（当前进度: ${count}/3）！`);
+                    this.gameEngine.updateHeaderUI();
+                }
+            }
         }
 
         // B. 特殊生化检测室判定 (获知当前队伍里有几名伪人)
@@ -7094,6 +7467,44 @@ class ExplorationEngine {
             }
         }
 
+        // D. 特殊关卡机制：第二关与第三关停电始发地合闸通电特殊确认弹窗
+        // 核心要求：完成修电任务需要有特殊弹窗提示确认，若NPC在上面则先触发修电弹窗再触发NPC选择
+        const isPowerRestoreNeeded = (
+            ((this.gameEngine?.currentLevel?.levelId === 2 && !this.gameEngine.level2PowerRestored) ||
+             (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored)) &&
+            (node.id === "room_west_end" || node.isPowerOrigin)
+        );
+
+        if (isPowerRestoreNeeded) {
+            this.gameEngine.showPowerRestoreModal(node, () => {
+                if (this.gameEngine?.currentLevel?.levelId === 2) {
+                    this.gameEngine.level2PowerRestored = true;
+                } else if (this.gameEngine?.currentLevel?.levelId === 3) {
+                    this.gameEngine.level3PowerRestored = true;
+                }
+                this.gameEngine.logAction(`【电源修复】抵达全舰停电始发地 [${node.name}]！手动合上高压母线总断路器，逃生系统主电网供电成功恢复！`);
+                if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
+                    Sound.playAlarmSound();
+                }
+                if (this.gameEngine.showStageToast) {
+                    this.gameEngine.showStageToast("⚡ [停电始发地] 主电网重合闸成功！逃生舱气动锁已解除！");
+                }
+                if (this.gameEngine.renderMissionsPanel) {
+                    this.gameEngine.renderMissionsPanel();
+                }
+                // 修电确认完成后，再顺序触发该节点内的其他事件（如陆知行 NPC 救援选择）
+                this.processRoomEvents(node, isAlreadyExplored);
+            });
+            return;
+        }
+
+        this.processRoomEvents(node, isAlreadyExplored);
+    }
+
+    /**
+     * 处理房间内的常规事件（食物物资、NPC昏迷救助、傍晚检定）
+     */
+    processRoomEvents(node, isAlreadyExplored) {
         // 检查该节点的事件是否已被触发过
         const eventKey = `${node.id}_event`;
         if (node.event && !this.consumedEvents.has(eventKey)) {
@@ -7182,6 +7593,12 @@ class ExplorationEngine {
             return;
         }
 
+        // 第四关专属潜行规避逻辑：不可与任何NPC发生视线接触，若踩到NPC所在区域直接游戏结束“你被他人所凝视，复现失败”
+        if (this.gameEngine.currentLevel && this.gameEngine.currentLevel.levelId === 4) {
+            this.gameEngine.triggerGameOver("你被他人所凝视，复现失败");
+            return;
+        }
+
         if (npc.status === "dead") {
             this.consumedEvents.add(eventKey);
             this.gameEngine.logAction(`【现场勘查】在 [${node.name}] 发现了已遇害的 [${npc.name}] 的遗体。`);
@@ -7216,6 +7633,12 @@ class ExplorationEngine {
      * 触发后重置 choiceCount，进入 q4 询问环节
      */
     checkEveningTrigger() {
+        // 第四关专属优化：本关卡为全舰白昼静默巡检，没有黑天时刻，没有死寂降临
+        if (this.gameEngine?.currentLevel?.levelId === 4) {
+            this.gameEngine.renderExplorationControls();
+            return;
+        }
+
         const chance = EveningTriggerConfig.getChance(this.choiceCount);
         const roll = Math.random();
 
@@ -7414,6 +7837,7 @@ class GameEngine {
         this.screenBlack = document.getElementById("screen-q1-black");
         this.screenEveningBlack = document.getElementById("screen-evening-black");
         this.screenDeathBlack = document.getElementById("screen-death-black");
+        this.screenLevel4Cutscene = document.getElementById("screen-level4-cutscene");
         this.deathBlackCallback = null;
         this.screenGame = document.getElementById("screen-game");
 
@@ -7450,6 +7874,8 @@ class GameEngine {
         this.modalLevelSelect = document.getElementById("modal-level-select");
         this.levelGrid = document.getElementById("level-select-grid");
         this.btnOpenLevelSelect = document.getElementById("btn-menu-select-level");
+        this.modalPowerRestore = document.getElementById("modal-power-restore");
+        this.btnPowerRestoreConfirm = document.getElementById("btn-power-restore-confirm");
 
         // 任务清单 DOM 引用
         this.btnViewMissions = document.getElementById("btn-view-missions");
@@ -8030,10 +8456,17 @@ class GameEngine {
         this.screenBlack.classList.add("hidden");
         this.screenEveningBlack?.classList.add("hidden");
         this.screenDeathBlack?.classList.add("hidden");
+        this.screenLevel4Cutscene?.classList.add("hidden");
         this.screenGame.classList.add("hidden");
         this.modalLevelSelect?.classList.add("hidden");
         this.modalMissions?.classList.add("hidden");
         this.modalPersonaLog?.classList.add("hidden");
+        this.modalEncounter?.classList.add("hidden");
+        this.modalPowerRestore?.classList.add("hidden");
+        this.modalInquiry?.classList.add("hidden");
+        this.modalJudgement?.classList.add("hidden");
+        this.modalNight?.classList.add("hidden");
+        this.modalResult?.classList.add("hidden");
         this.hudMiniRadar?.classList.add("hidden");
         this.updateMenuButtons();
     }
@@ -8079,8 +8512,36 @@ class GameEngine {
             const cond = rule.condition || { type: "clear_any" };
 
             if (cond.type === "clear_any") {
-                realtimeStatus = "🏃 突破重叠回廊，开启终点折跃气闸即可达成";
-                realtimeClass = "realtime-ready";
+                if (this.currentLevel?.levelId === 2 && rule.id === "l2_power_restore_clear") {
+                    if (this.level2PowerRestored) {
+                        realtimeStatus = "🟢 主电源已合闸通电，抵达逃生舱即可撤离脱出";
+                        realtimeClass = "realtime-ready";
+                    } else {
+                        realtimeStatus = "⚡ 逃生舱主电源切断中（需先前往停电始发地修复电源）";
+                        realtimeClass = "realtime-waiting";
+                    }
+                } else if (this.currentLevel?.levelId === 3 && rule.id === "l3_power_restore_clear") {
+                    if (this.level3PowerRestored) {
+                        realtimeStatus = "🟢 主电网已合闸通电，抵达逃生舱即可撤离脱出";
+                        realtimeClass = "realtime-ready";
+                    } else {
+                        realtimeStatus = "⚡ 逃生舱主电网切断中（需先前往停电始发地修复电源）";
+                        realtimeClass = "realtime-waiting";
+                    }
+                } else {
+                    realtimeStatus = "🏃 突破重叠回廊，开启终点折跃气闸即可达成";
+                    realtimeClass = "realtime-ready";
+                }
+            } else if (cond.type === "require_npc_count") {
+                const reqCount = cond.count || cond.minCount || 4;
+                const currentCount = activeNpcIds.length;
+                if (currentCount >= reqCount) {
+                    realtimeStatus = `🟢 队伍已有 ${currentCount} 名同伴随行（已满足 ≥ ${reqCount} 人撤离要求）`;
+                    realtimeClass = "realtime-ready";
+                } else {
+                    realtimeStatus = `⏳ 队伍现有 ${currentCount}/${reqCount} 名同伴随行（仍需搜寻救助更多同伴）`;
+                    realtimeClass = "realtime-waiting";
+                }
             } else if (cond.type === "require_npcs") {
                 const reqIds = cond.npcIds || [];
                 const allInTeam = reqIds.every(id => activeNpcIds.includes(id));
@@ -8259,6 +8720,16 @@ class GameEngine {
         this.stepsWithNpc = {};
         this.nightCounterDeflected = false;
         this.nightModeDefended = false;
+        this.level2PowerRestored = false;
+        this.level3PowerRestored = false;
+        this.level4PatrolVisited = new Set();
+        this.modalEncounter?.classList.add("hidden");
+        this.modalPowerRestore?.classList.add("hidden");
+        this.modalInquiry?.classList.add("hidden");
+        this.modalJudgement?.classList.add("hidden");
+        this.modalNight?.classList.add("hidden");
+        this.modalResult?.classList.add("hidden");
+        this.screenLevel4Cutscene?.classList.add("hidden");
         this.logAction(`【开始新循环】启动关卡：${levelConfig.title}。主角 L.P.H 身份：${WorldviewConfig.roleNames[this.protagonist.role].name}`);
 
         // 初始化地图
@@ -8502,6 +8973,30 @@ class GameEngine {
             // 触发人物图鉴历练检定 (如邵可欣救援入队)
             this.checkPersonaSecretUnlocks("suffer_fate", { charId: npc.id, type: "rescued" });
 
+            // 【特殊特质：Dr. Elsa / 艾尔莎 战地创伤急救】
+            // 当将其收纳为队友时固定回复 30 体力值，并基于体力增加提示与多重视觉/对白反馈
+            let elsaHealRecovered = 0;
+            if (npc.id === "elsa" || npc.id === "dr_elsa") {
+                const oldStamina = this.stamina;
+                this.stamina = Math.min(StaminaConfig.maxStamina, this.stamina + 30);
+                elsaHealRecovered = this.stamina - oldStamina;
+                this.updateHeaderUI();
+                if (this.headerStaminaFill) {
+                    this.headerStaminaFill.classList.remove("stamina-boost-pulse");
+                    if (this.headerStaminaFill.offsetWidth !== undefined) {
+                        void this.headerStaminaFill.offsetWidth;
+                    }
+                    this.headerStaminaFill.classList.add("stamina-boost-pulse");
+                }
+                if (typeof Sound !== "undefined" && Sound.playFoodSound) {
+                    Sound.playFoodSound();
+                }
+                if (this.showStageToast) {
+                    this.showStageToast(`💉 [战地急救] 主治军医 艾尔莎 为队伍注射高能活性剂，体力恢复 +${elsaHealRecovered}！`);
+                }
+                this.logAction(`【战地急救】主治军医 [${npc.name}] 进行了紧急创伤救治，队伍体力值固定恢复 +${elsaHealRecovered} 点（当前: ${this.stamina}/${StaminaConfig.maxStamina}）！`);
+            }
+
             // 播放入队对话
             const lines = (npc.introDialogue || []).slice(1).map(raw => {
                 const parsed = CharacterRegistry.parseDialogueLine(raw);
@@ -8513,6 +9008,13 @@ class GameEngine {
             });
             if (lines.length === 0) {
                 lines.push({ speaker: npc, text: `谢谢你救了我，L.P.H！我愿意跟随你一起撤离！`, expression: "happy" });
+            }
+
+            if (npc.id === "elsa" || npc.id === "dr_elsa") {
+                lines.push({
+                    speaker: { name: "战地医疗支援", themeColor: "#06b6d4" },
+                    text: `💉 [战地急救] 艾尔莎为你注入了高能活性复合针剂，全队体力恢复了 +${elsaHealRecovered} 点！（当前体力: ${this.stamina}/${StaminaConfig.maxStamina}）`
+                });
             }
 
             this.dialogueUI.playSequence(lines, () => {
@@ -8533,14 +9035,63 @@ class GameEngine {
         };
     }
 
+    /**
+     * 第二关全舰停电始发地：特殊高压合闸确认弹窗
+     * 满足要求：先弹出修电弹窗提示确认，合闸后再触发该房间内的NPC选择
+     */
+    showPowerRestoreModal(node, onConfirmed) {
+        if (!this.modalPowerRestore) {
+            this.modalPowerRestore = document.getElementById("modal-power-restore");
+        }
+        if (!this.btnPowerRestoreConfirm) {
+            this.btnPowerRestoreConfirm = document.getElementById("btn-power-restore-confirm");
+        }
+
+        if (!this.modalPowerRestore || !this.btnPowerRestoreConfirm) {
+            if (onConfirmed) onConfirmed();
+            return;
+        }
+
+        this.modalPowerRestore.classList.remove("hidden");
+
+        const handleConfirm = () => {
+            if (this.modalPowerRestore) {
+                this.modalPowerRestore.classList.add("hidden");
+            }
+            if (this.btnPowerRestoreConfirm) {
+                this.btnPowerRestoreConfirm.onclick = null;
+            }
+            if (onConfirmed) onConfirmed();
+        };
+
+        this.btnPowerRestoreConfirm.onclick = handleConfirm;
+    }
+
     // =========================================================================
     // Q4: 傍晚询问环节 (先黑屏白字，点击后再进入)
     // =========================================================================
     enterEveningPhase() {
-        this.phase = "evening_black";
+        // 第四关专属优化：本关卡没有死寂降临，没有黑天时刻，保持探索
+        if (this.currentLevel?.levelId === 4) {
+            this.enterQ3Exploration();
+            return;
+        }
+
         this.eveningInquiryCount = 0;
         this.updateHeaderUI();
 
+        // 核心优化：当队伍里没有NPC时，直接跳过到夜晚时刻，再直接进入死寂降临动画界面
+        if (this.getAliveNpcTeamMembers().length === 0) {
+            this.logAction(`【孤身前行】当前队伍中只有你一人，直接度过傍晚与黑夜……`);
+            this.confinedNpcId = null;
+            this.nightProtectedNpcId = null;
+            this.witchSaved = false;
+            this.nightTargetVictimId = null;
+            this.enterQ7Day();
+            return;
+        }
+
+        this.phase = "evening_black";
         // 切换至全黑屏转场视口 (浮层全屏覆盖，保留底层主舞台DOM杜绝地图缩放形变)
         this.screenEveningBlack?.classList.remove("hidden");
     }
@@ -8777,6 +9328,12 @@ class GameEngine {
     // Q6: 黑夜阶段 (根据玩家身份发动夜间技能)
     // =========================================================================
     enterQ6Night() {
+        // 第四关专属优化：本关卡没有死寂降临，没有黑天时刻，保持探索
+        if (this.currentLevel?.levelId === 4) {
+            this.enterQ3Exploration();
+            return;
+        }
+
         this.phase = "q6_night";
         this.nightProtectedNpcId = null;
         this.witchSaved = false;
@@ -8964,10 +9521,18 @@ class GameEngine {
     // =========================================================================
     // Q7: 白天阶段 (公布夜晚结果，伤亡结算，全屏黑屏死亡特写，重置计数回到Q3)
     // =========================================================================
-    enterDeathBlackPhase(victim, onProceed) {
+    enterDeathBlackPhase(victim, onProceed, survivedReason = null) {
+        // 第四关专属优化：本关卡没有死寂降临动画
+        if (this.currentLevel?.levelId === 4) {
+            if (onProceed) onProceed();
+            return;
+        }
+
         this.phase = "death_black";
         this.deathBlackCallback = onProceed;
         this.deathRevealed = false;
+        this.currentDeathVictim = victim;
+        this.currentSurvivedReason = survivedReason;
         if (this.deathRevealTimer) {
             clearTimeout(this.deathRevealTimer);
             this.deathRevealTimer = null;
@@ -8976,36 +9541,111 @@ class GameEngine {
         const img = document.getElementById("death-portrait-img");
         const titleElem = document.getElementById("death-victim-name");
         const textElem = document.getElementById("death-black-text");
+        const badgeElem = document.getElementById("death-phase-badge") || document.querySelector(".death-phase-badge");
+        const portraitFrame = document.getElementById("death-portrait-frame");
         const suspenseLayer = document.getElementById("death-suspense-layer");
         const contentContainer = document.getElementById("death-content-container");
 
-        if (titleElem) {
-            titleElem.textContent = `【同伴遇害：${victim.name}】`;
-        }
-        if (textElem) {
-            textElem.innerHTML = `生活舱深处传来刺耳的蜂鸣警报，晨曦中发现了一具冰冷的遗体……<br>同伴 [${victim.name}] 昨夜遭遇潜伏伪人残酷袭击，生命体征已完全终止。`;
-        }
+        if (victim) {
+            if (badgeElem) {
+                badgeElem.textContent = "⚠️ 乘员遇害确认 (CASUALTY CONFIRMED)";
+                badgeElem.classList.remove("peaceful-badge");
+            }
+            if (portraitFrame) {
+                portraitFrame.classList.remove("peaceful-frame");
+            }
+            if (titleElem) {
+                titleElem.textContent = `【同伴遇害：${victim.name}】`;
+                titleElem.classList.remove("peaceful-title");
+            }
+            if (textElem) {
+                textElem.innerHTML = `生活舱深处传来刺耳的蜂鸣警报，晨曦中发现了一具冰冷的遗体……<br>同伴 [${victim.name}] 昨夜遭遇潜伏伪人残酷袭击，生命体征已完全终止。`;
+            }
 
-        const exp = "dead";
-        const candidates = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getCharacterImageCandidates)
-            ? CharacterRegistry.getCharacterImageCandidates(victim, exp)
-            : [];
-        const fallbackSvg = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getAvatarSvg)
-            ? CharacterRegistry.getAvatarSvg(victim, exp)
-            : "";
-        if (img) {
-            img.onerror = () => {
-                if (window.handlePortraitError) {
-                    window.handlePortraitError(img);
+            const exp = "dead";
+            const candidates = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getCharacterImageCandidates)
+                ? CharacterRegistry.getCharacterImageCandidates(victim, exp)
+                : [];
+            const fallbackSvg = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getAvatarSvg)
+                ? CharacterRegistry.getAvatarSvg(victim, exp)
+                : "";
+            if (img) {
+                img.onerror = () => {
+                    if (window.handlePortraitError) {
+                        window.handlePortraitError(img);
+                    }
+                };
+                img.setAttribute("data-candidates", JSON.stringify(candidates));
+                img.setAttribute("data-index", "0");
+                img.setAttribute("data-fallback", fallbackSvg);
+                img.src = candidates[0] || fallbackSvg;
+            }
+        } else {
+            // 平安夜无人员遇害模式
+            if (badgeElem) {
+                badgeElem.textContent = "🕊️ 平安无事 (NO CASUALTIES)";
+                badgeElem.classList.add("peaceful-badge");
+            }
+            if (portraitFrame) {
+                portraitFrame.classList.add("peaceful-frame");
+            }
+
+            let title = "【全员生还 · 平安夜】";
+            let desc = "晨曦第一道阳光穿透隔离窗，生活区生命体征读数平稳正常。<br>昨夜没有任何同伴遇害，全员安然迎来晨曦。";
+
+            if (survivedReason === "kaze_counter") {
+                title = "【战术反制 · 全员平安】";
+                desc = "生活区警报静默。卡罗凭借特战直觉破门格挡，成功化解了暗影突袭！<br>昨夜没有任何同伴遇害，全员安然迎来晨曦。";
+            } else if (survivedReason === "mode_shield") {
+                title = "【防爆坚守 · 全员平安】";
+                desc = "重装防爆力场彻底拦截了暗夜突袭！莫德死死扼守住舱门击退潜伏者！<br>昨夜没有任何同伴遇害，全员安然迎来晨曦。";
+            } else if (survivedReason === "guarded") {
+                title = "【护卫守备 · 全员平安】";
+                desc = "护卫防御力场整夜坚固运行，成功化解了潜在抹杀危机！<br>昨夜没有任何同伴遇害，全员安然迎来晨曦。";
+            } else if (survivedReason === "witch_saved") {
+                title = "【歌咏救赎 · 全员平安】";
+                desc = "生命歌咏回路在黑夜中及时咏唱，生体血清成功挽救了遇险同伴！<br>昨夜没有任何同伴遇害，全员安然迎来晨曦。";
+            } else if (survivedReason === "confined") {
+                title = "【行动受制 · 平安无事】";
+                desc = "昨夜被禁锢的目标无法自由行动，舱内整夜未发生任何冲突与伤亡。<br>全员安然迎来晨曦。";
+            }
+
+            if (titleElem) {
+                titleElem.textContent = title;
+                titleElem.classList.add("peaceful-title");
+            }
+            if (textElem) {
+                textElem.innerHTML = desc;
+            }
+
+            // 平安夜展示专属生还徽章
+            const peaceSvg = `data:image/svg+xml;utf8,` + encodeURIComponent(`
+                <svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <radialGradient id="pGlow" cx="50%" cy="45%" r="55%">
+                            <stop offset="0%" stop-color="#22c55e" stop-opacity="0.35"/>
+                            <stop offset="60%" stop-color="#0f2b1d" stop-opacity="0.8"/>
+                            <stop offset="100%" stop-color="#091410" stop-opacity="0.95"/>
+                        </radialGradient>
+                    </defs>
+                    <rect width="200" height="260" fill="url(#pGlow)"/>
+                    <circle cx="100" cy="105" r="46" fill="none" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.7"/>
+                    <circle cx="100" cy="105" r="36" fill="rgba(34,197,94,0.12)" stroke="#4ade80" stroke-width="2"/>
+                    <text x="100" y="118" font-size="38" text-anchor="middle" dominant-baseline="middle">🕊️</text>
+                    <text x="100" y="178" font-size="13" fill="#4ade80" font-weight="bold" letter-spacing="2" text-anchor="middle">PEACEFUL NIGHT</text>
+                    <text x="100" y="200" font-size="11" fill="#86efac" letter-spacing="1" text-anchor="middle">全员生还 · 晨曦破晓</text>
+                </svg>
+            `);
+            if (img) {
+                img.onerror = null;
+                if (typeof img.removeAttribute === "function") {
+                    img.removeAttribute("data-candidates");
                 }
-            };
-            img.setAttribute("data-candidates", JSON.stringify(candidates));
-            img.setAttribute("data-index", "0");
-            img.setAttribute("data-fallback", fallbackSvg);
-            img.src = candidates[0] || fallbackSvg;
+                img.src = peaceSvg;
+            }
         }
 
-        // 核心表现优化：黑夜行动结束后，先纯黑屏2秒，之后再渐渐浮现死者，并播放音效
+        // 核心表现优化：黑夜行动结束后，先纯黑屏2秒，之后再渐渐浮现死者/平安夜卡片，并播放音效
         suspenseLayer?.classList.remove("fade-out");
         contentContainer?.classList.remove("death-content-revealed");
         contentContainer?.classList.add("death-content-hidden");
@@ -9024,7 +9664,7 @@ class GameEngine {
     }
 
     /**
-     * 2秒黑屏后渐渐浮现死者，并触发相应配置音效
+     * 2秒黑屏后渐渐浮现死者/平安夜卡片，并触发相应配置音效
      */
     revealDeathContent() {
         if (this.deathRevealed) return;
@@ -9042,10 +9682,14 @@ class GameEngine {
         contentContainer?.classList.remove("death-content-hidden");
         contentContainer?.classList.add("death-content-revealed");
 
-        // 播放死者展示专属音效 (支持用户在 config.js 中自由配置音频文件)
+        // 播放死者展示专属音效或平安夜清脆铃音
         try {
-            if (typeof Sound !== "undefined" && Sound.playDeathSound) {
-                Sound.playDeathSound();
+            if (typeof Sound !== "undefined") {
+                if (this.currentDeathVictim && Sound.playDeathSound) {
+                    Sound.playDeathSound();
+                } else if (!this.currentDeathVictim && Sound.playFoodSound) {
+                    Sound.playFoodSound();
+                }
             }
         } catch (err) {
             console.warn("[DeathSound] 播放音效异常:", err);
@@ -9223,10 +9867,13 @@ class GameEngine {
 
             this.logAction(`【黎明公布】第 ${this.dayCount} 天：${reasonText}`);
 
-            this.dialogueUI.playSequence(lines, () => {
-                // 循环回到 q3 探索，步数已在傍晚时清零，开启全新一天的选择
-                this.enterQ3Exploration();
-            });
+            // 核心优化：无论是否死人，黑夜转白天均出现“死寂降临”动画界面！
+            this.enterDeathBlackPhase(null, () => {
+                this.dialogueUI.playSequence(lines, () => {
+                    // 循环回到 q3 探索，步数已在傍晚时清零，开启全新一天的选择
+                    this.enterQ3Exploration();
+                });
+            }, prevReason);
         }
     }
 
@@ -9239,6 +9886,18 @@ class GameEngine {
         const wolfAlive = aliveMembers.filter(m => m.role === "wolf");
         const currentLvlId = this.currentLevel ? this.currentLevel.levelId : 1;
 
+        // 第四关专属通关特殊剧情演出 (渐变黑屏闪现文字 + X异象逼近 + 终焉暗幕)
+        if (currentLvlId === 4) {
+            this.playLevel4EndingCutscene(() => {
+                this.finalizeVictory(exitNode, aliveMembers, wolfAlive);
+            });
+            return;
+        }
+
+        this.finalizeVictory(exitNode, aliveMembers, wolfAlive);
+    }
+
+    finalizeVictory(exitNode, aliveMembers, wolfAlive) {
         // 收集人员撤离与伪人状态上下文
         const evacuatedNpcs = aliveMembers.filter(m => !m.isProtagonist);
         const evacuatedNpcIds = evacuatedNpcs.map(m => m.id);
@@ -9271,8 +9930,133 @@ class GameEngine {
         this.showResultModal("🌀 奇点坍缩 · 循环重置 (OBSERVATION)", msg, true, { unlockResult, newlyUnlocked });
     }
 
+    /**
+     * 第四关专属通关特殊剧情演出
+     * 1. 渐变黑屏然后闪现文字：
+     *    1：看来今天也与往常一样
+     *    2：没什么区别....
+     *    3：那就到此为止吧...
+     * 2. 三段文字结束后，从屏幕右侧渐变显现进来一个X（图一的图标），然后贴近主视角（此时动力操作台中心也有一个NPC图标来代表卡罗，别写名字），有些重叠部分时X停下
+     * 3. 播放音频（接口预留），2秒之后再渐变黑屏
+     * 4. 显现文字“看来....” “的确有些不一样...” "来不及回头...便陷入无尽的黑暗之中..."
+     */
+    playLevel4EndingCutscene(onComplete) {
+        const screenCutscene = document.getElementById("screen-level4-cutscene");
+        const blackoutLayer = document.getElementById("l4-cutscene-blackout");
+        const textElem = document.getElementById("l4-cutscene-text");
+        const stageLayer = document.getElementById("l4-cutscene-stage-layer");
+        const entityX = document.getElementById("l4-entity-x");
+        const screenGame = document.getElementById("screen-game");
+
+        if (!screenCutscene || !blackoutLayer || !textElem || !stageLayer || !entityX) {
+            if (onComplete) onComplete();
+            return;
+        }
+
+        this.phase = "level4_cutscene";
+
+        // 开启全景电影模式：让周边 HUD 工具条与侧栏隐退，把整个视野留给战术星舰大地图
+        if (screenGame) screenGame.classList.add("cinematic-mode");
+
+        // 确保舞台大地图精准居中并聚焦在【西区整备间】动力操作台 (room_npc1)
+        if (this.stageMapRenderer && this.currentLevel && this.currentLevel.map) {
+            this.stageMapRenderer.viewMode = "focus";
+            this.stageMapRenderer.panX = 0;
+            this.stageMapRenderer.panY = 0;
+            this.stageMapRenderer.zoom = 1.0;
+            this.stageMapRenderer.render(
+                this.currentLevel.map,
+                "room_npc1",
+                this.visitedNodes,
+                this.teamMembers
+            );
+        }
+
+        screenCutscene.classList.remove("hidden");
+        blackoutLayer.classList.remove("blackout-transparent");
+        blackoutLayer.classList.remove("hidden");
+        stageLayer.classList.remove("hidden");
+        entityX.classList.remove("approaching");
+        textElem.innerHTML = "";
+        textElem.classList.remove("show-text");
+
+        let skipTimer = null;
+        const advanceClick = () => {
+            if (skipTimer) skipTimer();
+        };
+        screenCutscene.onclick = advanceClick;
+
+        const waitOrClick = (ms) => {
+            return new Promise(resolve => {
+                let timer = null;
+                const done = () => {
+                    if (timer) clearTimeout(timer);
+                    skipTimer = null;
+                    resolve();
+                };
+                timer = setTimeout(done, ms);
+                skipTimer = done;
+            });
+        };
+
+        const showFlashText = async (text, holdMs) => {
+            textElem.classList.remove("show-text");
+            await waitOrClick(350);
+            textElem.textContent = text;
+            textElem.classList.add("show-text");
+            await waitOrClick(holdMs);
+        };
+
+        (async () => {
+            // 阶段 1：地图上方渐变黑屏，闪现第一组三段文字
+            await showFlashText("看来今天也与往常一样", 1600);
+            await showFlashText("没什么区别....", 1600);
+            await showFlashText("那就到此为止吧...", 1800);
+
+            // 淡出文字
+            textElem.classList.remove("show-text");
+            await waitOrClick(500);
+
+            // 渐变解除黑屏！直接显露出底层的星舰战术大地图！
+            // 此时动力操作台中心正有卡罗专属NPC图标与主视角标记
+            blackoutLayer.classList.add("blackout-transparent");
+            await waitOrClick(600);
+
+            // 阶段 2：未知X实体从屏幕右侧渐变显现并滑入，贴近主视角，局部重叠时停下
+            entityX.classList.add("approaching");
+            await waitOrClick(2600);
+
+            // 停下后立即播放异象音频（预留音频接口，放入 assets/audio/ 即可生效）
+            if (typeof Sound !== "undefined" && Sound.playLevel4EndingSound) {
+                Sound.playLevel4EndingSound();
+            }
+
+            // 2秒之后再渐变黑屏
+            await waitOrClick(2000);
+
+            // 渐变黑屏重临（将地图覆盖进终焉暗幕）
+            blackoutLayer.classList.remove("blackout-transparent");
+            await waitOrClick(900);
+
+            // 阶段 3：终焉暗幕中显现第二组文字“看来....” “的确有些不一样...” "来不及回头...便陷入无尽的黑暗之中..."
+            await showFlashText("看来....", 1600);
+            await showFlashText("的确有些不一样...", 1800);
+            await showFlashText("来不及回头...便陷入无尽的黑暗之中...", 2400);
+
+            textElem.classList.remove("show-text");
+            await waitOrClick(800);
+
+            // 演出完毕，恢复环境
+            screenCutscene.onclick = null;
+            screenCutscene.classList.add("hidden");
+            if (screenGame) screenGame.classList.remove("cinematic-mode");
+            if (onComplete) onComplete();
+        })();
+    }
+
     triggerGameOver(reason) {
         this.phase = "gameover";
+        this.gameOverReason = reason;
         this.logAction(`【任务失败】${reason}`);
         this.showResultModal("💀 探索中止 (GAME OVER)", reason, false);
     }
@@ -9388,7 +10172,10 @@ class GameEngine {
                 status: npc.status,
                 inquiryCount: npc.inquiryCount
             })),
-            unlockedNpcRooms: Array.from(this.unlockedNpcRooms || [])
+            unlockedNpcRooms: Array.from(this.unlockedNpcRooms || []),
+            level2PowerRestored: !!this.level2PowerRestored,
+            level3PowerRestored: !!this.level3PowerRestored,
+            level4PatrolVisited: Array.from(this.level4PatrolVisited || [])
         };
 
         const success = this.saveSystem.saveGame(state);
@@ -9453,6 +10240,9 @@ class GameEngine {
         this.explorationEngine.visitedNodes = new Set(data.visitedNodes || []);
         this.explorationEngine.consumedEvents = new Set(data.consumedEvents || []);
         this.unlockedNpcRooms = new Set(data.unlockedNpcRooms || []);
+        this.level2PowerRestored = !!data.level2PowerRestored;
+        this.level3PowerRestored = !!data.level3PowerRestored;
+        this.level4PatrolVisited = new Set(data.level4PatrolVisited || []);
         this.checkAndUnlockNpcRooms();
 
         this.screenMenu.classList.add("hidden");
@@ -9717,9 +10507,14 @@ class GameEngine {
         if (!nextNode) return;
 
         const isExitNode = !!(nextNode.isExit || (nextNode.event && nextNode.event.type === "exit"));
+        const isPowerRestorationPending = (
+            (this.currentLevel?.levelId === 2 && !this.level2PowerRestored) ||
+            (this.currentLevel?.levelId === 3 && !this.level3PowerRestored)
+        );
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending;
 
-        // 若体力已耗尽且不是通往终点，直接触发结算倒下
-        if (this.stamina <= 0 && !isExitNode) {
+        // 若体力已耗尽且不是通往有效终点，直接触发结算倒下
+        if (this.stamina <= 0 && !isEffectiveExit) {
             this.explorationEngine.moveTo(direction);
             return;
         }
@@ -9857,7 +10652,7 @@ class GameEngine {
         const notesElem = document.querySelector(".map-notes");
         if (notesElem && this.currentLevel) {
             if (this.currentLevel.levelId === 2) {
-                notesElem.innerHTML = `<span>起点：深潜次级减压闸</span> ｜ <span>终点：超弦共振核心</span> ｜ <span>深层散落：莫德、邵可欣、卡罗</span>`;
+                notesElem.innerHTML = `<span>起点：东侧备勤室（医护角落）</span> ｜ <span>终点：北侧气密逃生舱</span> ｜ <span>深层散落：卡罗、莫德、陆知行</span>`;
             } else {
                 notesElem.innerHTML = `<span>起点：下层中央大厅</span> ｜ <span>终点：北侧脱离大门</span> ｜ <span>沿途：卡罗(NPC1)、邵可欣(NPC2)、莫德(NPC3)</span>`;
             }
@@ -9895,7 +10690,8 @@ class GameEngine {
                 0,
                 {
                     canFastTravel: this.phase === "q3_explore",
-                    hoveredNodeId: this.hoveredMapNodeId
+                    hoveredNodeId: this.hoveredMapNodeId,
+                    patrolVisited: this.level4PatrolVisited
                 }
             );
         }
@@ -9924,7 +10720,8 @@ class GameEngine {
                 0,
                 {
                     canFastTravel: this.phase === "q3_explore",
-                    hoveredNodeId: this.hoveredMapNodeId
+                    hoveredNodeId: this.hoveredMapNodeId,
+                    patrolVisited: this.level4PatrolVisited
                 }
             );
         }
@@ -9997,7 +10794,8 @@ class GameEngine {
                     return;
                 }
             } else {
-                this.showStageToast(`🔒 [${node.name}] 防爆气闸已断电锁死，本区域暂不可通行。`);
+                const reason = node.lockReason || "防爆安全气闸锁死 · 供电切断";
+                this.showStageToast(`🔒 [${node.name}] ${reason}`);
                 if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
                 return;
             }

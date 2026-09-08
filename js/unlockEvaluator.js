@@ -72,7 +72,14 @@ export class UnlockEvaluator {
                     break;
                 }
 
-                // 6. 自定义回调判定
+                // 6. 存活撤离的 NPC 数量检定 (例如至少带出 4 名同伴)
+                case "require_npc_count": {
+                    const minCount = condition.count || condition.minCount || 1;
+                    isSatisfied = evacuatedNpcIds.length >= minCount;
+                    break;
+                }
+
+                // 7. 自定义回调判定
                 case "custom": {
                     if (typeof condition.matcher === "function") {
                         isSatisfied = !!condition.matcher(context);

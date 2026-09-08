@@ -128,6 +128,10 @@ export const AudioConfig = {
     moveSoundUrl: "assets/audio/移动.wav",
     moveSoundVolume: 0.65,
 
+    // 5. 第四关专属通关异象音效 (放入 assets/audio/ 文件夹即可自动播放，支持 mp3/wav/ogg)
+    level4EndingSoundUrl: "assets/audio/level4_ending.mp3",
+    level4EndingSoundVolume: 0.90,
+
     // 是否在自定义音效文件未就绪时，使用内置的高质科幻合成音效作为兜底发声
     useFallbackSynthesizer: true
 };
