@@ -2161,12 +2161,19 @@ export class GameEngine {
 
             const isAlreadyUnlocked = this.unlockedNpcRooms.has(roomDef.id);
             const isNpcInTeam = roomDef.isProtagonistRoom || roomDef.npcOwnerId === "lph"
-                || aliveMembers.some(m => m.id === roomDef.npcOwnerId);
+                || (roomDef.npcOwnerIds
+                    ? roomDef.npcOwnerIds.some(id => aliveMembers.some(m => m.id === id))
+                    : aliveMembers.some(m => m.id === roomDef.npcOwnerId));
 
             if (isAlreadyUnlocked || isNpcInTeam) {
                 if (!isAlreadyUnlocked) {
                     this.unlockedNpcRooms.add(roomDef.id);
-                    const ownerNames = { lph: "指挥官", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
+                    const ownerNames = {
+                        lph: "指挥官", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
+                        prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
+                        vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
+                        colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯"
+                    };
                     const ownerName = ownerNames[roomDef.npcOwnerId] || (this.allNpcMap.get(roomDef.npcOwnerId)?.name || roomDef.npcOwnerId);
                     this.logAction(`【舱室解锁】[${roomDef.name}] 经过乘员 [${ownerName}] 信标授权，气闸锁已开启！`);
                     this.showStageToast(`🔓 [${roomDef.name}] 气密锁已授权解除！`);
@@ -2629,10 +2636,17 @@ export class GameEngine {
         // 2b. 锁闭状态判定与NPC专属舱室解锁交互
         if (node.isLocked) {
             if (node.isNpcRoom) {
-                const ownerNames = { lph: "指挥官", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
+                const ownerNames = {
+                    lph: "指挥官", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
+                    prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
+                    vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
+                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯"
+                };
                 const ownerName = ownerNames[node.npcOwnerId] || "乘员";
                 const isNpcInTeam = node.isProtagonistRoom || node.npcOwnerId === "lph"
-                    || this.getAliveTeamMembers().some(m => m.id === node.npcOwnerId);
+                    || (node.npcOwnerIds
+                        ? node.npcOwnerIds.some(id => this.getAliveTeamMembers().some(m => m.id === id))
+                        : this.getAliveTeamMembers().some(m => m.id === node.npcOwnerId));
 
                 if (isNpcInTeam) {
                     this.checkAndUnlockNpcRooms();

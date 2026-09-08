@@ -158,8 +158,18 @@ export class ExplorationEngine {
 
         // C. NPC 专属私人舱室日记读取 (独立翻页弹窗)
         if (node.isNpcRoom && node.diary && Array.isArray(node.diary) && node.diary.length > 0) {
-            const ownerNames = { lph: "L.P.H", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
-            const ownerColors = { lph: "#38bdf8", kaze: "#38bdf8", shaokexin: "#f43f5e", mode: "#a855f7" };
+            const ownerNames = {
+                lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
+                prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
+                vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
+                colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯"
+            };
+            const ownerColors = {
+                lph: "#38bdf8", kaze: "#38bdf8", kaluo: "#38bdf8", shaokexin: "#f43f5e", mode: "#a855f7",
+                prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
+                vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
+                colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b"
+            };
             const ownerName = ownerNames[node.npcOwnerId] || node.name;
             const ownerColor = ownerColors[node.npcOwnerId] || "#38bdf8";
 

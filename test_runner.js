@@ -1695,13 +1695,16 @@ console.log('\n33. 验证 NPC 专属私人舱室规格（预留12个房间结构
     const { MASTER_ROOM_DEFS, MASTER_CONNECTIONS, getNpcRoomDefs, buildSpaceshipLevelMap } = window;
 
     const npcRooms = getNpcRoomDefs();
-    if (!Array.isArray(npcRooms) || npcRooms.length < 4) {
-        throw new Error(`getNpcRoomDefs 必须返回至少 4 个专属私人舱室定义！当前数量: ${npcRooms ? npcRooms.length : 0}`);
+    if (!Array.isArray(npcRooms) || npcRooms.length < 11) {
+        throw new Error(`getNpcRoomDefs 必须返回全部 11 个专属私人舱室定义！当前数量: ${npcRooms ? npcRooms.length : 0}`);
     }
 
-    const expectedOwners = ["lph", "kaze", "shaokexin", "mode"];
+    const expectedOwners = [
+        "lph", "kaze", "shaokexin", "mode", "prof_lu", "noah", "sophia",
+        "vivian", "elena", "elsa", "colt", "barnes"
+    ];
     expectedOwners.forEach(owner => {
-        const found = npcRooms.find(r => r.npcOwnerId === owner);
+        const found = npcRooms.find(r => r.npcOwnerId === owner || (r.npcOwnerIds && r.npcOwnerIds.includes(owner)));
         if (!found) {
             throw new Error(`未找到乘员 [${owner}] 的专属私人舱室！`);
         }
@@ -1714,7 +1717,7 @@ console.log('\n33. 验证 NPC 专属私人舱室规格（预留12个房间结构
             }
         });
     });
-    console.log(`   【已验证】4个专属私人舱室 (L.P.H/卡罗/邵可欣/莫德) 均已配置完整日记篇目！`);
+    console.log(`   【已验证】全舰 12 名乘员（含柯尔特&巴恩斯合住舱）均已配置专属私人舱室与完整翻页日记！`);
 
     // 验证规则：每个 NPC 房间只能与一个普通房间相连（单向连接）
     npcRooms.forEach(room => {

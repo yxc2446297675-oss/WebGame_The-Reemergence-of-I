@@ -260,7 +260,15 @@ Object.values(MASTER_ROOM_DEFS).forEach(r => {
     if (isNpc) {
         if (r.npcOwnerId === 'shaokexin') npcColor = '#f472b6';
         else if (r.npcOwnerId === 'mode') npcColor = '#a78bfa';
-        else if (r.npcOwnerId === 'kaze') npcColor = '#38bdf8';
+        else if (r.npcOwnerId === 'kaze' || r.npcOwnerId === 'kaluo') npcColor = '#38bdf8';
+        else if (r.npcOwnerId === 'prof_lu' || r.npcOwnerId === 'luzhixing') npcColor = '#10b981';
+        else if (r.npcOwnerId === 'noah') npcColor = '#6366f1';
+        else if (r.npcOwnerId === 'sophia') npcColor = '#ec4899';
+        else if (r.npcOwnerId === 'vivian') npcColor = '#f43f5e';
+        else if (r.npcOwnerId === 'elena') npcColor = '#fb923c';
+        else if (r.npcOwnerId === 'elsa' || r.npcOwnerId === 'dr_elsa') npcColor = '#06b6d4';
+        else if (r.npcOwnerId === 'colt_barnes' || r.npcOwnerId === 'colt') npcColor = '#f59e0b';
+        else if (r.npcOwnerId === 'barnes') npcColor = '#84cc16';
         else npcColor = '#fbbf24';
     }
 
@@ -511,9 +519,9 @@ const html = `<!DOCTYPE html>
     <header>
         <h1>🚀 远征星舰【代号：重现之重】全舰母地图 (Master Blueprint)</h1>
         <div class="meta-bar">
-            <span class="stat-item">全舰总舱室: <b>62 间</b> (58功能主舱 + 4专属私人舱)</span>
-            <span class="stat-item">网格矩阵: <b>10 × 8</b> (X:-1~8, Y:-1~6)</span>
-            <span class="stat-item">双向密闭通道: <b>99 条</b> (含4条专属气闸)</span>
+            <span class="stat-item">全舰总舱室: <b>${allRooms.length} 间</b> (58功能主舱 + ${NPC_PRIVATE_QUARTERS.length}专属私人舱)</span>
+            <span class="stat-item">网格矩阵: <b>${cols} × ${rows}</b> (X:${minX}~${maxX}, Y:${minY}~${maxY})</span>
+            <span class="stat-item">双向密闭通道: <b>${MASTER_CONNECTIONS.length} 条</b> (含${NPC_PRIVATE_QUARTERS.length}条专属气闸)</span>
             <span class="stat-item">状态: <b style="color:#34d399;">100% 连通可达 · 零断头死锁</b></span>
         </div>
     </header>
@@ -521,14 +529,14 @@ const html = `<!DOCTYPE html>
     <!-- 顶部操作与筛选栏 -->
     <div class="controls-toolbar">
         <input type="text" id="searchInput" class="search-input" placeholder="🔍 搜索舱室名称 / 形状 / 设备 / NPC..." oninput="handleSearch(this.value)">
-        <button class="filter-btn active" onclick="setFilter('all', this)">全部舱室 (62)</button>
-        <button class="filter-btn" onclick="setFilter('npc', this)">🔒 NPC私人舱 (4)</button>
+        <button class="filter-btn active" onclick="setFilter('all', this)">全部舱室 (${allRooms.length})</button>
+        <button class="filter-btn" onclick="setFilter('npc', this)">🔒 NPC私人舱 (${NPC_PRIVATE_QUARTERS.length})</button>
         <button class="filter-btn" onclick="setFilter('special', this)">⭐ 终点/检测/给养</button>
-        <button class="filter-btn" onclick="setFilter('bow', this)">舰艏 (7)</button>
-        <button class="filter-btn" onclick="setFilter('medical_bio', this)">生化医疗 (8)</button>
-        <button class="filter-btn" onclick="setFilter('hub_living', this)">中枢生活 (18)</button>
-        <button class="filter-btn" onclick="setFilter('engineering', this)">工程动力 (10)</button>
-        <button class="filter-btn" onclick="setFilter('stern', this)">舰尾跃迁 (7)</button>
+        <button class="filter-btn" onclick="setFilter('bow', this)">舰艏</button>
+        <button class="filter-btn" onclick="setFilter('medical_bio', this)">生化医疗</button>
+        <button class="filter-btn" onclick="setFilter('hub_living', this)">中枢生活</button>
+        <button class="filter-btn" onclick="setFilter('engineering', this)">工程动力</button>
+        <button class="filter-btn" onclick="setFilter('stern', this)">舰尾跃迁</button>
         <button class="filter-btn" onclick="resetHighlight()">🔄 重置高亮</button>
     </div>
 
@@ -741,5 +749,5 @@ const html = `<!DOCTYPE html>
 </html>`;
 
 fs.writeFileSync('preview_master_map.html', html, 'utf8');
-console.log('[OK] preview_master_map.html 重新生成成功！(含 62 间舱室真实科幻多边形、专属私人日记、伪人检测室与交互检阅抽屉)');
+console.log(`[OK] preview_master_map.html 重新生成成功！(含 ${allRooms.length} 间舱室真实科幻多边形、${NPC_PRIVATE_QUARTERS.length} 个专属私人舱室、专属日记、伪人检测室与交互检阅抽屉)`);
 

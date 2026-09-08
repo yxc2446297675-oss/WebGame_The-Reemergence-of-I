@@ -637,10 +637,22 @@ function drawRoomDecoration(ctx, node, x, y, boxSize, theme) {
     // ── NPC 专属房间：对角纹理+专属色晕 ──
     if (isNpcRoom) {
         const npcColors = {
-            "lph":        "#38bdf8",
-            "kaze":       "#38bdf8",
-            "shaokexin":  "#f43f5e",
-            "mode":       "#a855f7"
+            lph: "#38bdf8",
+            kaze: "#38bdf8",
+            kaluo: "#38bdf8",
+            shaokexin: "#f43f5e",
+            mode: "#a855f7",
+            prof_lu: "#10b981",
+            luzhixing: "#10b981",
+            noah: "#6366f1",
+            sophia: "#ec4899",
+            vivian: "#f43f5e",
+            elena: "#fb923c",
+            elsa: "#06b6d4",
+            dr_elsa: "#06b6d4",
+            colt: "#f59e0b",
+            barnes: "#84cc16",
+            colt_barnes: "#f59e0b"
         };
         const roomColor = npcColors[node.npcOwnerId] || "#4ade80";
         const s = boxSize;
@@ -1438,12 +1450,17 @@ export class MapRenderer {
             const isNpc = !!(def.isNpcRoom || locked.isNpcRoom);
             const npcOwnerId = def.npcOwnerId || locked.npcOwnerId;
             const npcColors = {
-                lph: "#38bdf8",
-                kaze: "#38bdf8",
-                shaokexin: "#f43f5e",
-                mode: "#a855f7"
+                lph: "#38bdf8", kaze: "#38bdf8", kaluo: "#38bdf8", shaokexin: "#f43f5e", mode: "#a855f7",
+                prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
+                vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
+                colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b"
             };
-            const ownerNames = { lph: "指挥官", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
+            const ownerNames = {
+                lph: "指挥官", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
+                prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
+                vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
+                colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯"
+            };
             const strokeColor = isNpc ? (npcColors[npcOwnerId] || "#38bdf8") : "#ef4444";
             const ownerName = ownerNames[npcOwnerId] || "乘员";
 
@@ -1648,8 +1665,18 @@ export class MapRenderer {
                     tagColor = "#c084fc";
                     subTagColor = adjacentDir ? "#c084fc" : "#e9d5ff";
                 } else if (node.isNpcRoom) {
-                    const ownerNames = { lph: "L.P.H", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
-                    const ownerColors = { lph: "#38bdf8", kaze: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc" };
+                    const ownerNames = {
+                        lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
+                        prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
+                        vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
+                        colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特&巴恩斯"
+                    };
+                    const ownerColors = {
+                        lph: "#38bdf8", kaze: "#60a5fa", kaluo: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc",
+                        prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
+                        vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
+                        colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b"
+                    };
                     const oName = ownerNames[node.npcOwnerId] || "专属";
                     label = `${oName}舱`;
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 私人舱` : "私人舱") : "";
@@ -1664,7 +1691,12 @@ export class MapRenderer {
             } else {
                 // 未探索房间：直接显示房间名称，并清晰标注 [未探索] 或 [方向 · 未探索]
                 if (node.isNpcRoom) {
-                    const ownerNames = { lph: "L.P.H", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
+                    const ownerNames = {
+                        lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
+                        prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
+                        vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
+                        colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特&巴恩斯"
+                    };
                     const oName = ownerNames[node.npcOwnerId] || "专属";
                     label = `${oName}舱`;
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 私人舱` : "私人舱") : "";

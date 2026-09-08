@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-07T15:46:38.586Z
+ * 自动生成于 2026-09-08T04:00:57.966Z
  */
 (function() {
     'use strict';
@@ -1016,6 +1016,448 @@ const CharacterRegistry = {
                     desc: "在动力炉临界暴走的断电大厅内，指挥应急重型火力网，坚守最后一道物理折跃屏障。"
                 }
             }
+        },
+        // NPC 4：薇薇安 (女，安全巡逻副官，文件夹 Vivian)
+        vivian: {
+            id: "vivian",
+            folder: "Vivian",
+            name: "薇薇安",
+            gender: "女",
+            themeColor: "#f43f5e",
+            boxBorderColor: "rgba(244, 63, 94, 0.9)",
+            boxBgGlow: "rgba(244, 63, 94, 0.25)",
+            avatarUrl: "assets/characters/Vivian/calm.png",
+            expressions: {
+                clam: "assets/characters/Vivian/calm.png",
+                calm: "assets/characters/Vivian/calm.png",
+                normal: "assets/characters/Vivian/calm.png",
+                angry: "assets/characters/Vivian/angry.png",
+                dead: "assets/characters/Vivian/dead.jpg"
+            },
+            introDialogue: [
+                { text: "（手持光子微冲，战术目镜闪烁着橙红辉光警惕扫视）站在那里别动！出示识别码……", expression: "angry" },
+                { text: "……是队长？呼……太好了，你不知道这片走廊刚才有多可怕。", expression: "clam" },
+                { text: "外勤气闸附近有异常撬动痕迹。跟紧我，无论看到什么都别掉以轻心。", expression: "clam" }
+            ],
+            inquiryDialogues: [
+                [
+                    { text: "巡逻路线上全是断裂的液压管，看来爆炸波及了整个右舷。", expression: "clam" },
+                    { text: "如果遇到袭击，交给我来断后。这是巡逻副官的职责。", expression: "angry" }
+                ],
+                [
+                    { text: "我刚才在气闸边上捡到了这枚被踩碎的警员徽章……", expression: "clam" },
+                    { text: "有人在停电前几分钟故意关闭了近防监控。那是内鬼干的。", expression: "angry" }
+                ]
+            ],
+            deathReactions: [
+                { text: "可恶……[${victim}]明明刚刚还在巡逻名单上！凶手就在我们身边！", expression: "angry" },
+                { text: "[${victim}]倒下了……绝不能让牺牲者的血白流，今晚必须把伪人揪出来！", expression: "angry" }
+            ],
+            persona: {
+                title: "巡逻警戒副官 · 敏锐鹰眼",
+                secrets: [
+                    {
+                        id: "vivian_scope",
+                        title: "战术夜视目镜",
+                        desc: "右眼佩戴的定制增强现实目镜，能捕捉微米级的热成像足迹与隐形伪装体微弱的静电离子逸散。",
+                        hint: "在傍晚时刻与其单独交谈 2 次",
+                        unlockType: "inquiry_count",
+                        threshold: 2
+                    }
+                ],
+                passiveSkill: {
+                    name: "鹰眼警戒 (Eagle Eye)",
+                    icon: "🎯",
+                    desc: "薇薇安在队时，遭遇突袭的防卫反击判定成功率提升 25%。"
+                }
+            }
+        },
+
+        // NPC 5：伊莲 (女，首席轮机长，文件夹 Elena)
+        elena: {
+            id: "elena",
+            folder: "Elena",
+            name: "伊莲",
+            gender: "女",
+            themeColor: "#fb923c",
+            boxBorderColor: "rgba(251, 146, 60, 0.9)",
+            boxBgGlow: "rgba(251, 146, 60, 0.25)",
+            avatarUrl: "assets/characters/Elena/calm.jpg",
+            expressions: {
+                clam: "assets/characters/Elena/calm.jpg",
+                calm: "assets/characters/Elena/calm.jpg",
+                normal: "assets/characters/Elena/calm.jpg",
+                angry: "assets/characters/Elena/angry.jpg",
+                dead: "assets/characters/Elena/3f928911-2a4d-4b34-9aa7-932b3791ba3d.jpg"
+            },
+            introDialogue: [
+                { text: "（满手重油污渍，正用力敲击着嗡鸣作响的等离子泄压阀）咳咳……别催了！", expression: "angry" },
+                { text: "队长？！谢天谢地，主反应堆刚才差点连锁熔毁！", expression: "clam" },
+                { text: "环境机房的温控芯片被人硬生生拔走了，到底是哪个疯子在拿整艘船的命开玩笑？！", expression: "angry" }
+            ],
+            inquiryDialogues: [
+                [
+                    { text: "等离子汇流管熔穿了三处，我只能用备用磁封勉强加固。", expression: "clam" },
+                    { text: "要是再来一次过热回涌，神仙也保不住这颗托卡马克！", expression: "angry" }
+                ],
+                [
+                    { text: "我查了偷拔芯片的受力痕迹，是用重型液压钳夹断的……普通人根本拿不动那玩意。", expression: "clam" }
+                ]
+            ],
+            deathReactions: [
+                { text: "天呐……连[${victim}]都……！这艘船的噩梦到底什么时候才是个头！", expression: "angry" },
+                { text: "[${victim}]……该死！为什么伪人专挑懂机械的人下手？！", expression: "angry" }
+            ],
+            persona: {
+                title: "首席轮机长 · 动力核心守护者",
+                secrets: [
+                    {
+                        id: "elena_wrench",
+                        title: "重型钛合金扳手",
+                        desc: "贴身挂载的传家宝工具，不仅能拆卸全舰最顽固的高压法兰，危机时也是砸碎异构体颅骨的重兵器。",
+                        hint: "带领伊莲穿越轮机区",
+                        unlockType: "steps_with",
+                        threshold: 6
+                    }
+                ],
+                passiveSkill: {
+                    name: "过载泄压 (Overload Vent)",
+                    icon: "⚡",
+                    desc: "伊莲在队时，工程区域内的过热与电气陷阱体力消耗降低 50%。"
+                }
+            }
+        },
+
+        // NPC 6：柯尔特 (男，星际领航员/走私线人，文件夹 Colt)
+        colt: {
+            id: "colt",
+            folder: "Colt",
+            name: "柯尔特",
+            gender: "男",
+            themeColor: "#f59e0b",
+            boxBorderColor: "rgba(245, 158, 11, 0.9)",
+            boxBgGlow: "rgba(245, 158, 11, 0.25)",
+            avatarUrl: "assets/characters/Colt/calm.jpg",
+            expressions: {
+                clam: "assets/characters/Colt/calm.jpg",
+                calm: "assets/characters/Colt/calm.jpg",
+                normal: "assets/characters/Colt/calm.jpg",
+                angry: "assets/characters/Colt/angry.png",
+                dead: "assets/characters/Colt/dead.jpg"
+            },
+            introDialogue: [
+                { text: "（指尖娴熟地把玩着一枚黄铜筹码，嘴角挂着玩世不恭的笑意）哟，大指挥官。", expression: "clam" },
+                { text: "别用那种看死囚的眼神盯着我，定锚坐标被篡改可不是我一个人的'杰作'……", expression: "clam" },
+                { text: "怎么，想拿枪指我？先搞清楚现在的航线正带着我们滑向哪个黑洞吧！", expression: "angry" }
+            ],
+            inquiryDialogues: [
+                [
+                    { text: "做生意嘛，讲究富贵险中求。谁能想到那批货引来的是这种东西。", expression: "clam" },
+                    { text: "巴恩斯那家伙藏哪了？他的账本要是落到伪人手里，咱俩都得完蛋。", expression: "clam" }
+                ],
+                [
+                    { text: "虚数航道可不是小姑娘的花园，一脚踩空就是连骨灰都蒸发的世界。", expression: "angry" }
+                ]
+            ],
+            deathReactions: [
+                { text: "啧啧，[${victim}]居然栽了……看来这轮赌局的庄家出老千了啊。", expression: "clam" },
+                { text: "连[${victim}]这种老油条都翻船了？喂队长，你这队伍到底靠不靠谱！", expression: "angry" }
+            ],
+            persona: {
+                title: "星际领航员 · 虚数航道游侠",
+                secrets: [
+                    {
+                        id: "colt_compass",
+                        title: "失真虚数罗盘",
+                        desc: "一枚指针永远指向最近未知引力源的走私专用古董罗盘，在母舰迷失于时空褶皱时亦能找寻生路。",
+                        hint: "在傍晚时刻与其交谈",
+                        unlockType: "inquiry_count",
+                        threshold: 2
+                    }
+                ],
+                passiveSkill: {
+                    name: "虚数规避 (Phantom Drift)",
+                    icon: "🎲",
+                    desc: "柯尔特在队时，夜间遭遇袭击有 20% 概率触发空间假动作闪避！"
+                }
+            }
+        },
+
+        // NPC 7：陆知行 (男，首席科学官，文件夹 Prof. Lu)
+        prof_lu: {
+            id: "prof_lu",
+            folder: "Prof. Lu",
+            name: "陆知行",
+            gender: "男",
+            themeColor: "#10b981",
+            boxBorderColor: "rgba(16, 185, 129, 0.9)",
+            boxBgGlow: "rgba(16, 185, 129, 0.25)",
+            avatarUrl: "assets/characters/Prof. Lu/calm.png",
+            expressions: {
+                clam: "assets/characters/Prof. Lu/calm.png",
+                calm: "assets/characters/Prof. Lu/calm.png",
+                normal: "assets/characters/Prof. Lu/calm.png",
+                angry: "assets/characters/Prof. Lu/angry.png",
+                dead: "assets/characters/Prof. Lu/dead.jpg"
+            },
+            introDialogue: [
+                { text: "（推了推反光的单片测镜，全神贯注凝视着真空试管内的异质晶体）别打扰我……", expression: "clam" },
+                { text: "天……不可思议！这种晶格在微观层面上居然在自发逆转热力学熵流！", expression: "clam" },
+                { text: "队长！别管什么盗货贼了，如果能解开这块样本的秘密，人类将彻底支配时间！", expression: "angry" }
+            ],
+            inquiryDialogues: [
+                [
+                    { text: "偷走二号芯片的人根本不知道自己在玩弄什么力量。那不是工具，是潘多拉魔盒。", expression: "clam" },
+                    { text: "定格技术一旦逆流，所有人的意识切片都会被锁死在临死那一秒！", expression: "angry" }
+                ],
+                [
+                    { text: "我采集了伪装体的细胞切片……它的碳氮同位素比值不属于已知银河系的任何星团。", expression: "clam" }
+                ]
+            ],
+            deathReactions: [
+                { text: "不可接受！[${victim}]的数据流瞬间归零了……伪人的吞噬速率正在呈指数级攀升！", expression: "angry" },
+                { text: "[${victim}]的脑电波消失了……这不仅是杀戮，是对高等智慧结构的抹杀！", expression: "clam" }
+            ],
+            persona: {
+                title: "首席科学官 · 异构晶体研析者",
+                secrets: [
+                    {
+                        id: "lu_notebook",
+                        title: "泛黄理论手稿",
+                        desc: "密密麻麻记录着关于‘观察者效应坍缩’与‘多维投影投射’的绝密猜想手稿，也是跨时空信标的理论雏形。",
+                        hint: "带领陆知行探查标本库",
+                        unlockType: "steps_with",
+                        threshold: 5
+                    }
+                ],
+                passiveSkill: {
+                    name: "样本解析 (Sample Analysis)",
+                    icon: "🔬",
+                    desc: "陆知行在队时，科研与医疗类舱室的情报收集效率提高 50%。"
+                }
+            }
+        },
+
+        // NPC 8：艾尔莎 (女，主治军医，文件夹 Dr. Elsa)
+        elsa: {
+            id: "elsa",
+            folder: "Dr. Elsa",
+            name: "艾尔莎",
+            gender: "女",
+            themeColor: "#06b6d4",
+            boxBorderColor: "rgba(6, 182, 212, 0.9)",
+            boxBgGlow: "rgba(6, 182, 212, 0.25)",
+            avatarUrl: "assets/characters/Dr. Elsa/calm.jpg",
+            expressions: {
+                clam: "assets/characters/Dr. Elsa/calm.jpg",
+                calm: "assets/characters/Dr. Elsa/calm.jpg",
+                normal: "assets/characters/Dr. Elsa/calm.jpg",
+                angry: "assets/characters/Dr. Elsa/angry.jpg",
+                dead: "assets/characters/Dr. Elsa/dead.jpg"
+            },
+            introDialogue: [
+                { text: "（戴着沾有荧光消毒凝胶的手套，神情清冷甚至有些严酷）心率138，血压偏低。", expression: "clam" },
+                { text: "看来你刚从死人堆里爬出来，L.P.H。坐下，打一针镇定剂。", expression: "clam" },
+                { text: "死人可没法带大家逃生。不管外面发生了什么，我的手术台上只看生理指标！", expression: "angry" }
+            ],
+            inquiryDialogues: [
+                [
+                    { text: "生化检测室的纳米探针还能用，但我必须警告你，假扮成人类的伪人连心跳都会模拟。", expression: "clam" },
+                    { text: "唯独体液渗透压有极其细微的偏差，那是唯一的生化破绽。", expression: "clam" }
+                ],
+                [
+                    { text: "休眠舱里那些人睡得很死……如果温度继续上升，他们全会脑死亡。", expression: "angry" }
+                ]
+            ],
+            deathReactions: [
+                { text: "……死亡时间不超过十分钟。[${victim}]的颈动脉被极其精密的利刃切断……手法近乎专业外科。", expression: "angry" },
+                { text: "又一个病患从我手里失去了心跳……[${victim}]，伪装者的残忍已经超出生物本能了。", expression: "clam" }
+            ],
+            persona: {
+                title: "主治军医 · 创伤干预专家",
+                secrets: [
+                    {
+                        id: "elsa_scalpel",
+                        title: "超声波振动手术刀",
+                        desc: "锋利到能无阻力切开纳米防弹纤维的微型手术刀，不仅用于战地切缝，也是近身致命自卫武器。",
+                        hint: "在傍晚时刻与其单独交谈 2 次",
+                        unlockType: "inquiry_count",
+                        threshold: 2
+                    }
+                ],
+                passiveSkill: {
+                    name: "战地缝合 (Field Surgery)",
+                    icon: "💉",
+                    desc: "艾尔莎在队时，探索中若受到重伤体力扣减，将立即恢复 1 点生命维持！"
+                }
+            }
+        },
+
+        // NPC 9：巴恩斯 (男，军需调度官，文件夹 Barnes)
+        barnes: {
+            id: "barnes",
+            folder: "Barnes",
+            name: "巴恩斯",
+            gender: "男",
+            themeColor: "#84cc16",
+            boxBorderColor: "rgba(132, 204, 22, 0.9)",
+            boxBgGlow: "rgba(132, 204, 22, 0.25)",
+            avatarUrl: "assets/characters/Barnes/calm.jpg",
+            expressions: {
+                clam: "assets/characters/Barnes/calm.jpg",
+                calm: "assets/characters/Barnes/calm.jpg",
+                normal: "assets/characters/Barnes/calm.jpg",
+                happy: "assets/characters/Barnes/happy.jpg",
+                angry: "assets/characters/Barnes/angry.jpg",
+                dead: "assets/characters/Barnes/dead.jpg"
+            },
+            introDialogue: [
+                { text: "（拍了拍身边挂着三重密码锁的防爆箱，皮笑肉不笑地咧嘴）嘿嘿……大驾光临啊指挥官。", expression: "happy" },
+                { text: "别提什么配额制度了，现在全舰断电，规章制度就是擦屁股纸。", expression: "clam" },
+                { text: "想要高能压缩饼干还是军规医疗喷雾？拿实打实的东西来换，巴恩斯童叟无欺。", expression: "clam" }
+            ],
+            inquiryDialogues: [
+                [
+                    { text: "我和柯尔特搭伙这么多年，什么大风大浪没见过？", expression: "happy" },
+                    { text: "但这次那批‘特种晶体’……水太深了，连定锚舱的航路都被暗中买家买断了。", expression: "clam" }
+                ],
+                [
+                    { text: "看好你的后背，队长。有些看着像圣人一样的家伙，背地里比我还贪心！", expression: "angry" }
+                ]
+            ],
+            deathReactions: [
+                { text: "老天爷……[${victim}]的物资箱都空了……伪人连死人的干粮都要搜刮吗？！", expression: "angry" },
+                { text: "死了……[${victim}]欠我的三箱浓缩燃料还没结清呢！该死的怪物！", expression: "clam" }
+            ],
+            persona: {
+                title: "军需调度官 · 黑市暗线枢纽",
+                secrets: [
+                    {
+                        id: "barnes_ledger",
+                        title: "双重密码账本",
+                        desc: "记录着整艘母舰所有暗度陈仓的走私交易、改道分成以及违禁违规人员指纹的绝密软盘。",
+                        hint: "带领巴恩斯搜获物资补给",
+                        unlockType: "steps_with",
+                        threshold: 6
+                    }
+                ],
+                passiveSkill: {
+                    name: "黑市配给 (Black Market Rations)",
+                    icon: "📦",
+                    desc: "巴恩斯在队时，拾取食物补给获得的行动步数额外增加 1 步！"
+                }
+            }
+        },
+
+        // NPC 10：诺亚 (男，仿生逻辑技师，文件夹 Noah)
+        noah: {
+            id: "noah",
+            folder: "Noah",
+            name: "诺亚",
+            gender: "男",
+            themeColor: "#6366f1",
+            boxBorderColor: "rgba(99, 102, 241, 0.9)",
+            boxBgGlow: "rgba(99, 102, 241, 0.25)",
+            avatarUrl: "assets/characters/Noah/calm.png",
+            expressions: {
+                clam: "assets/characters/Noah/calm.png",
+                calm: "assets/characters/Noah/calm.png",
+                normal: "assets/characters/Noah/calm.png",
+                angry: "assets/characters/Noah/calm.png", // 保底使用平静
+                dead: "assets/characters/Noah/dead.jpg"
+            },
+            introDialogue: [
+                { text: "（颈部液态金属接口闪烁着深蓝脉冲，无机质的双眸缓缓对焦）系统自检中……", expression: "clam" },
+                { text: "指挥官 L.P.H，识别通过。我的超导阵列受到了未知电磁脉冲的严重干扰。", expression: "clam" },
+                { text: "逻辑核心提示：当前空间内生物电信号出现混淆伪装，我的协议将优先确保您生存。", expression: "clam" }
+            ],
+            inquiryDialogues: [
+                [
+                    { text: "超脑机柜并没有被物理损坏，但数据总线被注入了一段高熵递归病毒。", expression: "clam" },
+                    { text: "那段代码带有明显的智能特征，它在尝试重构这艘飞船的物理常数。", expression: "clam" }
+                ],
+                [
+                    { text: "根据图灵协议，仿生人无法成为伪人——但我无法保证我的逻辑不被篡改。", expression: "clam" }
+                ]
+            ],
+            deathReactions: [
+                { text: "警报。乘员[${victim}]的生命体征于0.3秒前彻底归零。推测遭受致命机械性挤压。", expression: "clam" },
+                { text: "生物样本[${victim}]损毁。威胁评级提升为最高危级。", expression: "clam" }
+            ],
+            persona: {
+                title: "仿生逻辑技师 · 超脑矩阵哨卫",
+                secrets: [
+                    {
+                        id: "noah_core",
+                        title: "未加密备用核心",
+                        desc: "藏于胸腔防磁装甲板下的第二微型处理器，即使外层躯体损毁，其数据切片也能在超脑中重生。",
+                        hint: "在黑夜中平安度过",
+                        unlockType: "peaceful_night_with",
+                        threshold: 1
+                    }
+                ],
+                passiveSkill: {
+                    name: "逻辑解构 (Logic Deconstruct)",
+                    icon: "🤖",
+                    desc: "诺亚在队时，白天审决会议中对于虚假发言的辨识成功率提高 30%！"
+                }
+            }
+        },
+
+        // NPC 11：索菲亚 (女，生态维生总监，文件夹 Sophia)
+        sophia: {
+            id: "sophia",
+            folder: "Sophia",
+            name: "索菲亚",
+            gender: "女",
+            themeColor: "#ec4899",
+            boxBorderColor: "rgba(236, 72, 153, 0.9)",
+            boxBgGlow: "rgba(236, 72, 153, 0.25)",
+            avatarUrl: "assets/characters/Sophia/calm.jpg",
+            expressions: {
+                clam: "assets/characters/Sophia/calm.jpg",
+                calm: "assets/characters/Sophia/calm.jpg",
+                normal: "assets/characters/Sophia/calm.jpg",
+                angry: "assets/characters/Sophia/angry.jpg",
+                sad: "assets/characters/Sophia/sad.png",
+                dead: "assets/characters/Sophia/dead.jpg"
+            },
+            introDialogue: [
+                { text: "（用微滴喷雾器给濒危的水培幼苗细致补水，转过身来目光清澈而忧伤）请轻一点……", expression: "sad" },
+                { text: "它们受惊了。维生管道失压后，这是温室里仅存的最后一批绿苗了。", expression: "clam" },
+                { text: "队长，只要这些根系还在呼吸，我们就还没有输，对吧？带我一起走吧！", expression: "clam" }
+            ],
+            inquiryDialogues: [
+                [
+                    { text: "空气里的臭氧浓度在上升，这是环境总控机房芯片被盗的连锁反应。", expression: "sad" },
+                    { text: "如果没有纯净氧气，大家撑不过四十八小时的。", expression: "clam" }
+                ],
+                [
+                    { text: "我经常在水培室看着窗外的星海。不管多么遥远，我坚信地球的太阳依然在照耀着我们。", expression: "clam" }
+                ]
+            ],
+            deathReactions: [
+                { text: "怎么会……[${victim}]……明明昨天还向我讨要过晒干的花瓣……呜呜……", expression: "sad" },
+                { text: "连[${victim}]也离开了……像枯萎的叶子一样……大家真的能活着回去吗……", expression: "sad" }
+            ],
+            persona: {
+                title: "生态维生总监 · 生命摇篮培育者",
+                secrets: [
+                    {
+                        id: "sophia_seed",
+                        title: "抗辐射永生种荚",
+                        desc: "精心封存在玻璃挂坠中的地球母星原生小麦胚芽，寄托着在深空中重建生态圈的永恒希望。",
+                        hint: "在傍晚时刻与其交谈",
+                        unlockType: "inquiry_count",
+                        threshold: 2
+                    }
+                ],
+                passiveSkill: {
+                    name: "生机共鸣 (Biosphere Nurture)",
+                    icon: "🌱",
+                    desc: "索菲亚在队时，全队在黑夜的恐慌精神损耗减半，探索初始体力上限临时 +1！"
+                }
+            }
         }
     },
 
@@ -1352,6 +1794,9 @@ const CharacterRegistry = {
 
 // 保持 morde 与 mode 双重映射兼容性
 CharacterRegistry.npcs.morde = CharacterRegistry.npcs.mode;
+CharacterRegistry.npcs.kaluo = CharacterRegistry.npcs.kaze;
+CharacterRegistry.npcs.luzhixing = CharacterRegistry.npcs.prof_lu;
+CharacterRegistry.npcs.dr_elsa = CharacterRegistry.npcs.elsa;
 
 // 浏览器空闲期静默预热全部角色立绘资源
 if (typeof window !== "undefined") {
@@ -2062,11 +2507,207 @@ const NPC_PRIVATE_QUARTERS = [
                 content: "防爆盾的重量，是一种踏实感。\n\n很多人觉得我沉默寡言，难以接近。其实不是的。我只是在观察，在评估，在等待一个合适的时机，说出真正有价值的话。\n\n在某个循环里，我挡在了队长和死亡之间。我不后悔——不管那一局里我是人类还是伪人，那一刻，我做的是正确的事。\n\n这就够了。"
             }
         ]
+    },
+    // ── 槽位 05：陆知行（舰体西北，x=-1,y=1，连接到 room_specimen_vault）──
+    {
+        id: "room_npc_prof_lu",
+        name: "【首席科学官实验室】陆知行的异构研析舱",
+        zone: "research",
+        coord: { x: -1, y: 1 },
+        shape: "specimen_vault",
+        equipment: "cargo_grid",
+        isNpcRoom: true,
+        npcOwnerId: "prof_lu",
+        npcOwnerIds: ["prof_lu", "luzhixing"],
+        connectsTo: "room_specimen_vault",
+        desc: "舱室内摆满了显微离心机与密封的冷凝管。墙上贴满了关于高熵晶体辐射与因果逆流的演算公式。",
+        diary: [
+            {
+                title: "实验备忘 · 晶格异常",
+                content: "今天对‘特种异构晶体’进行了第七次偏振光谱测定。数据令人震撼——在微观层面，它的晶格震荡竟然在吞噬周围的热能，并在极小尺度上引发了局域时间因果逆流。\n\n这不是普通的深空矿石。它是某种高维意志遗留在三维空间的‘锚’。谁若是想把它当成普通走私货物卖掉，必定会招致灭顶之灾。"
+            },
+            {
+                title: "停电记录 · 盗窃前夕",
+                content: "主配电值班舱停电前十分钟，我听到了标本库气闸传来的异常激光切割声。有人试图撬开03号高危冷藏柜！\n\n我正准备拉响警报，全舰的照明和动力突然瞬间熄灭。随后是爆炸……浓烟……还有某种非人生物在天花板通风管中爬行的黏腻声响。"
+            },
+            {
+                title: "观察者记录 · 时空定格",
+                content: "休眠舱隔壁的‘神经定格系统’是我们最后的希望。飞船在每个人遭遇致命创伤的瞬间，会永久记录下那一刻全舰的物品与人员拓扑。\n\n指挥官，如果你正在读取这份数据——请记住，这24个切片不仅是你的推演，那是我们真实承受过的痛苦与牺牲。找出凶手，让时间重新流动。"
+            }
+        ]
+    },
+    // ── 槽位 06：诺亚（舰艏偏东，x=5,y=-1，连接到 room_ai_core）──
+    {
+        id: "room_npc_noah",
+        name: "【仿生逻辑维护舱】诺亚的超导休眠单元",
+        zone: "bow",
+        coord: { x: 5, y: -1 },
+        shape: "ai_core_hex",
+        equipment: "server_rack",
+        isNpcRoom: true,
+        npcOwnerId: "noah",
+        npcOwnerIds: ["noah"],
+        connectsTo: "room_ai_core",
+        desc: "无尘恒温舱室，中央是一具立式仿生人液氮浸泡舱。线缆与超脑机柜直接相连，闪烁着冷冽冰蓝流光。",
+        diary: [
+            {
+                title: "系统自检 · 异常中断",
+                content: "时间戳 00:14:22。超导中枢检测到底层硬件协议被强行绕过。有人从环境机房拔出了01号温控芯片，并试图用二号校验芯片伪造系统心跳。\n\n我的安全防火墙在0.003秒内被注入了自相矛盾的递归死循环。这不是暴力破解，是对底层架构极其熟悉的内部权限所为。"
+            },
+            {
+                title: "伦理冲突 · 仿生人悖论",
+                content: "第一定律：仿生人不得伤害人类，亦不得袖手旁观人类受伤害。\n\n但是……当扫描仪显示眼前的同伴在体温、心率完全正常的同时，微观细胞正在转变为高熵有机伪装体时，我的判定逻辑崩溃了。它们是人类吗？如果不是，我该举起武器吗？\n\n那一瞬间的犹豫，让我付出了代价。"
+            },
+            {
+                title: "数据切片 · 沉睡者的共鸣",
+                content: "我的备用处理器被锁死在超脑核心。但我能感知到——指挥官的脑波正在休眠舱中高频共振。\n\n24个神经投影正在逐一激活。虽然我的物理身躯可能损毁，但我的逻辑断点永远为您敞开。请利用我的冷峻，击破伪人的一切谎言。"
+            }
+        ]
+    },
+    // ── 槽位 07：索菲亚（舰艏最东，x=7,y=-1，连接到 room_observation）──
+    {
+        id: "room_npc_sophia",
+        name: "【生态温室管理室】索菲亚的芳草花房",
+        zone: "ecology",
+        coord: { x: 7, y: -1 },
+        shape: "hydro_dome",
+        equipment: "hydroponics",
+        isNpcRoom: true,
+        npcOwnerId: "sophia",
+        npcOwnerIds: ["sophia"],
+        connectsTo: "room_observation",
+        desc: "充满湿润泥土与草木清香的独立舱室。天顶引入了环景天象台的柔和余晖，小巧的盆栽生机盎然。",
+        diary: [
+            {
+                title: "温室日志 · 最后的绿意",
+                content: "环境机房芯片被拔掉后，温室的气压骤降，冷凝水管也结冰了。我用保温毯把最后一株地球原生小麦苗裹了起来。\n\n在冰冷的深空里，它们是唯一提醒我们‘人类来自何方’的东西。只要这抹绿色还在，我就绝不放弃希望。"
+            },
+            {
+                title: "舷窗偶感 · 深空的阴影",
+                content: "出事前的晚上，我在观测台照料夜来香。透过舷窗，我看到右舷气闸有一道微弱的闪光……像是有小型无人货舱悄悄脱离了母舰，又像是在向远方发送定向激光通信。\n\n我以为是巴恩斯在清点日常物资，所以没多想……如果当时我问一句，会不会一切都不一样？"
+            },
+            {
+                title: "愿我们相遇于太阳下",
+                content: "队长，大家都在害怕，都在猜疑。我知道队伍里有怪物，但我更相信人类心底的温暖。\n\n如果有一天我们能走出这个死循环，请一定要带我去看看没有防护罩的真实泥土。我想把这株小麦，亲手种在真正的太阳光下。"
+            }
+        ]
+    },
+    // ── 槽位 08：薇薇安（舰体东侧，x=9,y=3，连接到 room_east_airlock）──
+    {
+        id: "room_npc_vivian",
+        name: "【巡逻警戒备勤哨】薇薇安的执勤单间",
+        zone: "security",
+        coord: { x: 9, y: 3 },
+        shape: "armory_vault",
+        equipment: "workshop_tools",
+        isNpcRoom: true,
+        npcOwnerId: "vivian",
+        npcOwnerIds: ["vivian"],
+        connectsTo: "room_east_airlock",
+        desc: "紧挨着右舷应急气闸的战备单间。战术背心挂在墙上，桌上放着巡逻记录仪与拆卸了一半的微冲撞针。",
+        diary: [
+            {
+                title: "巡逻日志 · 盲区报告",
+                content: "在第四巡逻区发现三处红外感应器被人为涂抹了吸波凝胶。这种专业手法绝不是普通机修工懂的。\n\n全舰都在传言有人在黑市倒卖高危违禁品。作为副官，我向安保总控提交了排查申请，但报告似乎在配电总闸出事前被恶意拦截了。"
+            },
+            {
+                title: "走廊暗影 · 遇袭直觉",
+                content: "在西侧走廊巡视时，身后传来了极轻的脚步声。那不是战靴敲击合金地板的声音，而像是某种湿润的肉垫在悄无声息地滑行。\n\n我举枪转身，目镜热成像里却什么都没有……但我闻到了一股极浓烈的臭氧与腐殖质气味。它们已经潜伏进来了！"
+            },
+            {
+                title: "副官的誓言",
+                content: "我的枪里还有最后一发高爆穿甲弹。无论这个循环里的敌人是谁，哪怕是我曾经最信任的战友被调换了皮囊，我的手也不会发抖。\n\n保护指挥官撤离是我的第一守则。队长，踩着我的射击轨迹往前冲，别回头！"
+            }
+        ]
+    },
+    // ── 槽位 09：伊莲（舰尾西南，x=2,y=7，连接到 room_ion_thruster_l）──
+    {
+        id: "room_npc_elena",
+        name: "【动力主管值班室】伊莲的轮机工坊",
+        zone: "engineering",
+        coord: { x: 2, y: 7 },
+        shape: "reactor_control",
+        equipment: "server_rack",
+        isNpcRoom: true,
+        npcOwnerId: "elena",
+        npcOwnerIds: ["elena"],
+        connectsTo: "room_ion_thruster_l",
+        desc: "舱室内弥漫着重柴机油与等离子的焦糊味，工具架上摆满了各种定制口径的重型气动扳手与压力校准表。",
+        diary: [
+            {
+                title: "动力日志 · 熔毁边缘",
+                content: "托卡马克主反应堆的磁约束环温度已经飙升到临界红线！维生环境机房的核心芯片被拔走，直接掐断了液氦主冷却循环泵。\n\n等离子汇流管熔穿了三个舱壁，烈火正在蔓延。我不得不手动切断二号辅电站，用备用等离子球勉强维持左舷喷口的防逆流屏障。"
+            },
+            {
+                title: "机械痕迹 · 铁证如山",
+                content: "检查了芯片插槽的物理损伤：锁扣不是用钥匙打开的，而是被重型工兵液压钳硬生生夹断的！\n\n全舰拥有那种级别液压工具的只有三处：机修工坊、军需库、以及某些走私犯的藏匿套房。作案者根本不顾全舰一千多人的死活，只想带着值钱的芯片脱逃！"
+            },
+            {
+                title: "轮机长的倔强",
+                content: "只要我还有一口气，这台老伙计就别想彻底炸碎！我把扳手焊死在旁路泄压阀上了。\n\n指挥官，下层的火势我替你顶着。去广播站下令全员休眠吧，这是唯一的生路。剩下的，等我们在循环尽头再算总账！"
+            }
+        ]
+    },
+    // ── 槽位 10：艾尔莎（舰尾正南，x=5,y=7，连接到 room_matter_stream）──
+    {
+        id: "room_npc_elsa",
+        name: "【主治军医值班舱】艾尔莎的无菌诊室",
+        zone: "medical",
+        coord: { x: 5, y: 7 },
+        shape: "medical_cross",
+        equipment: "medical_bed",
+        isNpcRoom: true,
+        npcOwnerId: "elsa",
+        npcOwnerIds: ["elsa", "dr_elsa"],
+        connectsTo: "room_matter_stream",
+        desc: "洁净冷白色的诊疗单间，摆放着自动静脉注射泵与冷藏生化血浆柜。在震荡中依然保持着一丝不苟的整洁。",
+        diary: [
+            {
+                title: "病理切片 · 异质拟态",
+                content: "对第一名遇害者进行战地尸检时，我发现了极其毛骨悚然的生理结构。死者的脊髓神经元被一种半透明的神经突触完全缠绕替代。\n\n这种寄生体能完美读取宿主的短期记忆，并操控面部肌肉做出逼真的‘微笑’或‘恐惧’。但它的体液渗透压与人类有千分之五的偏差——这是生化检测室能识破它的唯一物理依据。"
+            },
+            {
+                title: "休眠病房的危机",
+                content: "休眠矩阵舱内的脑波监测显示，大家虽然在低温冷冻中，但脑电图却呈现出高度同步的梦魇震颤。\n\n广播站拉响通牒时，几乎所有人都是仓皇躺进冷冻舱的。谁也不能保证，休眠舱里的十二具躯体中，有没有一具在冰封前就已经被掉了包……"
+            },
+            {
+                title: "医者的手术刀",
+                content: "外科医生不相信眼泪，只相信无菌操作与精准下刀。\n\n队长，如果我在这场循环中倒下了，不要难过，立刻解剖我的残存组织确认身份。在这艘充满谎言的飞船上，唯有真实的生理数据永不背叛。"
+            }
+        ]
+    },
+    // ── 槽位 11：柯尔特 & 巴恩斯（舰体东下，x=9,y=5，连接到 room_starboard_dock）──
+    {
+        id: "room_npc_colt_barnes",
+        name: "【黑市走私特勤套房】柯尔特 & 巴恩斯的据点",
+        zone: "engineering",
+        coord: { x: 9, y: 5 },
+        shape: "salvage_hopper",
+        equipment: "workshop_tools",
+        isNpcRoom: true,
+        npcOwnerId: "colt_barnes",
+        npcOwnerIds: ["colt", "barnes"],
+        connectsTo: "room_starboard_dock",
+        desc: "柯尔特与巴恩斯合住的秘密套房。表面上是堆放废旧滤芯的库房，角落假底地砖下却暗藏着走私货箱、假航线数据卡与黄铜筹码。",
+        diary: [
+            {
+                title: "柯尔特的走私星图 · Entry 01",
+                content: "定锚偏折中枢的跳跃代码我已经改好了。归航地球的坐标被我平移了三个天文单位，正对着‘灰雀号’走私接驳驳船的停靠点。\n\n买家开的价码足够我和巴恩斯在边境殖民星买下一整座度假庄园。干完这票就金盆洗手，谁还在乎这艘破巡洋舰上的规章制度？"
+            },
+            {
+                title: "巴恩斯的仓库暗帐 · Entry 02",
+                content: "异构标本库的备用感应卡已经交接完毕，定金三百万星币也已打入虚数匿踪账户。\n\n但不知为什么，这几天我心里总发毛。买家给我的对接信标频率太怪了，根本不像人类商队的波段……反而像是深空引力波黑洞里传来的低吼。"
+            },
+            {
+                title: "事情闹大了 · 窃听录音记录",
+                content: "【录音记录】：\n柯尔特：“该死！巴恩斯，你给我的买家名单到底是什么东西？！全舰断电了，环境机房被撕成了碎片！”\n巴恩斯：“我怎么知道！他们说只要芯片和标本！他们没说会变成怪物吃人啊！操，右舷气闸锁死了，我们被出卖了！”"
+            },
+            {
+                title: "最后的悔恨与自白",
+                content: "如果我们死了，这本日记就是我们的认罪书。\n\n这起灾难是我们的贪婪引来的。但我们发誓，我们绝没想过害死大家！右舷气闸外面的走私暗仓里还藏着备用电池和应急滤罐。队长，拿着它们活下去……替我们给这群怪物来上一发狠的！"
+            }
+        ]
     }
-    // ── 槽位 05~12：预留（用户后续自行扩展，按上面格式添加即可）──
-    // { id: "room_npc_npc5", npcOwnerId: "npc5_id", connectsTo: "room_xxx", ... },
-    // { id: "room_npc_npc6", npcOwnerId: "npc6_id", connectsTo: "room_xxx", ... },
-    // ...
 ];
 
 // 将激活的 NPC 专属房间统一合并注入 MASTER_ROOM_DEFS，确保全局拓扑一致性
@@ -2089,6 +2730,14 @@ const MASTER_CONNECTIONS = [
     ["room_npc_kaze", "room_tactical_plan"],
     ["room_npc_shaokexin", "room_decon_airlock"],
     ["room_npc_mode", "room_shields_emitter"],
+    ["room_npc_prof_lu", "room_specimen_vault"],
+    ["room_npc_noah", "room_ai_core"],
+    ["room_npc_sophia", "room_observation"],
+    ["room_npc_vivian", "room_east_airlock"],
+    ["room_npc_elena", "room_ion_thruster_l"],
+    ["room_npc_elsa", "room_matter_stream"],
+    ["room_npc_colt_barnes", "room_starboard_dock"],
+
     // 舰艏 Y=0 横向干线
     ["room_sensor_array", "room_tactical_plan"],
     ["room_tactical_plan", "room_bridge_sub"],
@@ -4616,10 +5265,22 @@ function drawRoomDecoration(ctx, node, x, y, boxSize, theme) {
     // ── NPC 专属房间：对角纹理+专属色晕 ──
     if (isNpcRoom) {
         const npcColors = {
-            "lph":        "#38bdf8",
-            "kaze":       "#38bdf8",
-            "shaokexin":  "#f43f5e",
-            "mode":       "#a855f7"
+            lph: "#38bdf8",
+            kaze: "#38bdf8",
+            kaluo: "#38bdf8",
+            shaokexin: "#f43f5e",
+            mode: "#a855f7",
+            prof_lu: "#10b981",
+            luzhixing: "#10b981",
+            noah: "#6366f1",
+            sophia: "#ec4899",
+            vivian: "#f43f5e",
+            elena: "#fb923c",
+            elsa: "#06b6d4",
+            dr_elsa: "#06b6d4",
+            colt: "#f59e0b",
+            barnes: "#84cc16",
+            colt_barnes: "#f59e0b"
         };
         const roomColor = npcColors[node.npcOwnerId] || "#4ade80";
         const s = boxSize;
@@ -5417,12 +6078,17 @@ class MapRenderer {
             const isNpc = !!(def.isNpcRoom || locked.isNpcRoom);
             const npcOwnerId = def.npcOwnerId || locked.npcOwnerId;
             const npcColors = {
-                lph: "#38bdf8",
-                kaze: "#38bdf8",
-                shaokexin: "#f43f5e",
-                mode: "#a855f7"
+                lph: "#38bdf8", kaze: "#38bdf8", kaluo: "#38bdf8", shaokexin: "#f43f5e", mode: "#a855f7",
+                prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
+                vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
+                colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b"
             };
-            const ownerNames = { lph: "指挥官", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
+            const ownerNames = {
+                lph: "指挥官", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
+                prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
+                vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
+                colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯"
+            };
             const strokeColor = isNpc ? (npcColors[npcOwnerId] || "#38bdf8") : "#ef4444";
             const ownerName = ownerNames[npcOwnerId] || "乘员";
 
@@ -5627,8 +6293,18 @@ class MapRenderer {
                     tagColor = "#c084fc";
                     subTagColor = adjacentDir ? "#c084fc" : "#e9d5ff";
                 } else if (node.isNpcRoom) {
-                    const ownerNames = { lph: "L.P.H", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
-                    const ownerColors = { lph: "#38bdf8", kaze: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc" };
+                    const ownerNames = {
+                        lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
+                        prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
+                        vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
+                        colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特&巴恩斯"
+                    };
+                    const ownerColors = {
+                        lph: "#38bdf8", kaze: "#60a5fa", kaluo: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc",
+                        prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
+                        vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
+                        colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b"
+                    };
                     const oName = ownerNames[node.npcOwnerId] || "专属";
                     label = `${oName}舱`;
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 私人舱` : "私人舱") : "";
@@ -5643,7 +6319,12 @@ class MapRenderer {
             } else {
                 // 未探索房间：直接显示房间名称，并清晰标注 [未探索] 或 [方向 · 未探索]
                 if (node.isNpcRoom) {
-                    const ownerNames = { lph: "L.P.H", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
+                    const ownerNames = {
+                        lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
+                        prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
+                        vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
+                        colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特&巴恩斯"
+                    };
                     const oName = ownerNames[node.npcOwnerId] || "专属";
                     label = `${oName}舱`;
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 私人舱` : "私人舱") : "";
@@ -6391,8 +7072,18 @@ class ExplorationEngine {
 
         // C. NPC 专属私人舱室日记读取 (独立翻页弹窗)
         if (node.isNpcRoom && node.diary && Array.isArray(node.diary) && node.diary.length > 0) {
-            const ownerNames = { lph: "L.P.H", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
-            const ownerColors = { lph: "#38bdf8", kaze: "#38bdf8", shaokexin: "#f43f5e", mode: "#a855f7" };
+            const ownerNames = {
+                lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
+                prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
+                vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
+                colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯"
+            };
+            const ownerColors = {
+                lph: "#38bdf8", kaze: "#38bdf8", kaluo: "#38bdf8", shaokexin: "#f43f5e", mode: "#a855f7",
+                prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
+                vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
+                colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b"
+            };
             const ownerName = ownerNames[node.npcOwnerId] || node.name;
             const ownerColor = ownerColors[node.npcOwnerId] || "#38bdf8";
 
@@ -8809,12 +9500,19 @@ class GameEngine {
 
             const isAlreadyUnlocked = this.unlockedNpcRooms.has(roomDef.id);
             const isNpcInTeam = roomDef.isProtagonistRoom || roomDef.npcOwnerId === "lph"
-                || aliveMembers.some(m => m.id === roomDef.npcOwnerId);
+                || (roomDef.npcOwnerIds
+                    ? roomDef.npcOwnerIds.some(id => aliveMembers.some(m => m.id === id))
+                    : aliveMembers.some(m => m.id === roomDef.npcOwnerId));
 
             if (isAlreadyUnlocked || isNpcInTeam) {
                 if (!isAlreadyUnlocked) {
                     this.unlockedNpcRooms.add(roomDef.id);
-                    const ownerNames = { lph: "指挥官", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
+                    const ownerNames = {
+                        lph: "指挥官", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
+                        prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
+                        vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
+                        colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯"
+                    };
                     const ownerName = ownerNames[roomDef.npcOwnerId] || (this.allNpcMap.get(roomDef.npcOwnerId)?.name || roomDef.npcOwnerId);
                     this.logAction(`【舱室解锁】[${roomDef.name}] 经过乘员 [${ownerName}] 信标授权，气闸锁已开启！`);
                     this.showStageToast(`🔓 [${roomDef.name}] 气密锁已授权解除！`);
@@ -9277,10 +9975,17 @@ class GameEngine {
         // 2b. 锁闭状态判定与NPC专属舱室解锁交互
         if (node.isLocked) {
             if (node.isNpcRoom) {
-                const ownerNames = { lph: "指挥官", kaze: "卡罗", shaokexin: "邵可欣", mode: "莫德" };
+                const ownerNames = {
+                    lph: "指挥官", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
+                    prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
+                    vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
+                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯"
+                };
                 const ownerName = ownerNames[node.npcOwnerId] || "乘员";
                 const isNpcInTeam = node.isProtagonistRoom || node.npcOwnerId === "lph"
-                    || this.getAliveTeamMembers().some(m => m.id === node.npcOwnerId);
+                    || (node.npcOwnerIds
+                        ? node.npcOwnerIds.some(id => this.getAliveTeamMembers().some(m => m.id === id))
+                        : this.getAliveTeamMembers().some(m => m.id === node.npcOwnerId));
 
                 if (isNpcInTeam) {
                     this.checkAndUnlockNpcRooms();
