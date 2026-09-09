@@ -825,6 +825,27 @@ export class GameEngine {
                     realtimeStatus = "👥 当前有同伴随行（单人脱出要求零随行）";
                     realtimeClass = "realtime-waiting";
                 }
+            } else if (cond.type === "level10_solo_kaze_dead") {
+                const kazeDead = this.level10KazeNightKilled;
+                const isSolo = activeNpcIds.length === 0;
+                if (kazeDead && isSolo) {
+                    realtimeStatus = "🟢 卡罗已遇袭身亡且当前孤身一人，抵达终点高危冷藏间即可撤离";
+                    realtimeClass = "realtime-ready";
+                } else if (!kazeDead) {
+                    realtimeStatus = "⏳ 卡罗尚未被伪人袭击身亡（需在夜间使卡罗遭到袭击）";
+                    realtimeClass = "realtime-waiting";
+                } else {
+                    realtimeStatus = `👥 队伍尚有 ${activeNpcIds.length} 名同伴随行（任务要求独自一人脱离，零随行）`;
+                    realtimeClass = "realtime-waiting";
+                }
+            } else if (cond.type === "level10_key_viewed") {
+                if (this.level10KeyEntered) {
+                    realtimeStatus = "🟢 最高指挥殿堂密钥已成功查阅并记录";
+                    realtimeClass = "realtime-ready";
+                } else {
+                    realtimeStatus = "⏳ 尚未前往最高指挥殿堂（舰桥主控中枢）查阅密钥";
+                    realtimeClass = "realtime-waiting";
+                }
             } else {
                 realtimeStatus = "🎯 特殊条件待达成";
                 realtimeClass = "realtime-waiting";
@@ -975,6 +996,8 @@ export class GameEngine {
         this.level3PowerRestored = false;
         this.level4PatrolVisited = new Set();
         this.level9PatrolStep = 0;
+        this.level10KazeNightKilled = false;
+        this.level10KeyEntered = false;
         this.unlockedNpcRooms = new Set();
         this.modalEncounter?.classList.add("hidden");
         this.modalPowerRestore?.classList.add("hidden");
@@ -1043,14 +1066,20 @@ export class GameEngine {
             [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
 
-        shuffled.forEach((cand, idx) => {
+        // 显式指定 assignedRole 的角色直接锁定（如第十关卡罗设为 villager，绝不为伪人）
+        const unassignedCands = shuffled.filter(c => !c.assignedRole);
+        const assignedWolfCount = shuffled.filter(c => c.assignedRole === "wolf").length;
+        const wolvesNeeded = Math.max(0, actualWolfCount - assignedWolfCount);
+        const selectedWolfIds = new Set(unassignedCands.slice(0, wolvesNeeded).map(c => c.id));
+
+        shuffled.forEach((cand) => {
             const rawChar = CharacterRegistry.npcs[cand.id];
             if (!rawChar) return;
 
             // 分配身份：优先看是否显式指定了 assignedRole，否则按随机抽出的 actualWolfCount 分配
             let role = cand.assignedRole;
             if (!role) {
-                role = idx < actualWolfCount ? "wolf" : "villager";
+                role = selectedWolfIds.has(cand.id) ? "wolf" : "villager";
             }
 
             const npcObj = {
@@ -1355,6 +1384,74 @@ export class GameEngine {
         };
 
         this.btnPowerRestoreConfirm.onclick = handleConfirm;
+    }
+
+    /**
+     * 第十关最高指挥殿堂：密钥输入弹窗
+     * 满足要求：弹窗显示密钥内容，记录后完成任务二
+     */
+    showKeySequenceModal(onConfirmed = null) {
+        let modal = document.getElementById("modal-level10-key");
+        let btn = document.getElementById("btn-level10-key-confirm");
+
+        if (!modal) {
+            // 动态降级容错创建
+            modal = document.createElement("div");
+            modal.id = "modal-level10-key";
+            modal.className = "modal-backdrop";
+            modal.innerHTML = `
+                <div class="modal-box key-sequence-box" style="max-width: 680px; width: 92%;">
+                    <div class="modal-header" style="border-bottom: 1px solid rgba(56, 189, 248, 0.3); padding-bottom: 12px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 24px;">🔑</span>
+                            <div>
+                                <h3 style="margin: 0; color: #38bdf8; font-size: 18px;">最高指挥殿堂 · 应急密钥输入终端</h3>
+                                <div class="modal-subtitle-hint" style="font-size: 12px; color: #94a3b8;">【舰桥主控中枢 · 最高机密总线】</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-body" style="padding: 16px 0;">
+                        <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+                            <div style="color: #38bdf8; font-weight: bold; margin-bottom: 8px; font-size: 14px;">📡 核心覆写密钥序列已呈现：</div>
+                            <div style="color: #e2e8f0; font-size: 13px; line-height: 1.8; word-break: break-all; background: rgba(0,0,0,0.4); padding: 12px; border-radius: 6px; font-family: monospace; border-left: 3px solid #38bdf8;">
+                                高危冷藏间->主跃逃生舱->东北拐角哨所->北向连接道->西侧走廊->辅助等离子发电站->反应堆安全监控室；气压过渡舱->医护角落->管线通道->机械工坊->重核聚变主反应堆；深潜休眠矩阵舱->前沿技术科室->邵可欣的小窝->右舷景观走廊->东侧外勤气闸->舱外作业整备间->右舷受力锚定基座->舰尾重装甲巡检长廊->时空定锚偏折中枢->维生环境总控机房->舰载武装军械库->立体水培温室
+                            </div>
+                        </div>
+                        <p style="color: #94a3b8; font-size: 13px; margin: 0; line-height: 1.6;">
+                            你在环形主控台上接入了最高权限，全舰二十四处关键节点构成的长效拓扑密钥流已被成功激活并存入随身数据核心！
+                        </p>
+                    </div>
+                    <div class="modal-choices" style="margin-top: 10px;">
+                        <button id="btn-level10-key-confirm" class="choice-btn primary" style="width: 100%; background: linear-gradient(135deg, #0284c7, #38bdf8); border-color: #38bdf8; font-weight: bold; padding: 10px 16px;">
+                            🔑 确认并记录密钥序列 ➔
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            btn = modal.querySelector("#btn-level10-key-confirm");
+        }
+
+        modal.classList.remove("hidden");
+
+        const handleConfirm = () => {
+            modal.classList.add("hidden");
+            this.level10KeyEntered = true;
+            this.logAction("【密钥输入】在最高指挥殿堂成功输入并记录了全舰覆写密钥序列！");
+            if (this.showStageToast) {
+                this.showStageToast("🔑 [最高指挥殿堂] 密钥序列已输入并记录完成！");
+            }
+            if (this.renderMissionsPanel) {
+                this.renderMissionsPanel();
+            }
+            if (onConfirmed) onConfirmed();
+        };
+
+        if (btn) {
+            btn.onclick = handleConfirm;
+        } else {
+            handleConfirm();
+        }
     }
 
     // =========================================================================
@@ -2048,6 +2145,10 @@ export class GameEngine {
                     victim.status = "dead";
                     victimName = victim.name;
                     victimObj = victim;
+                    if (this.currentLevel?.levelId === 10 && victim.id === "kaze") {
+                        this.level10KazeNightKilled = true;
+                        this.logAction("【特定死因】卡罗遭到了伪人的夜间致命袭击并身亡，第十关撤离条件一达成！");
+                    }
                 }
             }
         }
@@ -2200,7 +2301,9 @@ export class GameEngine {
             evacuatedNpcs,
             allLevelMimics,
             allLevelNpcs,
-            isSolo
+            isSolo,
+            level10KazeNightKilled: !!this.level10KazeNightKilled,
+            level10KeyEntered: !!this.level10KeyEntered
         };
 
         // 检定非线性关卡解锁规则
@@ -2466,7 +2569,9 @@ export class GameEngine {
             level2PowerRestored: !!this.level2PowerRestored,
             level3PowerRestored: !!this.level3PowerRestored,
             level4PatrolVisited: Array.from(this.level4PatrolVisited || []),
-            level9PatrolStep: this.level9PatrolStep || 0
+            level9PatrolStep: this.level9PatrolStep || 0,
+            level10KazeNightKilled: !!this.level10KazeNightKilled,
+            level10KeyEntered: !!this.level10KeyEntered
         };
 
         const success = this.saveSystem.saveGame(state);
@@ -2495,6 +2600,8 @@ export class GameEngine {
         this.level3PowerRestored = !!data.level3PowerRestored;
         this.level4PatrolVisited = new Set(data.level4PatrolVisited || []);
         this.level9PatrolStep = data.level9PatrolStep || 0;
+        this.level10KazeNightKilled = !!data.level10KazeNightKilled;
+        this.level10KeyEntered = !!data.level10KeyEntered;
 
         // 恢复主角
         this.protagonist = {

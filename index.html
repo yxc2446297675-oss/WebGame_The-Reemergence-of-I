@@ -10,7 +10,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>潜伏危机：循环伪装体 (视觉小说·肉鸽探索·AI伪人杀)</title>
-    <link rel="stylesheet" href="./style.css?v=1788962305558">
+    <link rel="stylesheet" href="./style.css?v=1788969135495">
 </head>
 <body>
 
@@ -479,6 +479,37 @@
         </div>
     </div>
 
+    <!-- B3. 第十关：最高指挥殿堂密钥输入弹窗 -->
+    <div id="modal-level10-key" class="modal-backdrop hidden">
+        <div class="modal-box key-sequence-box" style="max-width: 680px; width: 92%;">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(56, 189, 248, 0.3); padding-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 24px;">🔑</span>
+                    <div>
+                        <h3 id="key-sequence-title" style="margin: 0; color: #38bdf8; font-size: 18px;">最高指挥殿堂 · 应急密钥输入终端</h3>
+                        <div class="modal-subtitle-hint" style="font-size: 12px; color: #94a3b8;">【舰桥主控中枢 · 最高机密总线】</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-body" style="padding: 16px 0;">
+                <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+                    <div style="color: #38bdf8; font-weight: bold; margin-bottom: 8px; font-size: 14px;">📡 核心覆写密钥序列已呈现：</div>
+                    <div id="key-sequence-content" style="color: #e2e8f0; font-size: 13px; line-height: 1.8; word-break: break-all; background: rgba(0,0,0,0.4); padding: 12px; border-radius: 6px; font-family: monospace; border-left: 3px solid #38bdf8;">
+                        高危冷藏间->主跃逃生舱->东北拐角哨所->北向连接道->西侧走廊->辅助等离子发电站->反应堆安全监控室；气压过渡舱->医护角落->管线通道->机械工坊->重核聚变主反应堆；深潜休眠矩阵舱->前沿技术科室->邵可欣的小窝->右舷景观走廊->东侧外勤气闸->舱外作业整备间->右舷受力锚定基座->舰尾重装甲巡检长廊->时空定锚偏折中枢->维生环境总控机房->舰载武装军械库->立体水培温室
+                    </div>
+                </div>
+                <p style="color: #94a3b8; font-size: 13px; margin: 0; line-height: 1.6;">
+                    你在环形主控台上接入了最高权限，全舰二十四处关键节点构成的长效拓扑密钥流已被成功激活并存入随身数据核心！
+                </p>
+            </div>
+            <div class="modal-choices" style="margin-top: 10px;">
+                <button id="btn-level10-key-confirm" class="choice-btn primary" style="width: 100%; background: linear-gradient(135deg, #0284c7, #38bdf8); border-color: #38bdf8; font-weight: bold; padding: 10px 16px;">
+                    🔑 确认并记录密钥序列 ➔
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- C. Q4: 傍晚询问交谈弹窗 -->
     <div id="modal-inquiry-select" class="modal-backdrop hidden">
         <div class="modal-box inquiry-box">
@@ -621,7 +652,7 @@
     </div>
 
     <!-- 游戏启动引导脚本 (单文件普通JS，彻底规避file://协议CORS限制，双击即可直接畅玩) -->
-    <script src="js/app.bundle.js?v=1788962305558"></script>
+    <script src="js/app.bundle.js?v=1788969135495"></script>
 </body>
 </html>
 

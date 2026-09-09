@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-09T13:58:25.542Z
+ * 自动生成于 2026-09-09T15:52:15.481Z
  */
 (function() {
     'use strict';
@@ -3194,23 +3194,43 @@ const LEVEL_SECTOR_SPECS = {
         yellowLockRoomIds: [] // 黄色区域在此关卡可以通行
     },
     10: {
-        title: "第十关：绝对零度 · 冷冻沉寂",
-        subtitle: "生命维持全线与深层冷冻基阵连通",
-        startNodeId: "room_specimen_vault",
-        exitNodeId: "room_east_airlock",
+        title: "第十关：绝对零度 · 孤途",
+        subtitle: "停电始发地出发 · 孤身突围至高危冷藏间",
+        startNodeId: "room_west_end",      // 全舰停电始发地 [0, 3]
+        exitNodeId: "room_specimen_vault", // 高危冷藏间 [0, 1]
         openRoomIds: [
-            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne", "room_bio_corridor",
-            "room_med_surgery", "room_cryo_stasis", "room_decon_airlock", "room_living_quarter", "room_hydro_garden",
-            "room_mess_hall", "room_east_observation", "room_gravity_well", "room_armory", "room_recreation_gym",
-            "room_east_airlock", "room_hub_n1", "room_npc2", "room_corner_se", "room_water_purify",
-            "room_life_support", "room_air_recycler", "room_eva_staging"
+            // Y=0 舰桥中枢（仅最高指挥殿堂，1间）
+            "room_bridge_main",
+            // Y=1 科研医疗区（8间）
+            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne",
+            "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
+            // Y=2 生活生态区（9间）
+            "room_npc3", "room_junction_nw", "room_path_e", "room_hub_n1",
+            "room_npc2", "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
+            // Y=3 动力控制区（9间）
+            "room_west_end", "room_npc1", "room_corridor_w1", "room_start",
+            "room_corner_se", "room_gravity_well", "room_armory", "room_recreation_gym", "room_east_airlock",
+            // Y=4 机库工坊维生区（9间）
+            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck",
+            "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging"
         ],
         npcPlacements: {
-            "room_armory": "kaze",
-            "room_npc2": "shaokexin",
-            "room_cryo_stasis": "mode"
+            "room_npc1": "kaze",            // 卡罗（动力操作台·等待招募）
+            "room_npc3": "mode",            // 莫德（西北隔离舱）
+            "room_npc2": "shaokexin",       // 邵可欣（东侧备勤室）
+            "room_hydro_garden": "sophia",  // 索菲亚（立体水培温室）
+            "room_sub_generator": "vivian", // 薇薇安（二号辅电站）
+            "room_recreation_gym": "noah", // 诺亚（体能维持舱·停电站位）
+            "room_med_surgery": "elsa"      // 艾尔莎（全自动急救台）
         },
-        foodPlacements: ["room_storage_ne", "room_mess_hall"]
+        randomFoodCount: 2, // 随机投放两处体力箱
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [
+            // Y=5 聚变反应堆与能源干线区（防爆安全气闸锁死，9间）
+            "room_shields_emitter", "room_sub_coolant", "room_reactor_control",
+            "room_plasma_manifold", "room_main_reactor", "room_coolant_tank",
+            "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock"
+        ]
     },
     11: {
         title: "第十一关：暗物质界 · 引力源扰动",
@@ -3680,7 +3700,7 @@ function buildSpaceshipLevelMap(levelId) {
 
 const GeneratedLevels = [];
 
-for (let lvlId = 10; lvlId <= 25; lvlId++) {
+for (let lvlId = 11; lvlId <= 25; lvlId++) {
     const spec = LEVEL_SECTOR_SPECS[lvlId] || LEVEL_SECTOR_SPECS[1];
     const lvlMap = buildSpaceshipLevelMap(lvlId);
 
@@ -4222,6 +4242,62 @@ const BaseLevels = [
                 taskObjective: "在不被任何人发现的前提下，先后前往重力发生核与前沿技术科室，最后前往急救台撤离",
                 title: "幽灵巡检达成",
                 toast: "成功规避全舰视线接触并完成要害核查脱离！开放【第十关】与【第二十一关】！"
+            }
+        ]
+    },
+    {
+        levelId: 10,
+        title: "第十关：绝对零度 · 孤途",
+        subtitle: "停电始发地出发 · 孤身突围至高危冷藏间",
+
+        // 前置黑屏白字（悬疑留白）
+        blackScreenText: [
+            "—— 静默，如同冰雪覆盖了整片走廊 ——",
+            "没有倒计时。没有人来提醒你。",
+            "你所要做的，早已刻在某处记忆里——",
+            "动身。按计划。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],  // 无初始随行；卡罗在 room_npc1 等待招募
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量：随机 1~2 人
+        wolfCountRange: [1, 2],
+        candidateNPCs: [
+            { id: "kaze",      assignedRole: "villager" }, // 卡罗永远不是伪人（仅第十关）
+            { id: "mode",      assignedRole: null },        // 莫德
+            { id: "shaokexin", assignedRole: null },        // 邵可欣
+            { id: "sophia",    assignedRole: null },        // 索菲亚
+            { id: "vivian",    assignedRole: null },        // 薇薇安
+            { id: "noah",      assignedRole: null },        // 诺亚
+            { id: "elsa",      assignedRole: null }         // 艾尔莎
+        ],
+
+        mapImageUrl: null,
+        // 地图拓扑网络（36间开放舱室）
+        map: buildSpaceshipLevelMap(10),
+
+        // 第十关解锁规则列表
+        unlockRules: [
+            {
+                id: "l10_task1_kaze_solo",
+                condition: { type: "level10_solo_kaze_dead" }, // 卡罗被夜杀且独自撤离
+                unlockLevelIds: [11],
+                taskName: "任务一：孤身脱离",
+                taskObjective: "使卡罗被伪人袭击死亡，然后独自一人撤离至终点",
+                title: "孤途达成",
+                toast: "卡罗已长眠，你孤身脱离了高危冷藏间！开放【第十一关】！"
+            },
+            {
+                id: "l10_task2_key_viewed",
+                condition: { type: "level10_key_viewed" }, // 在最高指挥殿堂查阅密钥
+                unlockLevelIds: [22],
+                taskName: "任务二：密钥记录",
+                taskObjective: "前往最高指挥殿堂（舰桥主控中枢），查阅并记录密钥序列",
+                title: "密钥已记录",
+                toast: "密钥序列已刻入记忆！开放【第二十二关】！"
             }
         ]
     }
@@ -7566,6 +7642,18 @@ class UnlockEvaluator {
                     break;
                 }
 
+                // 8. 第十关：使卡罗被夜杀后独自撤离
+                case "level10_solo_kaze_dead": {
+                    isSatisfied = !!context.level10KazeNightKilled && isSolo;
+                    break;
+                }
+
+                // 9. 第十关：在最高指挥殿堂查阅并记录密钥
+                case "level10_key_viewed": {
+                    isSatisfied = !!context.level10KeyEntered;
+                    break;
+                }
+
                 default:
                     console.warn(`[UnlockEvaluator] 未知的解锁条件类型: ${condition.type}`);
                     isSatisfied = false;
@@ -7726,12 +7814,19 @@ class ExplorationEngine {
             this.gameEngine?.currentLevel?.levelId === 9 &&
             (this.gameEngine.level9PatrolStep || 0) < 2
         );
+        const isLevel10Pending = (
+            this.gameEngine?.currentLevel?.levelId === 10 &&
+            (
+                !this.gameEngine.level10KazeNightKilled ||
+                this.gameEngine.getAliveNpcTeamMembers().length > 0
+            )
+        );
         // 如果终点节点包含未救助的NPC（如第五关主反应堆的伊莲），不可提前视为最终脱出阻断，必须步入触发NPC救助
         const nextRoomNpcId = (nextNode.event && nextNode.event.type === "npc" && nextNode.event.npcId) || nextNode.npcId;
         const targetNpc = nextRoomNpcId ? this.gameEngine.getNpcById(nextRoomNpcId) : null;
         const hasUnmetNpc = targetNpc && targetNpc.status === "unmet" && !this.consumedEvents.has(`${nextNode.id}_event`);
 
-        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !isLevel8ColtPending && !isLevel9PatrolPending && !hasUnmetNpc;
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !isLevel8ColtPending && !isLevel9PatrolPending && !isLevel10Pending && !hasUnmetNpc;
         if (isEffectiveExit) {
             if (!isAlreadyExplored) {
                 this.choiceCount++;
@@ -7962,6 +8057,42 @@ class ExplorationEngine {
                 }
             }
 
+            // 第十关专属通关校验：必须使卡罗被伪人袭击死亡后独自撤离（不这样做就算踩上终点也不触发通过）
+            if (this.gameEngine?.currentLevel?.levelId === 10) {
+                const kazeNightKilled = this.gameEngine.level10KazeNightKilled;
+                const aliveNpcs = this.gameEngine.getAliveNpcTeamMembers();
+                if (!kazeNightKilled) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！卡罗尚未被伪人袭击身亡！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】计划未完成！卡罗尚未在黑夜中被伪人袭击身亡，高危冷藏间气闸拒绝开启！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "高危冷藏间门禁", themeColor: "#f43f5e" },
+                        "【逃生指令驳回】卡罗尚未遭遇伪人袭击离场！根据既定计划，必须在夜间使卡罗遭到伪人袭击身亡后，方可启动冷藏间撤离程序！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+                if (aliveNpcs.length > 0) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！身边尚有其他存活同伴，必须独自撤离！");
+                    }
+                    this.gameEngine.logAction(`【撤离受阻】队伍中尚有 ${aliveNpcs.length} 名存活同伴随行，任务要求零同伴（伪人亦不可）独自脱离！`);
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "高危冷藏间门禁", themeColor: "#f43f5e" },
+                        "【逃生指令驳回】检测到随行生命体征！高危冷藏间撤离通道仅允许你一人独自撤离，队伍中不得有任何存活同伴（包括伪人）！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
             this.gameEngine.logAction(`【通关突破】全员成功抵达目的地 [${node.name}]！准备跳跃！`);
             this.gameEngine.triggerVictory(node);
             return;
@@ -8020,6 +8151,13 @@ class ExplorationEngine {
                 if (this.gameEngine.refreshStageMap) {
                     this.gameEngine.refreshStageMap();
                 }
+            }
+        }
+
+        // 第十关专属最高指挥殿堂输入密钥判定
+        if (this.gameEngine?.currentLevel?.levelId === 10 && node.id === "room_bridge_main") {
+            if (!this.gameEngine.level10KeyEntered && this.gameEngine.showKeySequenceModal) {
+                this.gameEngine.showKeySequenceModal();
             }
         }
 
@@ -9156,6 +9294,27 @@ class GameEngine {
                     realtimeStatus = "👥 当前有同伴随行（单人脱出要求零随行）";
                     realtimeClass = "realtime-waiting";
                 }
+            } else if (cond.type === "level10_solo_kaze_dead") {
+                const kazeDead = this.level10KazeNightKilled;
+                const isSolo = activeNpcIds.length === 0;
+                if (kazeDead && isSolo) {
+                    realtimeStatus = "🟢 卡罗已遇袭身亡且当前孤身一人，抵达终点高危冷藏间即可撤离";
+                    realtimeClass = "realtime-ready";
+                } else if (!kazeDead) {
+                    realtimeStatus = "⏳ 卡罗尚未被伪人袭击身亡（需在夜间使卡罗遭到袭击）";
+                    realtimeClass = "realtime-waiting";
+                } else {
+                    realtimeStatus = `👥 队伍尚有 ${activeNpcIds.length} 名同伴随行（任务要求独自一人脱离，零随行）`;
+                    realtimeClass = "realtime-waiting";
+                }
+            } else if (cond.type === "level10_key_viewed") {
+                if (this.level10KeyEntered) {
+                    realtimeStatus = "🟢 最高指挥殿堂密钥已成功查阅并记录";
+                    realtimeClass = "realtime-ready";
+                } else {
+                    realtimeStatus = "⏳ 尚未前往最高指挥殿堂（舰桥主控中枢）查阅密钥";
+                    realtimeClass = "realtime-waiting";
+                }
             } else {
                 realtimeStatus = "🎯 特殊条件待达成";
                 realtimeClass = "realtime-waiting";
@@ -9306,6 +9465,8 @@ class GameEngine {
         this.level3PowerRestored = false;
         this.level4PatrolVisited = new Set();
         this.level9PatrolStep = 0;
+        this.level10KazeNightKilled = false;
+        this.level10KeyEntered = false;
         this.unlockedNpcRooms = new Set();
         this.modalEncounter?.classList.add("hidden");
         this.modalPowerRestore?.classList.add("hidden");
@@ -9374,14 +9535,20 @@ class GameEngine {
             [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
 
-        shuffled.forEach((cand, idx) => {
+        // 显式指定 assignedRole 的角色直接锁定（如第十关卡罗设为 villager，绝不为伪人）
+        const unassignedCands = shuffled.filter(c => !c.assignedRole);
+        const assignedWolfCount = shuffled.filter(c => c.assignedRole === "wolf").length;
+        const wolvesNeeded = Math.max(0, actualWolfCount - assignedWolfCount);
+        const selectedWolfIds = new Set(unassignedCands.slice(0, wolvesNeeded).map(c => c.id));
+
+        shuffled.forEach((cand) => {
             const rawChar = CharacterRegistry.npcs[cand.id];
             if (!rawChar) return;
 
             // 分配身份：优先看是否显式指定了 assignedRole，否则按随机抽出的 actualWolfCount 分配
             let role = cand.assignedRole;
             if (!role) {
-                role = idx < actualWolfCount ? "wolf" : "villager";
+                role = selectedWolfIds.has(cand.id) ? "wolf" : "villager";
             }
 
             const npcObj = {
@@ -9686,6 +9853,74 @@ class GameEngine {
         };
 
         this.btnPowerRestoreConfirm.onclick = handleConfirm;
+    }
+
+    /**
+     * 第十关最高指挥殿堂：密钥输入弹窗
+     * 满足要求：弹窗显示密钥内容，记录后完成任务二
+     */
+    showKeySequenceModal(onConfirmed = null) {
+        let modal = document.getElementById("modal-level10-key");
+        let btn = document.getElementById("btn-level10-key-confirm");
+
+        if (!modal) {
+            // 动态降级容错创建
+            modal = document.createElement("div");
+            modal.id = "modal-level10-key";
+            modal.className = "modal-backdrop";
+            modal.innerHTML = `
+                <div class="modal-box key-sequence-box" style="max-width: 680px; width: 92%;">
+                    <div class="modal-header" style="border-bottom: 1px solid rgba(56, 189, 248, 0.3); padding-bottom: 12px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 24px;">🔑</span>
+                            <div>
+                                <h3 style="margin: 0; color: #38bdf8; font-size: 18px;">最高指挥殿堂 · 应急密钥输入终端</h3>
+                                <div class="modal-subtitle-hint" style="font-size: 12px; color: #94a3b8;">【舰桥主控中枢 · 最高机密总线】</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-body" style="padding: 16px 0;">
+                        <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+                            <div style="color: #38bdf8; font-weight: bold; margin-bottom: 8px; font-size: 14px;">📡 核心覆写密钥序列已呈现：</div>
+                            <div style="color: #e2e8f0; font-size: 13px; line-height: 1.8; word-break: break-all; background: rgba(0,0,0,0.4); padding: 12px; border-radius: 6px; font-family: monospace; border-left: 3px solid #38bdf8;">
+                                高危冷藏间->主跃逃生舱->东北拐角哨所->北向连接道->西侧走廊->辅助等离子发电站->反应堆安全监控室；气压过渡舱->医护角落->管线通道->机械工坊->重核聚变主反应堆；深潜休眠矩阵舱->前沿技术科室->邵可欣的小窝->右舷景观走廊->东侧外勤气闸->舱外作业整备间->右舷受力锚定基座->舰尾重装甲巡检长廊->时空定锚偏折中枢->维生环境总控机房->舰载武装军械库->立体水培温室
+                            </div>
+                        </div>
+                        <p style="color: #94a3b8; font-size: 13px; margin: 0; line-height: 1.6;">
+                            你在环形主控台上接入了最高权限，全舰二十四处关键节点构成的长效拓扑密钥流已被成功激活并存入随身数据核心！
+                        </p>
+                    </div>
+                    <div class="modal-choices" style="margin-top: 10px;">
+                        <button id="btn-level10-key-confirm" class="choice-btn primary" style="width: 100%; background: linear-gradient(135deg, #0284c7, #38bdf8); border-color: #38bdf8; font-weight: bold; padding: 10px 16px;">
+                            🔑 确认并记录密钥序列 ➔
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            btn = modal.querySelector("#btn-level10-key-confirm");
+        }
+
+        modal.classList.remove("hidden");
+
+        const handleConfirm = () => {
+            modal.classList.add("hidden");
+            this.level10KeyEntered = true;
+            this.logAction("【密钥输入】在最高指挥殿堂成功输入并记录了全舰覆写密钥序列！");
+            if (this.showStageToast) {
+                this.showStageToast("🔑 [最高指挥殿堂] 密钥序列已输入并记录完成！");
+            }
+            if (this.renderMissionsPanel) {
+                this.renderMissionsPanel();
+            }
+            if (onConfirmed) onConfirmed();
+        };
+
+        if (btn) {
+            btn.onclick = handleConfirm;
+        } else {
+            handleConfirm();
+        }
     }
 
     // =========================================================================
@@ -10379,6 +10614,10 @@ class GameEngine {
                     victim.status = "dead";
                     victimName = victim.name;
                     victimObj = victim;
+                    if (this.currentLevel?.levelId === 10 && victim.id === "kaze") {
+                        this.level10KazeNightKilled = true;
+                        this.logAction("【特定死因】卡罗遭到了伪人的夜间致命袭击并身亡，第十关撤离条件一达成！");
+                    }
                 }
             }
         }
@@ -10531,7 +10770,9 @@ class GameEngine {
             evacuatedNpcs,
             allLevelMimics,
             allLevelNpcs,
-            isSolo
+            isSolo,
+            level10KazeNightKilled: !!this.level10KazeNightKilled,
+            level10KeyEntered: !!this.level10KeyEntered
         };
 
         // 检定非线性关卡解锁规则
@@ -10797,7 +11038,9 @@ class GameEngine {
             level2PowerRestored: !!this.level2PowerRestored,
             level3PowerRestored: !!this.level3PowerRestored,
             level4PatrolVisited: Array.from(this.level4PatrolVisited || []),
-            level9PatrolStep: this.level9PatrolStep || 0
+            level9PatrolStep: this.level9PatrolStep || 0,
+            level10KazeNightKilled: !!this.level10KazeNightKilled,
+            level10KeyEntered: !!this.level10KeyEntered
         };
 
         const success = this.saveSystem.saveGame(state);
@@ -10826,6 +11069,8 @@ class GameEngine {
         this.level3PowerRestored = !!data.level3PowerRestored;
         this.level4PatrolVisited = new Set(data.level4PatrolVisited || []);
         this.level9PatrolStep = data.level9PatrolStep || 0;
+        this.level10KazeNightKilled = !!data.level10KazeNightKilled;
+        this.level10KeyEntered = !!data.level10KeyEntered;
 
         // 恢复主角
         this.protagonist = {

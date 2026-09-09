@@ -130,12 +130,19 @@ export class ExplorationEngine {
             this.gameEngine?.currentLevel?.levelId === 9 &&
             (this.gameEngine.level9PatrolStep || 0) < 2
         );
+        const isLevel10Pending = (
+            this.gameEngine?.currentLevel?.levelId === 10 &&
+            (
+                !this.gameEngine.level10KazeNightKilled ||
+                this.gameEngine.getAliveNpcTeamMembers().length > 0
+            )
+        );
         // 如果终点节点包含未救助的NPC（如第五关主反应堆的伊莲），不可提前视为最终脱出阻断，必须步入触发NPC救助
         const nextRoomNpcId = (nextNode.event && nextNode.event.type === "npc" && nextNode.event.npcId) || nextNode.npcId;
         const targetNpc = nextRoomNpcId ? this.gameEngine.getNpcById(nextRoomNpcId) : null;
         const hasUnmetNpc = targetNpc && targetNpc.status === "unmet" && !this.consumedEvents.has(`${nextNode.id}_event`);
 
-        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !isLevel8ColtPending && !isLevel9PatrolPending && !hasUnmetNpc;
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !isLevel8ColtPending && !isLevel9PatrolPending && !isLevel10Pending && !hasUnmetNpc;
         if (isEffectiveExit) {
             if (!isAlreadyExplored) {
                 this.choiceCount++;
@@ -366,6 +373,42 @@ export class ExplorationEngine {
                 }
             }
 
+            // 第十关专属通关校验：必须使卡罗被伪人袭击死亡后独自撤离（不这样做就算踩上终点也不触发通过）
+            if (this.gameEngine?.currentLevel?.levelId === 10) {
+                const kazeNightKilled = this.gameEngine.level10KazeNightKilled;
+                const aliveNpcs = this.gameEngine.getAliveNpcTeamMembers();
+                if (!kazeNightKilled) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！卡罗尚未被伪人袭击身亡！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】计划未完成！卡罗尚未在黑夜中被伪人袭击身亡，高危冷藏间气闸拒绝开启！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "高危冷藏间门禁", themeColor: "#f43f5e" },
+                        "【逃生指令驳回】卡罗尚未遭遇伪人袭击离场！根据既定计划，必须在夜间使卡罗遭到伪人袭击身亡后，方可启动冷藏间撤离程序！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+                if (aliveNpcs.length > 0) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！身边尚有其他存活同伴，必须独自撤离！");
+                    }
+                    this.gameEngine.logAction(`【撤离受阻】队伍中尚有 ${aliveNpcs.length} 名存活同伴随行，任务要求零同伴（伪人亦不可）独自脱离！`);
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "高危冷藏间门禁", themeColor: "#f43f5e" },
+                        "【逃生指令驳回】检测到随行生命体征！高危冷藏间撤离通道仅允许你一人独自撤离，队伍中不得有任何存活同伴（包括伪人）！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
             this.gameEngine.logAction(`【通关突破】全员成功抵达目的地 [${node.name}]！准备跳跃！`);
             this.gameEngine.triggerVictory(node);
             return;
@@ -424,6 +467,13 @@ export class ExplorationEngine {
                 if (this.gameEngine.refreshStageMap) {
                     this.gameEngine.refreshStageMap();
                 }
+            }
+        }
+
+        // 第十关专属最高指挥殿堂输入密钥判定
+        if (this.gameEngine?.currentLevel?.levelId === 10 && node.id === "room_bridge_main") {
+            if (!this.gameEngine.level10KeyEntered && this.gameEngine.showKeySequenceModal) {
+                this.gameEngine.showKeySequenceModal();
             }
         }
 

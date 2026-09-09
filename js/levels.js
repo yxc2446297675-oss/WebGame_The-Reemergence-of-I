@@ -495,6 +495,62 @@ export const BaseLevels = [
                 toast: "成功规避全舰视线接触并完成要害核查脱离！开放【第十关】与【第二十一关】！"
             }
         ]
+    },
+    {
+        levelId: 10,
+        title: "第十关：绝对零度 · 孤途",
+        subtitle: "停电始发地出发 · 孤身突围至高危冷藏间",
+
+        // 前置黑屏白字（悬疑留白）
+        blackScreenText: [
+            "—— 静默，如同冰雪覆盖了整片走廊 ——",
+            "没有倒计时。没有人来提醒你。",
+            "你所要做的，早已刻在某处记忆里——",
+            "动身。按计划。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],  // 无初始随行；卡罗在 room_npc1 等待招募
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量：随机 1~2 人
+        wolfCountRange: [1, 2],
+        candidateNPCs: [
+            { id: "kaze",      assignedRole: "villager" }, // 卡罗永远不是伪人（仅第十关）
+            { id: "mode",      assignedRole: null },        // 莫德
+            { id: "shaokexin", assignedRole: null },        // 邵可欣
+            { id: "sophia",    assignedRole: null },        // 索菲亚
+            { id: "vivian",    assignedRole: null },        // 薇薇安
+            { id: "noah",      assignedRole: null },        // 诺亚
+            { id: "elsa",      assignedRole: null }         // 艾尔莎
+        ],
+
+        mapImageUrl: null,
+        // 地图拓扑网络（36间开放舱室）
+        map: buildSpaceshipLevelMap(10),
+
+        // 第十关解锁规则列表
+        unlockRules: [
+            {
+                id: "l10_task1_kaze_solo",
+                condition: { type: "level10_solo_kaze_dead" }, // 卡罗被夜杀且独自撤离
+                unlockLevelIds: [11],
+                taskName: "任务一：孤身脱离",
+                taskObjective: "使卡罗被伪人袭击死亡，然后独自一人撤离至终点",
+                title: "孤途达成",
+                toast: "卡罗已长眠，你孤身脱离了高危冷藏间！开放【第十一关】！"
+            },
+            {
+                id: "l10_task2_key_viewed",
+                condition: { type: "level10_key_viewed" }, // 在最高指挥殿堂查阅密钥
+                unlockLevelIds: [22],
+                taskName: "任务二：密钥记录",
+                taskObjective: "前往最高指挥殿堂（舰桥主控中枢），查阅并记录密钥序列",
+                title: "密钥已记录",
+                toast: "密钥序列已刻入记忆！开放【第二十二关】！"
+            }
+        ]
     }
 ];
 

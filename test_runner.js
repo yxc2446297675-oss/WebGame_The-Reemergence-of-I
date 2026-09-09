@@ -1189,6 +1189,8 @@ for (let lvlId = 1; lvlId <= 25; lvlId++) {
         ? { minRooms: 18, maxRooms: 20, tierName: '第五关专设（截图19间舱室）' }
         : (lvlId === 9)
         ? { minRooms: 34, maxRooms: 36, tierName: '第九关专设（截图35间舱室）' }
+        : (lvlId === 10)
+        ? { minRooms: 35, maxRooms: 38, tierName: '第十关专设（截图36间舱室）' }
         : tierRules.find(r => lvlId >= r.minLvl && lvlId <= r.maxLvl);
 
     if (roomCount < rule.minRooms || roomCount > rule.maxRooms) {
@@ -3567,7 +3569,164 @@ console.log('\n[TEST 45] 开始执行第九关专属定制、潜行规避、要�
     console.log('   【已验证】全关卡隔离性检定：前八关及其他关卡 100% 独立且正常运行！');
 }
 
-console.log('\n====== [TEST PASSED] 全部 45 项核心流程、前八关与第九关专属定制及全机制测试 100% 成功！ ======');
+// 46. 验证第十关（Level 10：绝对零度 · 孤途）全机制与专属定制逻辑
+{
+    console.log('46. 验证第十关（Level 10：绝对零度 · 孤途）全机制与专属定制逻辑...');
+
+    app.startNewGame(10);
+
+    // A. 验证关卡基本配置
+    if (app.currentLevel.levelId !== 10) {
+        throw new Error('启动关卡 10 失败！');
+    }
+    if (!app.currentLevel.title.includes('绝对零度 · 孤途')) {
+        throw new Error('关卡标题不符: ' + app.currentLevel.title);
+    }
+    const mapConfig = app.currentLevel.map;
+    if (!mapConfig || !mapConfig.nodes) {
+        throw new Error('第十关地图配置丢失！');
+    }
+
+    // B. 验证起点为停电始发站 (room_west_end)
+    if (mapConfig.startNodeId !== 'room_west_end') {
+        throw new Error(`第十关起点应为 room_west_end，实际为: ${mapConfig.startNodeId}`);
+    }
+    console.log('   【已验证】起点正确配置为【全舰停电始发地】(room_west_end)！');
+
+    // C. 验证终点为高危冷藏间 (room_specimen_vault)
+    const exitNode = mapConfig.nodes['room_specimen_vault'];
+    if (!exitNode || !exitNode.isExit) {
+        throw new Error('第十关终点未正确设在高危冷藏间 (room_specimen_vault)！');
+    }
+    console.log('   【已验证】终点正确配置为【高危冷藏间】(room_specimen_vault)！');
+
+    // D. 验证开放舱室数量为 36 间公用舱室 + 1 间主角专属舱室 (37间)
+    const roomCount = Object.keys(mapConfig.nodes).length;
+    if (roomCount !== 37) {
+        throw new Error(`第十关开放舱室数应为 37 间（36间主舱室+1间主角专属舱），实际为: ${roomCount}`);
+    }
+    console.log(`   【已验证】开放区域共 36 间公用舱室 + 1 间主角专属舱室拓扑全连通（含舰桥最高指挥殿堂与 Y1~Y4 完整甲板）！`);
+
+    // E. 验证黄色阻断区域 (Y=5 的 9 间舱室) 与宿主契合度不足双轨机制
+    const masterShip = mapConfig.masterShip;
+    const yellowExpected = [
+        "room_shields_emitter", "room_sub_coolant", "room_reactor_control",
+        "room_plasma_manifold", "room_main_reactor", "room_coolant_tank",
+        "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock"
+    ];
+    for (const yId of yellowExpected) {
+        const lockedNode = masterShip?.lockedRooms?.[yId];
+        if (lockedNode && !lockedNode.lockReason.includes("防爆安全气闸锁死")) {
+            throw new Error(`原图黄色区域 [${yId}] 阻断理由应为防爆安全气闸锁死，实际为: ${lockedNode?.lockReason}`);
+        }
+    }
+    for (const rId of ["room_singularity_gate", "room_matter_stream", "room_sensor_array"]) {
+        const lockedNode = masterShip?.lockedRooms?.[rId];
+        if (lockedNode && !lockedNode.lockReason.includes("宿主契合度不足")) {
+            throw new Error(`非黄色未开放区域 [${rId}] 阻断理由应为宿主契合度不足，实际为: ${lockedNode?.lockReason}`);
+        }
+    }
+    console.log('   【已验证】黄色气闸区域（9间Y=5动力甲板）与宿主契合度阻断双轨机制就绪！');
+
+    // F. 验证 NPC 停电站位分布与排除陆知行
+    // 7名NPC: kaze(room_npc1), mode(room_npc3), shaokexin(room_npc2), sophia(room_hydro_garden), vivian(room_sub_generator), noah(room_recreation_gym), elsa(room_med_surgery)
+    const expectedPlacements = {
+        room_npc1: 'kaze',
+        room_npc3: 'mode',
+        room_npc2: 'shaokexin',
+        room_hydro_garden: 'sophia',
+        room_sub_generator: 'vivian',
+        room_recreation_gym: 'noah',
+        room_med_surgery: 'elsa'
+    };
+    for (const [roomId, expectedNpcId] of Object.entries(expectedPlacements)) {
+        const node = mapConfig.nodes[roomId];
+        if (!node || node.npcId !== expectedNpcId) {
+            throw new Error(`节点 ${roomId} 的 NPC 配置应为 ${expectedNpcId}，实际: ${node?.npcId}`);
+        }
+    }
+    // 确认陆知行被排除
+    const profLuFound = Object.values(mapConfig.nodes).some(n => n.npcId === 'prof_lu');
+    if (profLuFound) {
+        throw new Error('第十关中不应包含陆知行 (prof_lu)！');
+    }
+    console.log('   【已验证】7 位 NPC 正确按停电站位放置，陆知行已被严格排除！');
+
+    // G. 验证卡罗（kaze）在第十关永远不是伪人
+    for (let testSeed = 0; testSeed < 20; testSeed++) {
+        app.startNewGame(10);
+        const kazeNpc = app.allNpcMap.get('kaze');
+        if (!kazeNpc || kazeNpc.role === 'wolf') {
+            throw new Error('卡罗在第十关被分配为伪人，违反绝对规则！');
+        }
+    }
+    console.log('   【已验证】卡罗（kaze）在第十关多轮随机生成测试中 100% 保持正常人类（绝不为伪人）！');
+
+    // H. 验证任务二：前往最高指挥殿堂 (room_bridge_main) 弹窗输入密钥
+    if (app.level10KeyEntered) {
+        throw new Error('初始状态 level10KeyEntered 应为 false！');
+    }
+    const bridgeNode = mapConfig.nodes['room_bridge_main'];
+    let modalShown = false;
+    app.showKeySequenceModal = (onConfirmed) => {
+        modalShown = true;
+        app.level10KeyEntered = true;
+        if (onConfirmed) onConfirmed();
+    };
+    app.explorationEngine.handleNodeEvents(bridgeNode, false);
+    if (!modalShown || !app.level10KeyEntered) {
+        throw new Error('进入最高指挥殿堂未能成功触发密钥弹窗并标记记录！');
+    }
+    console.log('   【已验证】踏入【最高指挥殿堂】(room_bridge_main) 成功弹出全舰覆写密钥序列并完成记录！');
+
+    // I. 验证任务一阻断逻辑：
+    // 情况 1：卡罗未被伪人夜杀，踩终点被拦截
+    app.phase = 'q3_explore';
+    app.level10KazeNightKilled = false;
+    app.explorationEngine.handleNodeEvents(exitNode, false);
+    if (app.phase === 'victory') {
+        throw new Error('卡罗未被夜杀时踩上高危冷藏间错误触发了通关！');
+    }
+    console.log('   【已验证】卡罗未遇害时踩上终点被严格拦截，无法通关！');
+
+    // 情况 2：卡罗已被夜杀，但身边有存活同伴随行（非独自撤离），踩终点被拦截
+    app.level10KazeNightKilled = true;
+    const modeNpc = app.allNpcMap.get('mode');
+    modeNpc.status = 'active';
+    app.teamMembers.push(modeNpc);
+    app.explorationEngine.handleNodeEvents(exitNode, false);
+    if (app.phase === 'victory') {
+        throw new Error('身边有存活同伴时踩上高危冷藏间错误触发了通关！');
+    }
+    console.log('   【已验证】队伍中有存活同伴随行时踩上终点被严格拦截，必须独自撤离！');
+
+    // 情况 3：卡罗被夜杀 + 队伍零同伴（独自撤离） -> 成功通关！
+    app.teamMembers = [app.protagonist]; // 移除非主角同伴，确保独自一人
+    app.saveSystem.memoryStore[app.saveSystem.unlockedKey] = JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    app.explorationEngine.handleNodeEvents(exitNode, false);
+    if (app.phase !== 'victory') {
+        throw new Error('满足任务一条件后踩上终点未能成功通关！');
+    }
+    if (!app.saveSystem.isLevelUnlocked(11)) {
+        throw new Error('完成任务一未能成功解锁第十一关！');
+    }
+    if (!app.saveSystem.isLevelUnlocked(22)) {
+        throw new Error('完成任务二（密钥记录）未能成功解锁第二十二关！');
+    }
+    console.log('   【已验证】卡罗遇害且孤身脱离成功，同时达成任务一与任务二，成功解锁【第十一关】与【第二十二关】！');
+
+    // J. 隔离性检定：前九关正常运行
+    app.startNewGame(9);
+    if (app.currentLevel.levelId !== 9) throw new Error('第九关启动异常！');
+    app.startNewGame(6);
+    if (app.currentLevel.levelId !== 6) throw new Error('第六关启动异常！');
+    app.startNewGame(1);
+    if (app.currentLevel.levelId !== 1) throw new Error('第一关启动异常！');
+    console.log('   【已验证】第十关独立机制完全隔离，前九关及其他关卡正常运行！');
+}
+
+console.log('\n====== [TEST PASSED] 全部 46 项核心流程、前九关与第十关专属定制及全机制测试 100% 成功！ ======');
+
 
 
 

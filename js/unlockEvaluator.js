@@ -87,6 +87,18 @@ export class UnlockEvaluator {
                     break;
                 }
 
+                // 8. 第十关：使卡罗被夜杀后独自撤离
+                case "level10_solo_kaze_dead": {
+                    isSatisfied = !!context.level10KazeNightKilled && isSolo;
+                    break;
+                }
+
+                // 9. 第十关：在最高指挥殿堂查阅并记录密钥
+                case "level10_key_viewed": {
+                    isSatisfied = !!context.level10KeyEntered;
+                    break;
+                }
+
                 default:
                     console.warn(`[UnlockEvaluator] 未知的解锁条件类型: ${condition.type}`);
                     isSatisfied = false;

@@ -1334,23 +1334,43 @@ export const LEVEL_SECTOR_SPECS = {
         yellowLockRoomIds: [] // 黄色区域在此关卡可以通行
     },
     10: {
-        title: "第十关：绝对零度 · 冷冻沉寂",
-        subtitle: "生命维持全线与深层冷冻基阵连通",
-        startNodeId: "room_specimen_vault",
-        exitNodeId: "room_east_airlock",
+        title: "第十关：绝对零度 · 孤途",
+        subtitle: "停电始发地出发 · 孤身突围至高危冷藏间",
+        startNodeId: "room_west_end",      // 全舰停电始发地 [0, 3]
+        exitNodeId: "room_specimen_vault", // 高危冷藏间 [0, 1]
         openRoomIds: [
-            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne", "room_bio_corridor",
-            "room_med_surgery", "room_cryo_stasis", "room_decon_airlock", "room_living_quarter", "room_hydro_garden",
-            "room_mess_hall", "room_east_observation", "room_gravity_well", "room_armory", "room_recreation_gym",
-            "room_east_airlock", "room_hub_n1", "room_npc2", "room_corner_se", "room_water_purify",
-            "room_life_support", "room_air_recycler", "room_eva_staging"
+            // Y=0 舰桥中枢（仅最高指挥殿堂，1间）
+            "room_bridge_main",
+            // Y=1 科研医疗区（8间）
+            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne",
+            "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
+            // Y=2 生活生态区（9间）
+            "room_npc3", "room_junction_nw", "room_path_e", "room_hub_n1",
+            "room_npc2", "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
+            // Y=3 动力控制区（9间）
+            "room_west_end", "room_npc1", "room_corridor_w1", "room_start",
+            "room_corner_se", "room_gravity_well", "room_armory", "room_recreation_gym", "room_east_airlock",
+            // Y=4 机库工坊维生区（9间）
+            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck",
+            "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging"
         ],
         npcPlacements: {
-            "room_armory": "kaze",
-            "room_npc2": "shaokexin",
-            "room_cryo_stasis": "mode"
+            "room_npc1": "kaze",            // 卡罗（动力操作台·等待招募）
+            "room_npc3": "mode",            // 莫德（西北隔离舱）
+            "room_npc2": "shaokexin",       // 邵可欣（东侧备勤室）
+            "room_hydro_garden": "sophia",  // 索菲亚（立体水培温室）
+            "room_sub_generator": "vivian", // 薇薇安（二号辅电站）
+            "room_recreation_gym": "noah", // 诺亚（体能维持舱·停电站位）
+            "room_med_surgery": "elsa"      // 艾尔莎（全自动急救台）
         },
-        foodPlacements: ["room_storage_ne", "room_mess_hall"]
+        randomFoodCount: 2, // 随机投放两处体力箱
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [
+            // Y=5 聚变反应堆与能源干线区（防爆安全气闸锁死，9间）
+            "room_shields_emitter", "room_sub_coolant", "room_reactor_control",
+            "room_plasma_manifold", "room_main_reactor", "room_coolant_tank",
+            "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock"
+        ]
     },
     11: {
         title: "第十一关：暗物质界 · 引力源扰动",
