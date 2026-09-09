@@ -333,6 +333,65 @@ export const BaseLevels = [
                 toast: "成功携行艾尔莎与诺亚稳固过热反应堆！开放【第七关】与【第十八关】！"
             }
         ]
+    },
+    {
+        levelId: 7,
+        title: "第七关：虚数空间 · 复数坐标轴",
+        subtitle: "特勤套房脱离 · 携同伴突破防爆甬道",
+
+        blackScreenText: [
+            "趁着巡检执勤的换岗空档，你一如往常躲在特勤套房的阴影里偷闲……",
+            "毫无征兆，整片回廊的警示灯骤然熄灭，连通风阀的呼啸也化作一片死寂。",
+            "四周暗得伸手不见五指……好在搭档巴恩斯就在身旁，呼吸清晰可辨。",
+            "情况绝不简单。封闭舱门被异响震动，你们决定一同持枪外出探查究竟。",
+            "——触摸屏幕，携手突入。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: ["barnes"], // 开局自动携带搭档巴恩斯
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量配置：随机 1~2 人
+        wolfCountRange: [1, 2],
+        candidateNPCs: [
+            { id: "barnes", assignedRole: null }, // 巴恩斯 (开局随行)
+            { id: "elsa", assignedRole: null },   // 艾尔莎 (纳米手术舱 · 生化检测室)
+            { id: "sophia", assignedRole: null }, // 索菲亚 (立体水培温室)
+            { id: "noah", assignedRole: null }    // 诺亚 (维生环境总控机房)
+        ],
+
+        mapImageUrl: null,
+        // 地图拓扑网络 (基于宇宙飞船母蓝图构建，22间开放舱室)
+        map: buildSpaceshipLevelMap(7),
+
+        // 第七关解锁规则列表
+        unlockRules: [
+            {
+                id: "l7_barnes_evac",
+                condition: { 
+                    type: "require_npcs", 
+                    npcIds: ["barnes"] 
+                },
+                unlockLevelIds: [8],
+                taskName: "任务一：带离巴恩斯撤离",
+                taskObjective: "携行搭档巴恩斯共同抵达防爆甬道完成撤离",
+                title: "搭档同盟脱离",
+                toast: "成功携行巴恩斯抵达防爆甬道撤离！开放【第八关】！"
+            },
+            {
+                id: "l7_three_npcs_evac",
+                condition: { 
+                    type: "require_npc_count", 
+                    count: 3 
+                },
+                unlockLevelIds: [18],
+                taskName: "任务二：带离三名NPC撤离",
+                taskObjective: "在探索途中救助更多失散同伴，带领至少三名乘员共同撤离",
+                title: "深空多人救援",
+                toast: "成功携行三名乘员完成全队防爆撤离！开放【第十八关】！"
+            }
+        ]
     }
 ];
 

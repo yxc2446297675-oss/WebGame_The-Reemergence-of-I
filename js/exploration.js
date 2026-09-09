@@ -118,12 +118,16 @@ export class ExplorationEngine {
                 this.gameEngine.getAliveTeamMembers().some(m => m.id === "noah")
             )
         );
+        const isLevel7BarnesPending = (
+            this.gameEngine?.currentLevel?.levelId === 7 &&
+            !this.gameEngine.getAliveTeamMembers().some(m => m.id === "barnes")
+        );
         // 如果终点节点包含未救助的NPC（如第五关主反应堆的伊莲），不可提前视为最终脱出阻断，必须步入触发NPC救助
         const nextRoomNpcId = (nextNode.event && nextNode.event.type === "npc" && nextNode.event.npcId) || nextNode.npcId;
         const targetNpc = nextRoomNpcId ? this.gameEngine.getNpcById(nextRoomNpcId) : null;
         const hasUnmetNpc = targetNpc && targetNpc.status === "unmet" && !this.consumedEvents.has(`${nextNode.id}_event`);
 
-        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !hasUnmetNpc;
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !hasUnmetNpc;
         if (isEffectiveExit) {
             if (!isAlreadyExplored) {
                 this.choiceCount++;
@@ -282,6 +286,27 @@ export class ExplorationEngine {
                     this.gameEngine.dialogueUI?.say(
                         { name: "主反应堆控制中枢", themeColor: "#fb923c" },
                         "【紧急协议拦截】艾尔莎与诺亚未随队抵达！缺少生化抗核阻滞剂与超导超频阵列支持，主反应堆无法完成冷却降温，撤离通道拒绝开启！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
+            // 第七关专属通关校验：必须带离巴恩斯撤离（不这样做就算踩上终点也不触发通过）
+            if (this.gameEngine?.currentLevel?.levelId === 7) {
+                const aliveTeam = this.gameEngine.getAliveTeamMembers();
+                const hasBarnes = aliveTeam.some(m => m.id === "barnes");
+                if (!hasBarnes) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！未能保护搭档巴恩斯一同撤离！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】未带离巴恩斯撤离，防爆甬道气动闭锁拒绝开启！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "防爆甬道门禁", themeColor: "#fb923c" },
+                        "【逃生指令驳回】搭档巴恩斯未随队抵达！走私暗号与联络频段未完成双重校验，防爆甬道气动锁拒绝解锁！"
                     );
                     this.gameEngine.renderExplorationControls();
                     if (this.gameEngine.refreshStageMap) {

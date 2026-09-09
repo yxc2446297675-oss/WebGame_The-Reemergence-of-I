@@ -1242,22 +1242,35 @@ export const LEVEL_SECTOR_SPECS = {
     },
     7: {
         title: "第七关：虚数空间 · 复数坐标轴",
-        subtitle: "西翼科研区与舰艏指挥区大连通",
-        startNodeId: "room_start",
-        exitNodeId: "room_bridge_main",
+        subtitle: "特勤套房脱离 · 携同伴突破防爆甬道",
+        startNodeId: "room_npc_colt_barnes", // 柯尔特与巴恩斯的据点 [9, 5] (起点)
+        exitNodeId: "room_armored_corridor",  // 舰尾重装甲巡检长廊 · 防爆甬道 [7, 5] (终点)
         openRoomIds: [
-            "room_start", "room_hub_n1", "room_storage_ne", "room_npc2", "room_corner_se",
-            "room_corridor_w1", "room_npc1", "room_junction_nw", "room_path_e", "room_corner_ne", "room_exit",
-            "room_specimen_vault", "room_sensor_array", "room_tactical_plan", "room_bridge_sub", "room_bridge_main",
-            "room_ai_core", "room_comm_center", "room_observation", "room_bio_corridor", "room_med_surgery",
-            "room_cryo_stasis", "room_decon_airlock", "room_npc3", "room_west_end"
+            // Y=0 舰桥中枢行 (3间)
+            "room_ai_core", "room_comm_center", "room_observation",
+            // Y=1 生化医疗与休眠行 (3间)
+            "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
+            // Y=2 起居、温室与餐厅行 (4间)
+            "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
+            // Y=3 重力井与训练馆行 (3间)
+            "room_gravity_well", "room_recreation_gym", "room_east_airlock",
+            // Y=4 机械工坊与维生辅机行 (4间)
+            "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
+            // Y=5 聚变反应堆与推进长廊行 (5间)
+            "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock", "room_npc_colt_barnes"
         ],
         npcPlacements: {
-            "room_npc1": "kaze",
-            "room_med_surgery": "shaokexin",
-            "room_npc3": "mode"
+            "room_med_surgery": "elsa",    // 艾尔莎 (纳米手术舱 · 生化检测室)
+            "room_hydro_garden": "sophia",  // 索菲亚 (立体水培温室)
+            "room_life_support": "noah"    // 诺亚 (维生环境总控机房)
         },
-        foodPlacements: ["room_storage_ne", "room_cryo_stasis"]
+        randomFoodCount: 2, // 场景随机投放两处体力箱
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [
+            // [6, 3] 军械库、Y=6 三间推进与逃生舱
+            "room_armory",
+            "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e"
+        ]
     },
     8: {
         title: "第八关：超弦引力 · 多维共振膜",

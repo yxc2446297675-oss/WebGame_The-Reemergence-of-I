@@ -1841,14 +1841,16 @@ console.log('\n35. 验证生化检测室伪人播报、舱室装饰绘制与NPC�
         throw new Error("第七关中的 room_med_surgery 必须携带 isDetectionRoom: true 标识！");
     }
 
-    // 设置队伍成员：主角(seer) + 邵可欣(villager) + 莫德(wolf) -> 共1名伪人
-    const shaokexin = app.getNpcById("shaokexin");
-    const mode = app.getNpcById("mode");
-    shaokexin.status = "active";
-    shaokexin.role = "villager";
-    mode.status = "active";
-    mode.role = "wolf";
-    app.teamMembers = [app.protagonist, shaokexin, mode];
+    // 设置队伍成员：主角(seer) + 艾尔莎(villager) + 诺亚(wolf) -> 共1名伪人
+    const p1 = app.getNpcById("elsa") || app.getNpcById("shaokexin");
+    const p2 = app.getNpcById("noah") || app.getNpcById("mode");
+    p1.status = "active";
+    p1.role = "villager";
+    p2.status = "active";
+    p2.role = "wolf";
+    app.team = [app.protagonist, p1, p2];
+    app.teamMembers = app.team;
+    app.explorationEngine.consumedEvents.add("room_med_surgery_event");
 
     // 模拟踏入生化检测室
     app.explorationEngine.handleNodeEvents(surgeryNode, false);
@@ -3007,6 +3009,190 @@ console.log('\n42. 验证第六关（量子回声 · 波函数坍缩）专属定
     console.log('   【已验证】全关卡机制隔离性检定：前五关与后续关卡 100% 独立正常运行！');
 }
 
-console.log('\n====== [TEST PASSED] 全部 42 项核心流程、前五关与第六关专属定制及全机制测试 100% 成功！ ======');
+console.log('\n43. 验证第七关（虚数空间 · 复数坐标轴）专属定制机制：黑屏文案、柯尔特视角/起点、开局自带巴恩斯、22间开放舱室、防爆甬道终点、黄色气闸阻断/契合度阻断、2处补给、巴恩斯携行撤离解锁第8关、3名NPC撤离解锁第18关...');
+{
+    // A. 验证黑屏前置文案
+    app.unlockedNpcRooms.clear();
+    app.startNewGame(7);
+    if (app.currentLevel.levelId !== 7) {
+        throw new Error('第七关初始化失败，当前 levelId: ' + app.currentLevel?.levelId);
+    }
+    const q1Texts = app.q1Texts || [];
+    if (q1Texts.length < 4 || !q1Texts[0].includes('特勤套房') || !q1Texts[2].includes('巴恩斯') || !q1Texts[3].includes('外出探查究竟')) {
+        throw new Error('第七关前置黑屏悬疑文案配置不符合预期！当前文案: ' + JSON.stringify(q1Texts));
+    }
+    console.log('   【已验证】前置黑屏悬疑递进文本正确加载并渲染！');
+
+    // B. 验证开局自动携带巴恩斯，且柯尔特不作为 NPC 出现
+    const initialAlive = app.getAliveTeamMembers();
+    if (!initialAlive.some(m => m.id === 'barnes')) {
+        throw new Error('第七关开局队伍中应当自动包含搭档巴恩斯！当前队伍: ' + JSON.stringify(initialAlive.map(m => m.id)));
+    }
+    const candidateIds7 = app.currentLevel.candidateNPCs.map(c => c.id);
+    if (candidateIds7.includes('colt') || candidateIds7.includes('lph')) {
+        throw new Error('第七关作为柯尔特主导视角，候选NPC中不应包含柯尔特或LPH！');
+    }
+    console.log('   【已验证】开局自动携带搭档巴恩斯入队，且严格排除柯尔特与LPH！');
+
+    // C. 验证地图开放区域 (22间舱室)
+    const mapConfig = app.currentLevel.map;
+    const openIds = mapConfig.masterShip.openRoomIds;
+    if (openIds.length !== 22) {
+        throw new Error(`第七关开放舱室数量应为 22 间，实际为: ${openIds.length} (${JSON.stringify(openIds)})`);
+    }
+    const expectedRooms7 = [
+        "room_ai_core", "room_comm_center", "room_observation",
+        "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
+        "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
+        "room_gravity_well", "room_recreation_gym", "room_east_airlock",
+        "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
+        "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock", "room_npc_colt_barnes"
+    ];
+    for (const rId of expectedRooms7) {
+        if (!openIds.includes(rId)) {
+            throw new Error(`第七关缺失预期开放舱室: ${rId}`);
+        }
+    }
+    console.log('   【已验证】22 间开放舱室拓扑网络完整对应战术截图！');
+
+    // D. 验证起点与终点配置
+    if (mapConfig.startNodeId !== "room_npc_colt_barnes") {
+        throw new Error(`第七关起点应为 room_npc_colt_barnes！当前: ${mapConfig.startNodeId}`);
+    }
+    if (mapConfig.exitNodeId !== "room_armored_corridor") {
+        throw new Error(`第七关终点应为 room_armored_corridor！当前: ${mapConfig.exitNodeId}`);
+    }
+    console.log('   【已验证】起点绑定柯尔特据点 [room_npc_colt_barnes]，终点绑定防爆甬道 [room_armored_corridor]！');
+
+    // E. 验证黄色阻断与宿主契合度阻断
+    const lockedRooms = mapConfig.masterShip.lockedRooms;
+    const yellowExpected7 = [
+        "room_armory", "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e"
+    ];
+    for (const yId of yellowExpected7) {
+        if (lockedRooms[yId]) {
+            if (lockedRooms[yId].lockReason !== "防爆安全气闸锁死 · 供电切断") {
+                throw new Error(`黄色阻断房间 [${yId}] 阻断理由错误: ${lockedRooms[yId].lockReason}`);
+            }
+        }
+    }
+    // 验证 X=4 西向未开放封闭房间（如 room_main_reactor, room_machine_shop）
+    if (lockedRooms["room_main_reactor"]) {
+        if (lockedRooms["room_main_reactor"].lockReason !== "宿主契合度不足，无法探索") {
+            throw new Error(`未开放区域 [room_main_reactor] 阻断理由错误: ${lockedRooms["room_main_reactor"].lockReason}`);
+        }
+    }
+    console.log('   【已验证】原图黄色锁闭区域与宿主契合度阻断语义完全符合要求！');
+
+    // F. 验证 NPC 停电站位放置：艾尔莎 [5,1], 索菲亚 [6,2], 诺亚 [6,4]
+    if (mapConfig.nodes["room_med_surgery"]?.npcId !== "elsa") {
+        throw new Error('纳米手术舱未正确绑定艾尔莎 (elsa)！');
+    }
+    if (mapConfig.nodes["room_hydro_garden"]?.npcId !== "sophia") {
+        throw new Error('立体水培温室未正确绑定索菲亚 (sophia)！');
+    }
+    if (mapConfig.nodes["room_life_support"]?.npcId !== "noah") {
+        throw new Error('维生环境总控机房未正确绑定诺亚 (noah)！');
+    }
+    console.log('   【已验证】艾尔莎、索菲亚、诺亚全部精准配置于各自停电站位！');
+
+    // G. 验证动态投放 2 处体力箱
+    const foodNodes7 = Object.values(mapConfig.nodes).filter(n => n.event && n.event.type === "food");
+    if (foodNodes7.length !== 2) {
+        throw new Error(`第七关应随机投放 2 处体力箱，实际投放: ${foodNodes7.length}`);
+    }
+    for (const fn of foodNodes7) {
+        if (fn.id === "room_npc_colt_barnes" || fn.id === "room_armored_corridor" || fn.npcId) {
+            throw new Error(`体力箱投放到了起终点或NPC舱室: ${fn.id}`);
+        }
+    }
+    console.log('   【已验证】场景在开放区域动态随机投放 2 处体力箱，且无起终点或NPC冲突！');
+
+    // H. 验证若缺少巴恩斯时踩上终点防爆甬道被严格拦截
+    app.phase = 'q3_explore';
+    const exitNode7 = mapConfig.nodes["room_armored_corridor"];
+    // 临时移出巴恩斯测试拦截
+    const barnesNpc = app.teamMembers.find(m => m.id === 'barnes') || (app.team && app.team.find(m => m.id === 'barnes'));
+    app.teamMembers = app.teamMembers.filter(m => m.id !== 'barnes');
+    if (app.team) app.team = app.team.filter(m => m.id !== 'barnes');
+    app.explorationEngine.handleNodeEvents(exitNode7, false);
+    if (app.phase === 'victory') {
+        throw new Error('失去巴恩斯时踩上防爆甬道错误触发了通关！');
+    }
+    console.log('   【已验证】队伍缺少搭档巴恩斯时踩上终点防爆甬道被严格拦截，无法通关！');
+
+    // I. 验证仅带离巴恩斯通关（达成任务一，解锁第八关，不满足任务二）
+    app.teamMembers.push(barnesNpc);
+    if (app.team) app.team.push(barnesNpc);
+    app.saveSystem.memoryStore[app.saveSystem.unlockedKey] = JSON.stringify([1, 2, 3, 4, 5, 6, 7]);
+    app.explorationEngine.handleNodeEvents(exitNode7, false);
+    if (app.phase !== 'victory') {
+        throw new Error('携行巴恩斯抵达防爆甬道未能成功触发通关！当前 phase: ' + app.phase);
+    }
+    if (!app.saveSystem.isLevelUnlocked(8)) {
+        throw new Error('达成任务一（带离巴恩斯）未能成功解锁第八关！');
+    }
+    if (app.saveSystem.isLevelUnlocked(18)) {
+        throw new Error('未带离3名NPC时错误解锁了第十八关！');
+    }
+    console.log('   【已验证】任务一顺利达成：仅带离巴恩斯脱出成功解锁【第八关】！');
+
+    // J. 验证带离三名 NPC 撤离（巴恩斯 + 救醒艾尔莎与索菲亚，同时达成任务一与任务二，解锁第八关与第十八关）
+    app.startNewGame(7);
+    app.phase = 'q3_explore';
+    app.saveSystem.memoryStore[app.saveSystem.unlockedKey] = JSON.stringify([1, 2, 3, 4, 5, 6, 7]);
+    const titleElem = document.getElementById('encounter-npc-name');
+    const btnAccept = document.getElementById('btn-encounter-accept');
+
+    // 救助艾尔莎
+    const elsaNode = app.currentLevel.map.nodes["room_med_surgery"];
+    app.explorationEngine.handleNodeEvents(elsaNode, false);
+    btnAccept.click();
+    for (let i = 0; i < 10; i++) {
+        if (!app.dialogueUI.boxElement || app.dialogueUI.boxElement.classList.contains('vn-hidden')) break;
+        vnBox.click();
+    }
+
+    // 救助索菲亚
+    const sophiaNode = app.currentLevel.map.nodes["room_hydro_garden"];
+    app.explorationEngine.handleNodeEvents(sophiaNode, false);
+    btnAccept.click();
+    for (let i = 0; i < 10; i++) {
+        if (!app.dialogueUI.boxElement || app.dialogueUI.boxElement.classList.contains('vn-hidden')) break;
+        vnBox.click();
+    }
+
+    const team7 = app.getAliveTeamMembers();
+    if (team7.length < 3 || !team7.some(m => m.id === 'barnes')) {
+        throw new Error('当前队伍应至少有3人且包含巴恩斯！实际: ' + team7.map(m => m.id).join(', '));
+    }
+
+    // 踩上终点
+    const exitNode7B = app.currentLevel.map.nodes["room_armored_corridor"];
+    app.explorationEngine.handleNodeEvents(exitNode7B, false);
+    if (app.phase !== 'victory') {
+        throw new Error('携行3人抵达防爆甬道未能触发通关！');
+    }
+    if (!app.saveSystem.isLevelUnlocked(8)) {
+        throw new Error('未能解锁第八关！');
+    }
+    if (!app.saveSystem.isLevelUnlocked(18)) {
+        throw new Error('携行3名NPC撤离未能成功解锁第十八关！');
+    }
+    console.log('   【已验证】任务二顺利达成：携行3名乘员脱出成功解锁【第十八关】（并兼顾第八关）！');
+
+    // K. 验证隔离性：前六关不受任何影响
+    app.startNewGame(6);
+    if (app.currentLevel.levelId !== 6) {
+        throw new Error('第六关启动异常！');
+    }
+    app.startNewGame(1);
+    if (app.currentLevel.levelId !== 1) {
+        throw new Error('第一关启动异常！');
+    }
+    console.log('   【已验证】全关卡机制隔离性检定：前六关与后续关卡 100% 独立正常运行！');
+}
+
+console.log('\n====== [TEST PASSED] 全部 43 项核心流程、前六关与第七关专属定制及全机制测试 100% 成功！ ======');
 
 

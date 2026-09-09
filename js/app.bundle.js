@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-09T02:53:18.738Z
+ * 自动生成于 2026-09-09T03:14:13.255Z
  */
 (function() {
     'use strict';
@@ -3102,22 +3102,35 @@ const LEVEL_SECTOR_SPECS = {
     },
     7: {
         title: "第七关：虚数空间 · 复数坐标轴",
-        subtitle: "西翼科研区与舰艏指挥区大连通",
-        startNodeId: "room_start",
-        exitNodeId: "room_bridge_main",
+        subtitle: "特勤套房脱离 · 携同伴突破防爆甬道",
+        startNodeId: "room_npc_colt_barnes", // 柯尔特与巴恩斯的据点 [9, 5] (起点)
+        exitNodeId: "room_armored_corridor",  // 舰尾重装甲巡检长廊 · 防爆甬道 [7, 5] (终点)
         openRoomIds: [
-            "room_start", "room_hub_n1", "room_storage_ne", "room_npc2", "room_corner_se",
-            "room_corridor_w1", "room_npc1", "room_junction_nw", "room_path_e", "room_corner_ne", "room_exit",
-            "room_specimen_vault", "room_sensor_array", "room_tactical_plan", "room_bridge_sub", "room_bridge_main",
-            "room_ai_core", "room_comm_center", "room_observation", "room_bio_corridor", "room_med_surgery",
-            "room_cryo_stasis", "room_decon_airlock", "room_npc3", "room_west_end"
+            // Y=0 舰桥中枢行 (3间)
+            "room_ai_core", "room_comm_center", "room_observation",
+            // Y=1 生化医疗与休眠行 (3间)
+            "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
+            // Y=2 起居、温室与餐厅行 (4间)
+            "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
+            // Y=3 重力井与训练馆行 (3间)
+            "room_gravity_well", "room_recreation_gym", "room_east_airlock",
+            // Y=4 机械工坊与维生辅机行 (4间)
+            "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
+            // Y=5 聚变反应堆与推进长廊行 (5间)
+            "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock", "room_npc_colt_barnes"
         ],
         npcPlacements: {
-            "room_npc1": "kaze",
-            "room_med_surgery": "shaokexin",
-            "room_npc3": "mode"
+            "room_med_surgery": "elsa",    // 艾尔莎 (纳米手术舱 · 生化检测室)
+            "room_hydro_garden": "sophia",  // 索菲亚 (立体水培温室)
+            "room_life_support": "noah"    // 诺亚 (维生环境总控机房)
         },
-        foodPlacements: ["room_storage_ne", "room_cryo_stasis"]
+        randomFoodCount: 2, // 场景随机投放两处体力箱
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [
+            // [6, 3] 军械库、Y=6 三间推进与逃生舱
+            "room_armory",
+            "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e"
+        ]
     },
     8: {
         title: "第八关：超弦引力 · 多维共振膜",
@@ -3646,7 +3659,7 @@ function buildSpaceshipLevelMap(levelId) {
 
 const GeneratedLevels = [];
 
-for (let lvlId = 7; lvlId <= 25; lvlId++) {
+for (let lvlId = 8; lvlId <= 25; lvlId++) {
     const spec = LEVEL_SECTOR_SPECS[lvlId] || LEVEL_SECTOR_SPECS[1];
     const lvlMap = buildSpaceshipLevelMap(lvlId);
 
@@ -4026,6 +4039,65 @@ const BaseLevels = [
                 taskObjective: "搜寻并救醒艾尔莎与诺亚，护送两人共同返回主反应堆稳固过热回路撤离",
                 title: "量子回声共振引渡",
                 toast: "成功携行艾尔莎与诺亚稳固过热反应堆！开放【第七关】与【第十八关】！"
+            }
+        ]
+    },
+    {
+        levelId: 7,
+        title: "第七关：虚数空间 · 复数坐标轴",
+        subtitle: "特勤套房脱离 · 携同伴突破防爆甬道",
+
+        blackScreenText: [
+            "趁着巡检执勤的换岗空档，你一如往常躲在特勤套房的阴影里偷闲……",
+            "毫无征兆，整片回廊的警示灯骤然熄灭，连通风阀的呼啸也化作一片死寂。",
+            "四周暗得伸手不见五指……好在搭档巴恩斯就在身旁，呼吸清晰可辨。",
+            "情况绝不简单。封闭舱门被异响震动，你们决定一同持枪外出探查究竟。",
+            "——触摸屏幕，携手突入。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: ["barnes"], // 开局自动携带搭档巴恩斯
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量配置：随机 1~2 人
+        wolfCountRange: [1, 2],
+        candidateNPCs: [
+            { id: "barnes", assignedRole: null }, // 巴恩斯 (开局随行)
+            { id: "elsa", assignedRole: null },   // 艾尔莎 (纳米手术舱 · 生化检测室)
+            { id: "sophia", assignedRole: null }, // 索菲亚 (立体水培温室)
+            { id: "noah", assignedRole: null }    // 诺亚 (维生环境总控机房)
+        ],
+
+        mapImageUrl: null,
+        // 地图拓扑网络 (基于宇宙飞船母蓝图构建，22间开放舱室)
+        map: buildSpaceshipLevelMap(7),
+
+        // 第七关解锁规则列表
+        unlockRules: [
+            {
+                id: "l7_barnes_evac",
+                condition: { 
+                    type: "require_npcs", 
+                    npcIds: ["barnes"] 
+                },
+                unlockLevelIds: [8],
+                taskName: "任务一：带离巴恩斯撤离",
+                taskObjective: "携行搭档巴恩斯共同抵达防爆甬道完成撤离",
+                title: "搭档同盟脱离",
+                toast: "成功携行巴恩斯抵达防爆甬道撤离！开放【第八关】！"
+            },
+            {
+                id: "l7_three_npcs_evac",
+                condition: { 
+                    type: "require_npc_count", 
+                    count: 3 
+                },
+                unlockLevelIds: [18],
+                taskName: "任务二：带离三名NPC撤离",
+                taskObjective: "在探索途中救助更多失散同伴，带领至少三名乘员共同撤离",
+                title: "深空多人救援",
+                toast: "成功携行三名乘员完成全队防爆撤离！开放【第十八关】！"
             }
         ]
     }
@@ -7501,12 +7573,16 @@ class ExplorationEngine {
                 this.gameEngine.getAliveTeamMembers().some(m => m.id === "noah")
             )
         );
+        const isLevel7BarnesPending = (
+            this.gameEngine?.currentLevel?.levelId === 7 &&
+            !this.gameEngine.getAliveTeamMembers().some(m => m.id === "barnes")
+        );
         // 如果终点节点包含未救助的NPC（如第五关主反应堆的伊莲），不可提前视为最终脱出阻断，必须步入触发NPC救助
         const nextRoomNpcId = (nextNode.event && nextNode.event.type === "npc" && nextNode.event.npcId) || nextNode.npcId;
         const targetNpc = nextRoomNpcId ? this.gameEngine.getNpcById(nextRoomNpcId) : null;
         const hasUnmetNpc = targetNpc && targetNpc.status === "unmet" && !this.consumedEvents.has(`${nextNode.id}_event`);
 
-        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !hasUnmetNpc;
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !hasUnmetNpc;
         if (isEffectiveExit) {
             if (!isAlreadyExplored) {
                 this.choiceCount++;
@@ -7665,6 +7741,27 @@ class ExplorationEngine {
                     this.gameEngine.dialogueUI?.say(
                         { name: "主反应堆控制中枢", themeColor: "#fb923c" },
                         "【紧急协议拦截】艾尔莎与诺亚未随队抵达！缺少生化抗核阻滞剂与超导超频阵列支持，主反应堆无法完成冷却降温，撤离通道拒绝开启！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
+            // 第七关专属通关校验：必须带离巴恩斯撤离（不这样做就算踩上终点也不触发通过）
+            if (this.gameEngine?.currentLevel?.levelId === 7) {
+                const aliveTeam = this.gameEngine.getAliveTeamMembers();
+                const hasBarnes = aliveTeam.some(m => m.id === "barnes");
+                if (!hasBarnes) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！未能保护搭档巴恩斯一同撤离！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】未带离巴恩斯撤离，防爆甬道气动闭锁拒绝开启！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "防爆甬道门禁", themeColor: "#fb923c" },
+                        "【逃生指令驳回】搭档巴恩斯未随队抵达！走私暗号与联络频段未完成双重校验，防爆甬道气动锁拒绝解锁！"
                     );
                     this.gameEngine.renderExplorationControls();
                     if (this.gameEngine.refreshStageMap) {

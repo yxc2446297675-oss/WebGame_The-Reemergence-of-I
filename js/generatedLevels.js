@@ -12,7 +12,7 @@ import { buildSpaceshipLevelMap, LEVEL_SECTOR_SPECS } from "./spaceshipMasterMap
 
 export const GeneratedLevels = [];
 
-for (let lvlId = 7; lvlId <= 25; lvlId++) {
+for (let lvlId = 8; lvlId <= 25; lvlId++) {
     const spec = LEVEL_SECTOR_SPECS[lvlId] || LEVEL_SECTOR_SPECS[1];
     const lvlMap = buildSpaceshipLevelMap(lvlId);
 
