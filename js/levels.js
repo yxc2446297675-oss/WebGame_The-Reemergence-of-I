@@ -385,11 +385,11 @@ export const BaseLevels = [
                     type: "require_npc_count", 
                     count: 3 
                 },
-                unlockLevelIds: [18],
+                unlockLevelIds: [19],
                 taskName: "任务二：带离三名NPC撤离",
                 taskObjective: "在探索途中救助更多失散同伴，带领至少三名乘员共同撤离",
                 title: "深空多人救援",
-                toast: "成功携行三名乘员完成全队防爆撤离！开放【第十八关】！"
+                toast: "成功携行三名乘员完成全队防爆撤离！开放【第十九关】！"
             }
         ]
     }

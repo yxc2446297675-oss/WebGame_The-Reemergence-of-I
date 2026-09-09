@@ -3132,12 +3132,12 @@ console.log('\n43. 验证第七关（虚数空间 · 复数坐标轴）专属定
     if (!app.saveSystem.isLevelUnlocked(8)) {
         throw new Error('达成任务一（带离巴恩斯）未能成功解锁第八关！');
     }
-    if (app.saveSystem.isLevelUnlocked(18)) {
-        throw new Error('未带离3名NPC时错误解锁了第十八关！');
+    if (app.saveSystem.isLevelUnlocked(19)) {
+        throw new Error('未带离3名NPC时错误解锁了第十九关！');
     }
     console.log('   【已验证】任务一顺利达成：仅带离巴恩斯脱出成功解锁【第八关】！');
 
-    // J. 验证带离三名 NPC 撤离（巴恩斯 + 救醒艾尔莎与索菲亚，同时达成任务一与任务二，解锁第八关与第十八关）
+    // J. 验证带离三名 NPC 撤离（巴恩斯 + 救醒艾尔莎与索菲亚，同时达成任务一与任务二，解锁第八关与第十九关）
     app.startNewGame(7);
     app.phase = 'q3_explore';
     app.saveSystem.memoryStore[app.saveSystem.unlockedKey] = JSON.stringify([1, 2, 3, 4, 5, 6, 7]);
@@ -3176,10 +3176,10 @@ console.log('\n43. 验证第七关（虚数空间 · 复数坐标轴）专属定
     if (!app.saveSystem.isLevelUnlocked(8)) {
         throw new Error('未能解锁第八关！');
     }
-    if (!app.saveSystem.isLevelUnlocked(18)) {
-        throw new Error('携行3名NPC撤离未能成功解锁第十八关！');
+    if (!app.saveSystem.isLevelUnlocked(19)) {
+        throw new Error('携行3名NPC撤离未能成功解锁第十九关！');
     }
-    console.log('   【已验证】任务二顺利达成：携行3名乘员脱出成功解锁【第十八关】（并兼顾第八关）！');
+    console.log('   【已验证】任务二顺利达成：携行3名乘员脱出成功解锁【第十九关】（并兼顾第八关）！');
 
     // K. 验证隔离性：前六关不受任何影响
     app.startNewGame(6);
