@@ -1205,23 +1205,40 @@ export const LEVEL_SECTOR_SPECS = {
     },
     6: {
         title: "第六关：量子回声 · 波函数坍缩",
-        subtitle: "中腹生活区与机库工程区贯通",
-        startNodeId: "room_start",
-        exitNodeId: "room_singularity_gate",
+        subtitle: "主反应堆危机 · 搜寻技术同伴撤离",
+        startNodeId: "room_main_reactor", // 重核聚变主反应堆 [4, 5] (起终点同室)
+        exitNodeId: "room_main_reactor",  // 重核聚变主反应堆 [4, 5] (起终点同室)
         openRoomIds: [
-            "room_start", "room_corridor_w1", "room_corner_se", "room_hub_n1", "room_storage_ne",
-            "room_npc1", "room_west_end", "room_junction_nw", "room_path_e", "room_npc2",
-            "room_living_quarter", "room_gravity_well", "room_armory", "room_machine_shop",
-            "room_hangar_deck", "room_sub_generator", "room_water_purify", "room_life_support",
-            "room_plasma_manifold", "room_main_reactor", "room_coolant_tank", "room_antimatter_tap",
-            "room_singularity_gate", "room_matter_stream"
+            // Y=0 舰桥中枢行 (4间)
+            "room_bridge_main", "room_ai_core", "room_comm_center", "room_observation",
+            // Y=1 生化医疗与休眠行 (4间)
+            "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
+            // Y=2 起居、温室与餐厅行 (5间)
+            "room_npc2", "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
+            // Y=3 重力井与训练馆行 (4间)
+            "room_corner_se", "room_gravity_well", "room_recreation_gym", "room_east_airlock",
+            // Y=4 机械工坊与维生辅机行 (5间)
+            "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
+            // Y=5 聚变反应堆与推进长廊行 (5间)
+            "room_main_reactor", "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock"
         ],
         npcPlacements: {
-            "room_npc1": "kaze",
-            "room_npc2": "shaokexin",
-            "room_armory": "mode"
+            "room_med_surgery": "elsa",    // 艾尔莎 (纳米手术舱 · 生化检测室)
+            "room_cryo_stasis": "noah",    // 诺亚 (深潜休眠矩阵舱)
+            "room_hydro_garden": "sophia"  // 索菲亚 (立体水培温室)
         },
-        foodPlacements: ["room_storage_ne", "room_water_purify"]
+        randomFoodCount: 3, // 场景随机投放三处体力箱
+        additionalConnections: [
+            ["room_corner_se", "room_machine_shop"],
+            ["room_machine_shop", "room_water_purify"]
+        ],
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [
+            // [6, 3] 军械库、Y=6 四间推进与逃生舱、[9, 5] 黑市套房
+            "room_armory",
+            "room_singularity_gate", "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e",
+            "room_npc_colt_barnes"
+        ]
     },
     7: {
         title: "第七关：虚数空间 · 复数坐标轴",

@@ -111,12 +111,19 @@ export class ExplorationEngine {
                 this.gameEngine.getAliveTeamMembers().some(m => m.id === "barnes")
             )
         );
+        const isLevel6ElsaNoahPending = (
+            this.gameEngine?.currentLevel?.levelId === 6 &&
+            !(
+                this.gameEngine.getAliveTeamMembers().some(m => m.id === "elsa") &&
+                this.gameEngine.getAliveTeamMembers().some(m => m.id === "noah")
+            )
+        );
         // 如果终点节点包含未救助的NPC（如第五关主反应堆的伊莲），不可提前视为最终脱出阻断，必须步入触发NPC救助
         const nextRoomNpcId = (nextNode.event && nextNode.event.type === "npc" && nextNode.event.npcId) || nextNode.npcId;
         const targetNpc = nextRoomNpcId ? this.gameEngine.getNpcById(nextRoomNpcId) : null;
         const hasUnmetNpc = targetNpc && targetNpc.status === "unmet" && !this.consumedEvents.has(`${nextNode.id}_event`);
 
-        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !hasUnmetNpc;
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !hasUnmetNpc;
         if (isEffectiveExit) {
             if (!isAlreadyExplored) {
                 this.choiceCount++;
@@ -253,6 +260,28 @@ export class ExplorationEngine {
                     this.gameEngine.dialogueUI?.say(
                         { name: "主反应堆控制中枢", themeColor: "#fb923c" },
                         "【引渡协议拦截】柯尔特与巴恩斯未随队抵达！缺少全舰电路跳变与走私旁路授权，重核聚变主反应堆引渡通道无法开启！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
+            // 第六关专属通关校验：必须带离艾尔莎与诺亚撤离（不这样做就算踩上终点也不触发通过）
+            if (this.gameEngine?.currentLevel?.levelId === 6) {
+                const aliveTeam = this.gameEngine.getAliveTeamMembers();
+                const hasElsa = aliveTeam.some(m => m.id === "elsa");
+                const hasNoah = aliveTeam.some(m => m.id === "noah");
+                if (!hasElsa || !hasNoah) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！尚未找到艾尔莎与诺亚！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】未带离艾尔莎与诺亚撤离，重核聚变主反应堆过热回路无法闭锁！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "主反应堆控制中枢", themeColor: "#fb923c" },
+                        "【紧急协议拦截】艾尔莎与诺亚未随队抵达！缺少生化抗核阻滞剂与超导超频阵列支持，主反应堆无法完成冷却降温，撤离通道拒绝开启！"
                     );
                     this.gameEngine.renderExplorationControls();
                     if (this.gameEngine.refreshStageMap) {

@@ -1645,9 +1645,16 @@ export class MapRenderer {
             let subTagColor = "#94a3b8";
             const showSub = boxSize >= 38;
 
+            const isStartAndExit = !!(levelMap && levelMap.startNodeId === levelMap.exitNodeId && node.id === levelMap.startNodeId);
+
             if (isCurrent) {
-                label = (node.id === "room_start" || node.isStart || (levelMap && node.id === levelMap.startNodeId)) ? "起点" : cleanName;
-                subLabel = showSub ? "当前位置" : "";
+                if (isStartAndExit) {
+                    label = "起终点";
+                    subLabel = showSub ? "当前 · 主反应堆" : "";
+                } else {
+                    label = (node.id === "room_start" || node.isStart || (levelMap && node.id === levelMap.startNodeId)) ? "起点" : cleanName;
+                    subLabel = showSub ? "当前位置" : "";
+                }
                 tagColor = "#38bdf8";
                 subTagColor = "#7dd3fc";
             } else if (isVisited || (animatedMarker && node.id === animatedMarker.toId)) {
@@ -1666,7 +1673,12 @@ export class MapRenderer {
                 const roomNpcId = (node.event && node.event.type === "npc" && node.event.npcId) || node.npcId;
                 const isExitRoom = !!(node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit"))));
 
-                if (node.id === "room_start" || node.isStart || (levelMap && node.id === levelMap.startNodeId)) {
+                if (isStartAndExit) {
+                    label = "起终点";
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 反应堆` : "主反应堆") : "起终点";
+                    tagColor = "#fb923c";
+                    subTagColor = adjacentDir ? "#f97316" : "#fdba74";
+                } else if (node.id === "room_start" || node.isStart || (levelMap && node.id === levelMap.startNodeId)) {
                     label = "起点";
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 出发点` : "出发点") : "";
                     tagColor = "#93c5fd";

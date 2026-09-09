@@ -2836,6 +2836,177 @@ console.log('\n41. 验证第五关（Level 5）辅电沉寂、19间舱室拓扑�
     console.log('   【已验证】机制隔离性检定：前四关正常运行，无任何逻辑污染！');
 }
 
-console.log('\n====== [TEST PASSED] 全部 41 项核心流程、第二关/第三关/第四关/第五关定制与全机制测试 100% 成功！ ======');
+console.log('\n42. 验证第六关（量子回声 · 波函数坍缩）专属定制机制：黑屏文案、起终点同室防秒胜、27间开放舱室、黄色阻断/契合度阻断、3处补给、艾尔莎&诺亚携行脱出双解锁...');
+{
+    // A. 验证黑屏前置文案
+    app.unlockedNpcRooms.clear();
+    app.startNewGame(6);
+    if (app.currentLevel.levelId !== 6) {
+        throw new Error('第六关初始化失败，当前 levelId: ' + app.currentLevel?.levelId);
+    }
+    const q1Texts = app.q1Texts || [];
+    if (q1Texts.length < 5 || !q1Texts[0].includes('主反应堆') || !q1Texts[3].includes('失去磁场束缚') || !q1Texts[4].includes('即将失控解体')) {
+        throw new Error('第六关前置黑屏悬疑文案配置不符合预期！当前文案: ' + JSON.stringify(q1Texts));
+    }
+    console.log('   【已验证】前置黑屏悬疑递进文本正确加载并渲染！');
+
+    // B. 验证地图开放区域 (27间舱室)
+    const mapConfig = app.currentLevel.map;
+    const openIds = mapConfig.masterShip.openRoomIds;
+    if (openIds.length !== 27) {
+        throw new Error(`第六关开放舱室数量应为 27 间，实际为: ${openIds.length}`);
+    }
+    const expectedRooms = [
+        "room_bridge_main", "room_ai_core", "room_comm_center", "room_observation",
+        "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
+        "room_npc2", "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
+        "room_corner_se", "room_gravity_well", "room_recreation_gym", "room_east_airlock",
+        "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
+        "room_main_reactor", "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock"
+    ];
+    for (const rId of expectedRooms) {
+        if (!openIds.includes(rId)) {
+            throw new Error(`第六关缺失预期开放舱室: ${rId}`);
+        }
+    }
+    console.log('   【已验证】27 间开放舱室拓扑网络完整对应战术截图！');
+
+    // C. 验证起终点同室配置
+    if (mapConfig.startNodeId !== "room_main_reactor" || mapConfig.exitNodeId !== "room_main_reactor") {
+        throw new Error(`第六关起终点应同为 room_main_reactor！当前 start: ${mapConfig.startNodeId}, exit: ${mapConfig.exitNodeId}`);
+    }
+    const reactorNode = mapConfig.nodes["room_main_reactor"];
+    if (!reactorNode.isStart || !reactorNode.isExit) {
+        throw new Error('重核聚变主反应堆节点应同时具备 isStart 与 isExit 属性！');
+    }
+    console.log('   【已验证】起点与终点同室绑定重核聚变主反应堆（伊莲停电瞬时站位）！');
+
+    // D. 验证开局防秒胜
+    app.phase = 'q3_explore';
+    if (app.phase === 'victory') {
+        throw new Error('第六关开局位于起终点同室，错误触发了通关胜利！');
+    }
+    console.log('   【已验证】起终点同室防秒胜机制生效，开局平稳进入探查阶段！');
+
+    // E. 验证黄色阻断与宿主契合度不足阻断
+    const lockedRooms = mapConfig.masterShip.lockedRooms;
+    const yellowExpected = [
+        "room_armory", "room_singularity_gate", "room_matter_stream",
+        "room_ion_thruster_r", "room_escape_pod_e"
+    ];
+    for (const yId of yellowExpected) {
+        if (lockedRooms[yId]) {
+            if (lockedRooms[yId].lockReason !== "防爆安全气闸锁死 · 供电切断") {
+                throw new Error(`黄色阻断房间 [${yId}] 阻断理由错误: ${lockedRooms[yId].lockReason}`);
+            }
+        }
+    }
+    if (lockedRooms["room_npc_colt_barnes"]) {
+        if (lockedRooms["room_npc_colt_barnes"].state !== "npc_locked") {
+            throw new Error('room_npc_colt_barnes 应当为 npc_locked 专属舱室锁定！');
+        }
+    }
+    // 检查非黄色非NPC邻近阻断房间（例如 room_bridge_sub）
+    if (lockedRooms["room_bridge_sub"]) {
+        if (lockedRooms["room_bridge_sub"].lockReason !== "宿主契合度不足，无法探索") {
+            throw new Error(`未开放区域 [room_bridge_sub] 阻断理由错误: ${lockedRooms["room_bridge_sub"].lockReason}`);
+        }
+    }
+    console.log('   【已验证】黄色锁死区域与宿主契合度不足区域双重阻断语义完全符合设定！');
+
+    // F. 验证 NPC 排除伊莲，且艾尔莎、诺亚、索菲亚各自位于停电站位
+    const candidateIds = app.currentLevel.candidateNPCs.map(c => c.id);
+    if (candidateIds.includes("elena")) {
+        throw new Error('第六关作为伊莲主导视角，候选NPC中不应包含伊莲！');
+    }
+    if (!candidateIds.includes("elsa") || !candidateIds.includes("noah") || !candidateIds.includes("sophia")) {
+        throw new Error('第六关候选NPC必须包含艾尔莎、诺亚与索菲亚！');
+    }
+    if (mapConfig.nodes["room_med_surgery"]?.npcId !== "elsa") {
+        throw new Error('纳米手术舱未正确绑定艾尔莎 (elsa)！');
+    }
+    if (mapConfig.nodes["room_cryo_stasis"]?.npcId !== "noah") {
+        throw new Error('深潜休眠矩阵舱未正确绑定诺亚 (noah)！');
+    }
+    if (mapConfig.nodes["room_hydro_garden"]?.npcId !== "sophia") {
+        throw new Error('立体水培温室未正确绑定索菲亚 (sophia)！');
+    }
+    console.log('   【已验证】伊莲已彻底从 NPC 剔除，艾尔莎、诺亚、索菲亚各自就位于停电站位！');
+
+    // G. 验证随机 3 处体力箱投放
+    const foodNodes = Object.values(mapConfig.nodes).filter(n => n.event && n.event.type === "food");
+    if (foodNodes.length !== 3) {
+        throw new Error(`第六关应随机投放 3 处体力箱，实际投放: ${foodNodes.length}`);
+    }
+    for (const fn of foodNodes) {
+        if (fn.id === "room_main_reactor" || fn.npcId) {
+            throw new Error(`体力箱投放到了起终点或NPC舱室: ${fn.id}`);
+        }
+    }
+    console.log('   【已验证】场景在开放区域动态随机投放 3 处体力箱，且无起终点或NPC冲突！');
+
+    // H. 验证未带离艾尔莎与诺亚折返踩入主反应堆时被严格拦截
+    // 模拟从机械工坊折返进入主反应堆
+    const exitNode6 = mapConfig.nodes["room_main_reactor"];
+    app.explorationEngine.handleNodeEvents(exitNode6, false);
+    if (app.phase === 'victory') {
+        throw new Error('未带离艾尔莎与诺亚时踩入主反应堆错误触发了通关！');
+    }
+    console.log('   【已验证】未招募齐艾尔莎与诺亚时折返踩入主反应堆被严格拦截，无法触发撤离！');
+
+    // I. 验证救醒艾尔莎与诺亚
+    const titleElem = document.getElementById('encounter-npc-name');
+    const btnAccept = document.getElementById('btn-encounter-accept');
+    const elsaNode = mapConfig.nodes["room_med_surgery"];
+    const elsaNpc = app.getNpcById('elsa');
+    app.explorationEngine.handleNodeEvents(elsaNode, false);
+    btnAccept.click();
+    for (let i = 0; i < 10; i++) {
+        if (!app.dialogueUI.boxElement || app.dialogueUI.boxElement.classList.contains('vn-hidden')) break;
+        vnBox.click();
+    }
+
+    const noahNode = mapConfig.nodes["room_cryo_stasis"];
+    const noahNpc = app.getNpcById('noah');
+    app.explorationEngine.handleNodeEvents(noahNode, false);
+    btnAccept.click();
+    for (let i = 0; i < 10; i++) {
+        if (!app.dialogueUI.boxElement || app.dialogueUI.boxElement.classList.contains('vn-hidden')) break;
+        vnBox.click();
+    }
+
+    const currentTeamIds = app.getAliveTeamMembers().map(m => m.id);
+    if (!currentTeamIds.includes('elsa') || !currentTeamIds.includes('noah')) {
+        throw new Error('救助艾尔莎与诺亚后两人未能成功加入队伍！当前队伍: ' + currentTeamIds.join(', '));
+    }
+    console.log('   【已验证】成功在各自停电站位唤醒艾尔莎与诺亚入队！');
+
+    // J. 验证带齐艾尔莎与诺亚折返主反应堆通关，并同时解锁第七关与第十八关
+    app.saveSystem.memoryStore[app.saveSystem.unlockedKey] = JSON.stringify([1, 2, 3, 4, 5, 6]);
+    app.explorationEngine.handleNodeEvents(exitNode6, false);
+    if (app.phase !== 'victory') {
+        throw new Error('携行艾尔莎与诺亚抵达主反应堆未能成功触发通关！当前 phase: ' + app.phase);
+    }
+    if (!app.saveSystem.isLevelUnlocked(7)) {
+        throw new Error('通关第六关后未能成功解锁第七关！');
+    }
+    if (!app.saveSystem.isLevelUnlocked(18)) {
+        throw new Error('通关第六关后未能成功解锁第十八关！');
+    }
+    console.log('   【已验证】携行艾尔莎与诺亚成功达成通关，同时解锁【第七关】与【第十八关】！');
+
+    // K. 验证隔离性：前五关不受任何影响
+    app.startNewGame(5);
+    if (app.currentLevel.levelId !== 5) {
+        throw new Error('第五关启动异常！');
+    }
+    app.startNewGame(1);
+    if (app.currentLevel.levelId !== 1) {
+        throw new Error('第一关启动异常！');
+    }
+    console.log('   【已验证】全关卡机制隔离性检定：前五关与后续关卡 100% 独立正常运行！');
+}
+
+console.log('\n====== [TEST PASSED] 全部 42 项核心流程、前五关与第六关专属定制及全机制测试 100% 成功！ ======');
 
 

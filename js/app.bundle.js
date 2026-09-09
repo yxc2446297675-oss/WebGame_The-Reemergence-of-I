@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-09T02:23:31.215Z
+ * 自动生成于 2026-09-09T02:53:18.738Z
  */
 (function() {
     'use strict';
@@ -3065,23 +3065,40 @@ const LEVEL_SECTOR_SPECS = {
     },
     6: {
         title: "第六关：量子回声 · 波函数坍缩",
-        subtitle: "中腹生活区与机库工程区贯通",
-        startNodeId: "room_start",
-        exitNodeId: "room_singularity_gate",
+        subtitle: "主反应堆危机 · 搜寻技术同伴撤离",
+        startNodeId: "room_main_reactor", // 重核聚变主反应堆 [4, 5] (起终点同室)
+        exitNodeId: "room_main_reactor",  // 重核聚变主反应堆 [4, 5] (起终点同室)
         openRoomIds: [
-            "room_start", "room_corridor_w1", "room_corner_se", "room_hub_n1", "room_storage_ne",
-            "room_npc1", "room_west_end", "room_junction_nw", "room_path_e", "room_npc2",
-            "room_living_quarter", "room_gravity_well", "room_armory", "room_machine_shop",
-            "room_hangar_deck", "room_sub_generator", "room_water_purify", "room_life_support",
-            "room_plasma_manifold", "room_main_reactor", "room_coolant_tank", "room_antimatter_tap",
-            "room_singularity_gate", "room_matter_stream"
+            // Y=0 舰桥中枢行 (4间)
+            "room_bridge_main", "room_ai_core", "room_comm_center", "room_observation",
+            // Y=1 生化医疗与休眠行 (4间)
+            "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
+            // Y=2 起居、温室与餐厅行 (5间)
+            "room_npc2", "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
+            // Y=3 重力井与训练馆行 (4间)
+            "room_corner_se", "room_gravity_well", "room_recreation_gym", "room_east_airlock",
+            // Y=4 机械工坊与维生辅机行 (5间)
+            "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
+            // Y=5 聚变反应堆与推进长廊行 (5间)
+            "room_main_reactor", "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock"
         ],
         npcPlacements: {
-            "room_npc1": "kaze",
-            "room_npc2": "shaokexin",
-            "room_armory": "mode"
+            "room_med_surgery": "elsa",    // 艾尔莎 (纳米手术舱 · 生化检测室)
+            "room_cryo_stasis": "noah",    // 诺亚 (深潜休眠矩阵舱)
+            "room_hydro_garden": "sophia"  // 索菲亚 (立体水培温室)
         },
-        foodPlacements: ["room_storage_ne", "room_water_purify"]
+        randomFoodCount: 3, // 场景随机投放三处体力箱
+        additionalConnections: [
+            ["room_corner_se", "room_machine_shop"],
+            ["room_machine_shop", "room_water_purify"]
+        ],
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [
+            // [6, 3] 军械库、Y=6 四间推进与逃生舱、[9, 5] 黑市套房
+            "room_armory",
+            "room_singularity_gate", "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e",
+            "room_npc_colt_barnes"
+        ]
     },
     7: {
         title: "第七关：虚数空间 · 复数坐标轴",
@@ -3629,7 +3646,7 @@ function buildSpaceshipLevelMap(levelId) {
 
 const GeneratedLevels = [];
 
-for (let lvlId = 6; lvlId <= 25; lvlId++) {
+for (let lvlId = 7; lvlId <= 25; lvlId++) {
     const spec = LEVEL_SECTOR_SPECS[lvlId] || LEVEL_SECTOR_SPECS[1];
     const lvlMap = buildSpaceshipLevelMap(lvlId);
 
@@ -3962,6 +3979,53 @@ const BaseLevels = [
                 taskObjective: "寻找并救醒黑市套房中的柯尔特与巴恩斯，护送两人共同抵达主反应堆引渡撤离",
                 title: "暗线同盟撤离",
                 toast: "成功携行柯尔特与巴恩斯完成全舰电路重置脱离！开放【第六关】与【第十七关】！"
+            }
+        ]
+    },
+    {
+        levelId: 6,
+        title: "第六关：量子回声 · 波函数坍缩",
+        subtitle: "主反应堆危机 · 搜寻技术同伴撤离",
+
+        blackScreenText: [
+            "幽蓝的等离子辉光在视网膜前跃动……你如往常一样管控着重核聚变主反应堆。",
+            "毫无预警，主照明骤然熄灭，四周陷入死一般的寂静……",
+            "怎么回事？所有的遥测遥控信号……全部中断了！",
+            "失去磁场束缚的超高熵等离子体正在疯狂过热膨胀……",
+            "必须立刻找到同伴取得维生与计算支持，否则……这里即将失控解体！",
+            "——触摸屏幕，紧急行动。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量配置：随机 1~2 人
+        wolfCountRange: [1, 2],
+        candidateNPCs: [
+            { id: "elsa", assignedRole: null },   // 艾尔莎 (纳米手术舱 · 生化检测室)
+            { id: "noah", assignedRole: null },   // 诺亚 (深潜休眠矩阵舱)
+            { id: "sophia", assignedRole: null }  // 索菲亚 (立体水培温室)
+        ],
+
+        mapImageUrl: null,
+        // 地图拓扑网络 (基于宇宙飞船母蓝图构建，27间开放舱室)
+        map: buildSpaceshipLevelMap(6),
+
+        // 第六关解锁规则列表
+        unlockRules: [
+            {
+                id: "l6_elsa_noah_evac",
+                condition: { 
+                    type: "require_npcs", 
+                    npcIds: ["elsa", "noah"] 
+                },
+                unlockLevelIds: [7, 18],
+                taskName: "任务一：带离艾尔莎与诺亚撤离",
+                taskObjective: "搜寻并救醒艾尔莎与诺亚，护送两人共同返回主反应堆稳固过热回路撤离",
+                title: "量子回声共振引渡",
+                toast: "成功携行艾尔莎与诺亚稳固过热反应堆！开放【第七关】与【第十八关】！"
             }
         ]
     }
@@ -6600,9 +6664,16 @@ class MapRenderer {
             let subTagColor = "#94a3b8";
             const showSub = boxSize >= 38;
 
+            const isStartAndExit = !!(levelMap && levelMap.startNodeId === levelMap.exitNodeId && node.id === levelMap.startNodeId);
+
             if (isCurrent) {
-                label = (node.id === "room_start" || node.isStart || (levelMap && node.id === levelMap.startNodeId)) ? "起点" : cleanName;
-                subLabel = showSub ? "当前位置" : "";
+                if (isStartAndExit) {
+                    label = "起终点";
+                    subLabel = showSub ? "当前 · 主反应堆" : "";
+                } else {
+                    label = (node.id === "room_start" || node.isStart || (levelMap && node.id === levelMap.startNodeId)) ? "起点" : cleanName;
+                    subLabel = showSub ? "当前位置" : "";
+                }
                 tagColor = "#38bdf8";
                 subTagColor = "#7dd3fc";
             } else if (isVisited || (animatedMarker && node.id === animatedMarker.toId)) {
@@ -6621,7 +6692,12 @@ class MapRenderer {
                 const roomNpcId = (node.event && node.event.type === "npc" && node.event.npcId) || node.npcId;
                 const isExitRoom = !!(node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit"))));
 
-                if (node.id === "room_start" || node.isStart || (levelMap && node.id === levelMap.startNodeId)) {
+                if (isStartAndExit) {
+                    label = "起终点";
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 反应堆` : "主反应堆") : "起终点";
+                    tagColor = "#fb923c";
+                    subTagColor = adjacentDir ? "#f97316" : "#fdba74";
+                } else if (node.id === "room_start" || node.isStart || (levelMap && node.id === levelMap.startNodeId)) {
                     label = "起点";
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 出发点` : "出发点") : "";
                     tagColor = "#93c5fd";
@@ -7418,12 +7494,19 @@ class ExplorationEngine {
                 this.gameEngine.getAliveTeamMembers().some(m => m.id === "barnes")
             )
         );
+        const isLevel6ElsaNoahPending = (
+            this.gameEngine?.currentLevel?.levelId === 6 &&
+            !(
+                this.gameEngine.getAliveTeamMembers().some(m => m.id === "elsa") &&
+                this.gameEngine.getAliveTeamMembers().some(m => m.id === "noah")
+            )
+        );
         // 如果终点节点包含未救助的NPC（如第五关主反应堆的伊莲），不可提前视为最终脱出阻断，必须步入触发NPC救助
         const nextRoomNpcId = (nextNode.event && nextNode.event.type === "npc" && nextNode.event.npcId) || nextNode.npcId;
         const targetNpc = nextRoomNpcId ? this.gameEngine.getNpcById(nextRoomNpcId) : null;
         const hasUnmetNpc = targetNpc && targetNpc.status === "unmet" && !this.consumedEvents.has(`${nextNode.id}_event`);
 
-        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !hasUnmetNpc;
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !hasUnmetNpc;
         if (isEffectiveExit) {
             if (!isAlreadyExplored) {
                 this.choiceCount++;
@@ -7560,6 +7643,28 @@ class ExplorationEngine {
                     this.gameEngine.dialogueUI?.say(
                         { name: "主反应堆控制中枢", themeColor: "#fb923c" },
                         "【引渡协议拦截】柯尔特与巴恩斯未随队抵达！缺少全舰电路跳变与走私旁路授权，重核聚变主反应堆引渡通道无法开启！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
+            // 第六关专属通关校验：必须带离艾尔莎与诺亚撤离（不这样做就算踩上终点也不触发通过）
+            if (this.gameEngine?.currentLevel?.levelId === 6) {
+                const aliveTeam = this.gameEngine.getAliveTeamMembers();
+                const hasElsa = aliveTeam.some(m => m.id === "elsa");
+                const hasNoah = aliveTeam.some(m => m.id === "noah");
+                if (!hasElsa || !hasNoah) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！尚未找到艾尔莎与诺亚！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】未带离艾尔莎与诺亚撤离，重核聚变主反应堆过热回路无法闭锁！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "主反应堆控制中枢", themeColor: "#fb923c" },
+                        "【紧急协议拦截】艾尔莎与诺亚未随队抵达！缺少生化抗核阻滞剂与超导超频阵列支持，主反应堆无法完成冷却降温，撤离通道拒绝开启！"
                     );
                     this.gameEngine.renderExplorationControls();
                     if (this.gameEngine.refreshStageMap) {

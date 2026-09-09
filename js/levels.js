@@ -286,6 +286,53 @@ export const BaseLevels = [
                 toast: "成功携行柯尔特与巴恩斯完成全舰电路重置脱离！开放【第六关】与【第十七关】！"
             }
         ]
+    },
+    {
+        levelId: 6,
+        title: "第六关：量子回声 · 波函数坍缩",
+        subtitle: "主反应堆危机 · 搜寻技术同伴撤离",
+
+        blackScreenText: [
+            "幽蓝的等离子辉光在视网膜前跃动……你如往常一样管控着重核聚变主反应堆。",
+            "毫无预警，主照明骤然熄灭，四周陷入死一般的寂静……",
+            "怎么回事？所有的遥测遥控信号……全部中断了！",
+            "失去磁场束缚的超高熵等离子体正在疯狂过热膨胀……",
+            "必须立刻找到同伴取得维生与计算支持，否则……这里即将失控解体！",
+            "——触摸屏幕，紧急行动。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量配置：随机 1~2 人
+        wolfCountRange: [1, 2],
+        candidateNPCs: [
+            { id: "elsa", assignedRole: null },   // 艾尔莎 (纳米手术舱 · 生化检测室)
+            { id: "noah", assignedRole: null },   // 诺亚 (深潜休眠矩阵舱)
+            { id: "sophia", assignedRole: null }  // 索菲亚 (立体水培温室)
+        ],
+
+        mapImageUrl: null,
+        // 地图拓扑网络 (基于宇宙飞船母蓝图构建，27间开放舱室)
+        map: buildSpaceshipLevelMap(6),
+
+        // 第六关解锁规则列表
+        unlockRules: [
+            {
+                id: "l6_elsa_noah_evac",
+                condition: { 
+                    type: "require_npcs", 
+                    npcIds: ["elsa", "noah"] 
+                },
+                unlockLevelIds: [7, 18],
+                taskName: "任务一：带离艾尔莎与诺亚撤离",
+                taskObjective: "搜寻并救醒艾尔莎与诺亚，护送两人共同返回主反应堆稳固过热回路撤离",
+                title: "量子回声共振引渡",
+                toast: "成功携行艾尔莎与诺亚稳固过热反应堆！开放【第七关】与【第十八关】！"
+            }
+        ]
     }
 ];
 
