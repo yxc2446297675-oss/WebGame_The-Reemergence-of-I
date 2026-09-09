@@ -2747,17 +2747,36 @@ console.log('\n41. 验证第五关（Level 5）辅电沉寂、19间舱室拓扑�
     });
     console.log('   【已验证】第五关成功随机投放 4 处体力箱，且避开了起点、终点和 NPC 舱室！');
 
-    // F. 验证未招募柯尔特与巴恩斯时踩上终点被严格拦截
+    // F. 验证未招募柯尔特与巴恩斯时踩上终点被严格拦截，且先触发伊莲救助
     app.startNewGame(5);
     app.phase = 'q3_explore';
     const exitNode5 = app.currentLevel.map.nodes['room_main_reactor'];
+    if (exitNode5.npcId !== 'elena') {
+        throw new Error('第五关终点主反应堆未正确绑定伊莲 NPC！');
+    }
+    const titleElem = document.getElementById('encounter-npc-name');
+    const btnAccept = document.getElementById('btn-encounter-accept');
+
+    // 踩入主反应堆，先弹出伊莲救助弹窗
     app.explorationEngine.handleNodeEvents(exitNode5, false);
+    if (!titleElem.textContent.includes('伊莲')) {
+        throw new Error('踏入主反应堆时未先触发伊莲昏迷救助弹窗！');
+    }
+    // 救助伊莲
+    btnAccept.click();
+    for (let i = 0; i < 10; i++) {
+        if (!app.dialogueUI.boxElement || app.dialogueUI.boxElement.classList.contains('vn-hidden')) break;
+        vnBox.click();
+    }
+    if (!app.getAliveTeamMembers().some(m => m.id === 'elena')) {
+        throw new Error('救助伊莲后伊莲未加入队伍！');
+    }
     if (app.phase === 'victory') {
         throw new Error('未带离柯尔特与巴恩斯时踩上终点错误触发了通关！');
     }
-    console.log('   【已验证】未招募柯尔特与巴恩斯时踩上终点，被严格拦截并弹出警报提示！');
+    console.log('   【已验证】主反应堆先触发伊莲救助入队，随后未招募柯尔特与巴恩斯时被严格拦截！');
 
-    // G. 验证柯尔特与巴恩斯双人招募逻辑
+    // G. 验证柯尔特与巴恩斯双人先后弹窗招募逻辑
     const coltBarnesNode = app.currentLevel.map.nodes['room_npc_colt_barnes'];
     const coltBarnesComposite = app.getNpcById('colt_barnes');
     if (!coltBarnesComposite || coltBarnesComposite.name !== '柯尔特 & 巴恩斯') {
@@ -2767,14 +2786,29 @@ console.log('\n41. 验证第五关（Level 5）辅电沉寂、19间舱室拓扑�
     app.showNpcEncounterModal(coltBarnesComposite, coltBarnesNode, (joined) => {
         if (!joined) throw new Error('招募回调失败！');
     });
-    const btnAccept = document.getElementById('btn-encounter-accept');
+    if (!titleElem.textContent.includes('柯尔特')) {
+        throw new Error('首次弹窗应为柯尔特！当前为: ' + titleElem.textContent);
+    }
     btnAccept.click();
+    for (let i = 0; i < 10; i++) {
+        if (!app.dialogueUI.boxElement || app.dialogueUI.boxElement.classList.contains('vn-hidden')) break;
+        vnBox.click();
+    }
+    // 柯尔特对白结束后，次序弹出巴恩斯弹窗
+    if (!titleElem.textContent.includes('巴恩斯')) {
+        throw new Error('第二弹窗应为巴恩斯！当前为: ' + titleElem.textContent);
+    }
+    btnAccept.click();
+    for (let i = 0; i < 10; i++) {
+        if (!app.dialogueUI.boxElement || app.dialogueUI.boxElement.classList.contains('vn-hidden')) break;
+        vnBox.click();
+    }
     const aliveTeam = app.getAliveTeamMembers();
     const teamIds = aliveTeam.map(m => m.id);
     if (!teamIds.includes('colt') || !teamIds.includes('barnes')) {
-        throw new Error('招募柯尔特与巴恩斯后两人未能同时加入队伍！当前队伍: ' + teamIds.join(', '));
+        throw new Error('招募柯尔特与巴恩斯后两人未能先后加入队伍！当前队伍: ' + teamIds.join(', '));
     }
-    console.log('   【已验证】特勤套房触发双人救助，柯尔特与巴恩斯同时加入队伍！');
+    console.log('   【已验证】特勤套房先后弹出柯尔特与巴恩斯独立弹窗，收纳对话依次播放并双双入队！');
 
     // H. 验证带齐两人踩上终点成功通关，并同时解锁第六关与第十七关
     app.saveSystem.memoryStore[app.saveSystem.unlockedKey] = JSON.stringify([1, 2, 3, 4, 5]);

@@ -111,7 +111,12 @@ export class ExplorationEngine {
                 this.gameEngine.getAliveTeamMembers().some(m => m.id === "barnes")
             )
         );
-        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending;
+        // 如果终点节点包含未救助的NPC（如第五关主反应堆的伊莲），不可提前视为最终脱出阻断，必须步入触发NPC救助
+        const nextRoomNpcId = (nextNode.event && nextNode.event.type === "npc" && nextNode.event.npcId) || nextNode.npcId;
+        const targetNpc = nextRoomNpcId ? this.gameEngine.getNpcById(nextRoomNpcId) : null;
+        const hasUnmetNpc = targetNpc && targetNpc.status === "unmet" && !this.consumedEvents.has(`${nextNode.id}_event`);
+
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !hasUnmetNpc;
         if (isEffectiveExit) {
             if (!isAlreadyExplored) {
                 this.choiceCount++;
@@ -147,6 +152,54 @@ export class ExplorationEngine {
         // 更新左上角区域名称与UI
         this.gameEngine.updateHeaderUI();
 
+        // 1. 特殊关卡机制：第二关与第三关停电始发地合闸通电特殊确认弹窗
+        // 核心要求：完成修电任务需要有特殊弹窗提示确认，若NPC在上面则先触发修电弹窗再触发NPC选择
+        const isPowerRestoreNeeded = (
+            ((this.gameEngine?.currentLevel?.levelId === 2 && !this.gameEngine.level2PowerRestored) ||
+             (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored)) &&
+            (node.id === "room_west_end" || node.isPowerOrigin)
+        );
+
+        if (isPowerRestoreNeeded) {
+            this.gameEngine.showPowerRestoreModal(node, () => {
+                if (this.gameEngine?.currentLevel?.levelId === 2) {
+                    this.gameEngine.level2PowerRestored = true;
+                } else if (this.gameEngine?.currentLevel?.levelId === 3) {
+                    this.gameEngine.level3PowerRestored = true;
+                }
+                this.gameEngine.logAction(`【电源修复】抵达全舰停电始发地 [${node.name}]！手动合上高压母线总断路器，逃生系统主电网供电成功恢复！`);
+                if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
+                    Sound.playAlarmSound();
+                }
+                if (this.gameEngine.showStageToast) {
+                    this.gameEngine.showStageToast("⚡ [停电始发地] 主电网重合闸成功！逃生舱气动锁已解除！");
+                }
+                if (this.gameEngine.renderMissionsPanel) {
+                    this.gameEngine.renderMissionsPanel();
+                }
+                // 修电确认完成后，再顺序触发该节点内的其他事件（如陆知行 NPC 救援选择）
+                this.handleNodeEvents(node, isAlreadyExplored);
+            });
+            return;
+        }
+
+        // 2. 优先检查：如果该节点包含未救助的NPC (例如第五关重核聚变主反应堆的伊莲，或特勤套房的柯尔特&巴恩斯)
+        const eventKey = `${node.id}_event`;
+        const roomNpcId = (node.event && node.event.type === "npc" && node.event.npcId) || node.npcId;
+        const targetNpc = roomNpcId ? this.gameEngine.getNpcById(roomNpcId) : null;
+        const isNpcUnmet = targetNpc && targetNpc.status === "unmet" && !this.consumedEvents.has(eventKey);
+
+        if (isNpcUnmet) {
+            this.handleNpcEvent(node, eventKey, () => {
+                this.processNodeAfterNpc(node, isAlreadyExplored, true);
+            });
+            return;
+        }
+
+        this.processNodeAfterNpc(node, isAlreadyExplored, false);
+    }
+
+    processNodeAfterNpc(node, isAlreadyExplored = false, skipNpc = false) {
         // A. 终点判定 (走到用户决定的地图终点即宣布成功)
         if (node.isExit || (node.event && node.event.type === "exit")) {
             // 第二关与第三关专属拦截：若尚未在停电始发地合闸通电，禁止撤离
@@ -206,16 +259,6 @@ export class ExplorationEngine {
                         this.gameEngine.refreshStageMap();
                     }
                     return;
-                }
-
-                // 踩上终点且已带离柯尔特与巴恩斯，若伊莲处于昏迷未遇状态，在此引渡汇合并带离
-                const elenaNpc = this.gameEngine.getNpcById("elena");
-                if (elenaNpc && elenaNpc.status === "unmet") {
-                    elenaNpc.status = "active";
-                    if (!this.gameEngine.teamMembers.some(m => m.id === "elena")) {
-                        this.gameEngine.teamMembers.push(elenaNpc);
-                    }
-                    this.gameEngine.logAction(`【引渡汇合】在终点重核聚变主反应堆找到了守候在此的 [伊莲]，救醒并带上一同撤离！`);
                 }
             }
 
@@ -286,51 +329,20 @@ export class ExplorationEngine {
             }
         }
 
-        // D. 特殊关卡机制：第二关与第三关停电始发地合闸通电特殊确认弹窗
-        // 核心要求：完成修电任务需要有特殊弹窗提示确认，若NPC在上面则先触发修电弹窗再触发NPC选择
-        const isPowerRestoreNeeded = (
-            ((this.gameEngine?.currentLevel?.levelId === 2 && !this.gameEngine.level2PowerRestored) ||
-             (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored)) &&
-            (node.id === "room_west_end" || node.isPowerOrigin)
-        );
-
-        if (isPowerRestoreNeeded) {
-            this.gameEngine.showPowerRestoreModal(node, () => {
-                if (this.gameEngine?.currentLevel?.levelId === 2) {
-                    this.gameEngine.level2PowerRestored = true;
-                } else if (this.gameEngine?.currentLevel?.levelId === 3) {
-                    this.gameEngine.level3PowerRestored = true;
-                }
-                this.gameEngine.logAction(`【电源修复】抵达全舰停电始发地 [${node.name}]！手动合上高压母线总断路器，逃生系统主电网供电成功恢复！`);
-                if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
-                    Sound.playAlarmSound();
-                }
-                if (this.gameEngine.showStageToast) {
-                    this.gameEngine.showStageToast("⚡ [停电始发地] 主电网重合闸成功！逃生舱气动锁已解除！");
-                }
-                if (this.gameEngine.renderMissionsPanel) {
-                    this.gameEngine.renderMissionsPanel();
-                }
-                // 修电确认完成后，再顺序触发该节点内的其他事件（如陆知行 NPC 救援选择）
-                this.processRoomEvents(node, isAlreadyExplored);
-            });
-            return;
-        }
-
-        this.processRoomEvents(node, isAlreadyExplored);
+        this.processRoomEvents(node, isAlreadyExplored, skipNpc);
     }
 
     /**
      * 处理房间内的常规事件（食物物资、NPC昏迷救助、傍晚检定）
      */
-    processRoomEvents(node, isAlreadyExplored) {
+    processRoomEvents(node, isAlreadyExplored, skipNpc = false) {
         // 检查该节点的事件是否已被触发过
         const eventKey = `${node.id}_event`;
         if (node.event && !this.consumedEvents.has(eventKey)) {
             if (node.event.type === "food") {
                 this.handleFoodEvent(node, eventKey);
                 return;
-            } else if (node.event.type === "npc") {
+            } else if (node.event.type === "npc" && !skipNpc) {
                 this.handleNpcEvent(node, eventKey);
                 return;
             }
@@ -403,12 +415,13 @@ export class ExplorationEngine {
     /**
      * 遇到昏迷NPC事件
      */
-    handleNpcEvent(node, eventKey) {
-        const npcId = node.event.npcId;
+    handleNpcEvent(node, eventKey, onHandledCallback = null) {
+        const npcId = (node.event && node.event.npcId) || node.npcId;
         const npc = this.gameEngine.getNpcById(npcId);
 
         if (!npc) {
-            this.checkEveningTrigger();
+            if (onHandledCallback) onHandledCallback();
+            else this.checkEveningTrigger();
             return;
         }
 
@@ -425,14 +438,16 @@ export class ExplorationEngine {
                 this.gameEngine.protagonist,
                 `这里是 [${npc.name}] 最后的停留地……现场留下了激烈的搏斗痕迹，伪人抢先一步下了杀手。`,
                 () => {
-                    this.checkEveningTrigger();
+                    if (onHandledCallback) onHandledCallback();
+                    else this.checkEveningTrigger();
                 }
             );
             return;
         }
 
         if (npc.status !== "unmet") {
-            this.checkEveningTrigger();
+            if (onHandledCallback) onHandledCallback();
+            else this.checkEveningTrigger();
             return;
         }
 
@@ -442,7 +457,11 @@ export class ExplorationEngine {
             if (joined) {
                 this.consumedEvents.add(eventKey);
             }
-            this.checkEveningTrigger();
+            if (onHandledCallback) {
+                onHandledCallback();
+            } else {
+                this.checkEveningTrigger();
+            }
         });
     }
 

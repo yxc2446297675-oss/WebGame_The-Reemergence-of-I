@@ -632,10 +632,11 @@ function drawRoomDecoration(ctx, node, x, y, boxSize, theme) {
     ctx.save();
 
     const zone = node.zone || "hub";
-    const isNpcRoom = !!(node.isNpcRoom);
+    const targetNpcId = node.npcOwnerId || node.npcId || (node.event && node.event.npcId);
+    const isNpcRoom = !!(node.isNpcRoom || targetNpcId);
 
-    // ── NPC 专属房间：对角纹理+专属色晕 ──
-    if (isNpcRoom) {
+    // ── NPC 专属房间/NPC驻留房间：对角纹理+专属色晕 ──
+    if (isNpcRoom && targetNpcId) {
         const npcColors = {
             lph: "#38bdf8",
             kaze: "#38bdf8",
@@ -654,7 +655,7 @@ function drawRoomDecoration(ctx, node, x, y, boxSize, theme) {
             barnes: "#84cc16",
             colt_barnes: "#f59e0b"
         };
-        const roomColor = npcColors[node.npcOwnerId] || "#4ade80";
+        const roomColor = npcColors[targetNpcId] || "#4ade80";
         const s = boxSize;
         const stripeW = Math.max(5, Math.floor(s * 0.12));
 
@@ -1650,27 +1651,42 @@ export class MapRenderer {
                 tagColor = "#38bdf8";
                 subTagColor = "#7dd3fc";
             } else if (isVisited || (animatedMarker && node.id === animatedMarker.toId)) {
+                const ownerNames = {
+                    lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
+                    prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
+                    vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
+                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯"
+                };
+                const ownerColors = {
+                    lph: "#38bdf8", kaze: "#60a5fa", kaluo: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc",
+                    prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
+                    vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
+                    colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b"
+                };
+                const roomNpcId = (node.event && node.event.type === "npc" && node.event.npcId) || node.npcId;
+                const isExitRoom = !!(node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit"))));
+
                 if (node.id === "room_start" || node.isStart || (levelMap && node.id === levelMap.startNodeId)) {
                     label = "起点";
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 出发点` : "出发点") : "";
                     tagColor = "#93c5fd";
                     subTagColor = adjacentDir ? "#60a5fa" : "#93c5fd";
-                } else if (node.id === "room_npc1" || (node.event && node.event.npcId === "kaze")) {
-                    label = "卡罗";
-                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 同伴` : "同伴") : "";
-                    tagColor = "#60a5fa";
-                    subTagColor = adjacentDir ? "#93c5fd" : "#bfdbfe";
-                } else if (node.id === "room_npc2" || (node.event && node.event.npcId === "shaokexin")) {
-                    label = "邵可欣";
-                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 同伴` : "同伴") : "";
-                    tagColor = "#f472b6";
-                    subTagColor = adjacentDir ? "#f472b6" : "#fbcfe8";
-                } else if (node.id === "room_npc3" || (node.event && node.event.npcId === "mode")) {
-                    label = "莫德";
-                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 同伴` : "同伴") : "";
-                    tagColor = "#c084fc";
-                    subTagColor = adjacentDir ? "#c084fc" : "#e9d5ff";
-                } else if (node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit")))) {
+                } else if (isExitRoom && roomNpcId && ownerNames[roomNpcId]) {
+                    // 同时是终点且驻留有 NPC (例如第五关重核聚变主反应堆的伊莲)
+                    const nName = ownerNames[roomNpcId];
+                    const nColor = ownerColors[roomNpcId] || "#fb923c";
+                    label = `${nName} · 终点`;
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 反应堆` : "主反应堆") : "终点";
+                    tagColor = nColor;
+                    subTagColor = adjacentDir ? "#4ade80" : "#86efac";
+                } else if (roomNpcId && ownerNames[roomNpcId]) {
+                    const nName = ownerNames[roomNpcId];
+                    const nColor = ownerColors[roomNpcId] || "#c084fc";
+                    label = nName;
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 同伴` : "黑市套房") : "同伴";
+                    tagColor = nColor;
+                    subTagColor = adjacentDir ? nColor : "#bfdbfe";
+                } else if (isExitRoom) {
                     label = "终点";
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 终点` : "终点") : "";
                     tagColor = "#4ade80";
@@ -1680,24 +1696,7 @@ export class MapRenderer {
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 补给` : "补给") : "";
                     tagColor = "#f59e0b";
                     subTagColor = adjacentDir ? "#f59e0b" : "#fde68a";
-                } else if (node.event && node.event.type === "npc") {
-                    label = cleanName || "同伴";
-                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 成员` : "同伴") : "";
-                    tagColor = "#c084fc";
-                    subTagColor = adjacentDir ? "#c084fc" : "#e9d5ff";
                 } else if (node.isNpcRoom) {
-                    const ownerNames = {
-                        lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
-                        prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
-                        vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
-                        colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特&巴恩斯"
-                    };
-                    const ownerColors = {
-                        lph: "#38bdf8", kaze: "#60a5fa", kaluo: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc",
-                        prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
-                        vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
-                        colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b"
-                    };
                     const oName = ownerNames[node.npcOwnerId] || "专属";
                     label = `${oName}舱`;
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 私人舱` : "私人舱") : "";
@@ -1711,26 +1710,52 @@ export class MapRenderer {
                 }
             } else {
                 // 未探索房间：直接显示房间名称，并清晰标注 [未探索] 或 [方向 · 未探索]
-                if (node.isNpcRoom) {
-                    const ownerNames = {
-                        lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
-                        prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
-                        vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
-                        colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特&巴恩斯"
-                    };
+                const ownerNames = {
+                    lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
+                    prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
+                    vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
+                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯"
+                };
+                const ownerColors = {
+                    lph: "#38bdf8", kaze: "#60a5fa", kaluo: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc",
+                    prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
+                    vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
+                    colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b"
+                };
+                const roomNpcId = (node.event && node.event.type === "npc" && node.event.npcId) || node.npcId;
+                const isExitRoom = !!(node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit"))));
+
+                if (isExitRoom && roomNpcId && ownerNames[roomNpcId]) {
+                    // 未探索的终点且有 NPC (例如第五关重核聚变主反应堆的伊莲)
+                    const nName = ownerNames[roomNpcId];
+                    const nColor = ownerColors[roomNpcId] || "#fb923c";
+                    label = `${nName} · 终点`;
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 反应堆` : "主反应堆") : "主反应堆";
+                    tagColor = nColor;
+                    subTagColor = adjacentDir ? "#38bdf8" : "#86efac";
+                } else if (node.isNpcRoom) {
                     const oName = ownerNames[node.npcOwnerId] || "专属";
                     label = `${oName}舱`;
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 私人舱` : "私人舱") : "";
+                    tagColor = adjacentDir ? "#ffffff" : "rgba(203, 213, 225, 0.85)";
+                    subTagColor = ownerColors[node.npcOwnerId] || "rgba(148, 163, 184, 0.65)";
+                } else if (roomNpcId && ownerNames[roomNpcId]) {
+                    const nName = ownerNames[roomNpcId];
+                    const nColor = ownerColors[roomNpcId] || "#c084fc";
+                    label = nName;
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · ${nName}` : `${nName} · 昏迷`) : nName;
+                    tagColor = adjacentDir ? "#ffffff" : "rgba(203, 213, 225, 0.85)";
+                    subTagColor = nColor;
                 } else {
                     label = cleanName;
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 未探索` : "未探索") : "";
-                }
-                if (adjacentDir) {
-                    tagColor = "#ffffff";
-                    subTagColor = "#38bdf8"; // 高亮青色，提示用户点击即可行进
-                } else {
-                    tagColor = "rgba(203, 213, 225, 0.85)";
-                    subTagColor = "rgba(148, 163, 184, 0.65)";
+                    if (adjacentDir) {
+                        tagColor = "#ffffff";
+                        subTagColor = "#38bdf8"; // 高亮青色，提示用户点击即可行进
+                    } else {
+                        tagColor = "rgba(203, 213, 225, 0.85)";
+                        subTagColor = "rgba(148, 163, 184, 0.65)";
+                    }
                 }
             }
 

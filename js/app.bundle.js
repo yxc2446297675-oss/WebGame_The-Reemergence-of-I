@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-09T01:56:12.120Z
+ * 自动生成于 2026-09-09T02:23:31.215Z
  */
 (function() {
     'use strict';
@@ -3454,6 +3454,8 @@ function buildSpaceshipLevelMap(levelId) {
         const eligibleRooms = openRoomIds.filter(id =>
             id !== spec.startNodeId &&
             id !== spec.exitNodeId &&
+            id !== "room_exit" &&
+            id !== "room_npc_kaze" &&
             !(spec.npcPlacements && spec.npcPlacements[id])
         );
         const shuffled = [...eligibleRooms];
@@ -3505,6 +3507,10 @@ function buildSpaceshipLevelMap(levelId) {
                 type: "npc",
                 npcId: spec.npcPlacements[id]
             };
+            node.npcId = spec.npcPlacements[id];
+            if (!node.npcOwnerId) {
+                node.npcOwnerId = spec.npcPlacements[id];
+            }
         }
 
         if (finalFoodRooms.has(id)) {
@@ -5581,10 +5587,11 @@ function drawRoomDecoration(ctx, node, x, y, boxSize, theme) {
     ctx.save();
 
     const zone = node.zone || "hub";
-    const isNpcRoom = !!(node.isNpcRoom);
+    const targetNpcId = node.npcOwnerId || node.npcId || (node.event && node.event.npcId);
+    const isNpcRoom = !!(node.isNpcRoom || targetNpcId);
 
-    // ── NPC 专属房间：对角纹理+专属色晕 ──
-    if (isNpcRoom) {
+    // ── NPC 专属房间/NPC驻留房间：对角纹理+专属色晕 ──
+    if (isNpcRoom && targetNpcId) {
         const npcColors = {
             lph: "#38bdf8",
             kaze: "#38bdf8",
@@ -5603,7 +5610,7 @@ function drawRoomDecoration(ctx, node, x, y, boxSize, theme) {
             barnes: "#84cc16",
             colt_barnes: "#f59e0b"
         };
-        const roomColor = npcColors[node.npcOwnerId] || "#4ade80";
+        const roomColor = npcColors[targetNpcId] || "#4ade80";
         const s = boxSize;
         const stripeW = Math.max(5, Math.floor(s * 0.12));
 
@@ -6599,27 +6606,42 @@ class MapRenderer {
                 tagColor = "#38bdf8";
                 subTagColor = "#7dd3fc";
             } else if (isVisited || (animatedMarker && node.id === animatedMarker.toId)) {
+                const ownerNames = {
+                    lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
+                    prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
+                    vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
+                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯"
+                };
+                const ownerColors = {
+                    lph: "#38bdf8", kaze: "#60a5fa", kaluo: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc",
+                    prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
+                    vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
+                    colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b"
+                };
+                const roomNpcId = (node.event && node.event.type === "npc" && node.event.npcId) || node.npcId;
+                const isExitRoom = !!(node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit"))));
+
                 if (node.id === "room_start" || node.isStart || (levelMap && node.id === levelMap.startNodeId)) {
                     label = "起点";
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 出发点` : "出发点") : "";
                     tagColor = "#93c5fd";
                     subTagColor = adjacentDir ? "#60a5fa" : "#93c5fd";
-                } else if (node.id === "room_npc1" || (node.event && node.event.npcId === "kaze")) {
-                    label = "卡罗";
-                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 同伴` : "同伴") : "";
-                    tagColor = "#60a5fa";
-                    subTagColor = adjacentDir ? "#93c5fd" : "#bfdbfe";
-                } else if (node.id === "room_npc2" || (node.event && node.event.npcId === "shaokexin")) {
-                    label = "邵可欣";
-                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 同伴` : "同伴") : "";
-                    tagColor = "#f472b6";
-                    subTagColor = adjacentDir ? "#f472b6" : "#fbcfe8";
-                } else if (node.id === "room_npc3" || (node.event && node.event.npcId === "mode")) {
-                    label = "莫德";
-                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 同伴` : "同伴") : "";
-                    tagColor = "#c084fc";
-                    subTagColor = adjacentDir ? "#c084fc" : "#e9d5ff";
-                } else if (node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit")))) {
+                } else if (isExitRoom && roomNpcId && ownerNames[roomNpcId]) {
+                    // 同时是终点且驻留有 NPC (例如第五关重核聚变主反应堆的伊莲)
+                    const nName = ownerNames[roomNpcId];
+                    const nColor = ownerColors[roomNpcId] || "#fb923c";
+                    label = `${nName} · 终点`;
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 反应堆` : "主反应堆") : "终点";
+                    tagColor = nColor;
+                    subTagColor = adjacentDir ? "#4ade80" : "#86efac";
+                } else if (roomNpcId && ownerNames[roomNpcId]) {
+                    const nName = ownerNames[roomNpcId];
+                    const nColor = ownerColors[roomNpcId] || "#c084fc";
+                    label = nName;
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 同伴` : "黑市套房") : "同伴";
+                    tagColor = nColor;
+                    subTagColor = adjacentDir ? nColor : "#bfdbfe";
+                } else if (isExitRoom) {
                     label = "终点";
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 终点` : "终点") : "";
                     tagColor = "#4ade80";
@@ -6629,24 +6651,7 @@ class MapRenderer {
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 补给` : "补给") : "";
                     tagColor = "#f59e0b";
                     subTagColor = adjacentDir ? "#f59e0b" : "#fde68a";
-                } else if (node.event && node.event.type === "npc") {
-                    label = cleanName || "同伴";
-                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 成员` : "同伴") : "";
-                    tagColor = "#c084fc";
-                    subTagColor = adjacentDir ? "#c084fc" : "#e9d5ff";
                 } else if (node.isNpcRoom) {
-                    const ownerNames = {
-                        lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
-                        prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
-                        vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
-                        colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特&巴恩斯"
-                    };
-                    const ownerColors = {
-                        lph: "#38bdf8", kaze: "#60a5fa", kaluo: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc",
-                        prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
-                        vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
-                        colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b"
-                    };
                     const oName = ownerNames[node.npcOwnerId] || "专属";
                     label = `${oName}舱`;
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 私人舱` : "私人舱") : "";
@@ -6660,26 +6665,52 @@ class MapRenderer {
                 }
             } else {
                 // 未探索房间：直接显示房间名称，并清晰标注 [未探索] 或 [方向 · 未探索]
-                if (node.isNpcRoom) {
-                    const ownerNames = {
-                        lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
-                        prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
-                        vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
-                        colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特&巴恩斯"
-                    };
+                const ownerNames = {
+                    lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
+                    prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
+                    vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
+                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯"
+                };
+                const ownerColors = {
+                    lph: "#38bdf8", kaze: "#60a5fa", kaluo: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc",
+                    prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
+                    vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
+                    colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b"
+                };
+                const roomNpcId = (node.event && node.event.type === "npc" && node.event.npcId) || node.npcId;
+                const isExitRoom = !!(node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit"))));
+
+                if (isExitRoom && roomNpcId && ownerNames[roomNpcId]) {
+                    // 未探索的终点且有 NPC (例如第五关重核聚变主反应堆的伊莲)
+                    const nName = ownerNames[roomNpcId];
+                    const nColor = ownerColors[roomNpcId] || "#fb923c";
+                    label = `${nName} · 终点`;
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 反应堆` : "主反应堆") : "主反应堆";
+                    tagColor = nColor;
+                    subTagColor = adjacentDir ? "#38bdf8" : "#86efac";
+                } else if (node.isNpcRoom) {
                     const oName = ownerNames[node.npcOwnerId] || "专属";
                     label = `${oName}舱`;
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 私人舱` : "私人舱") : "";
+                    tagColor = adjacentDir ? "#ffffff" : "rgba(203, 213, 225, 0.85)";
+                    subTagColor = ownerColors[node.npcOwnerId] || "rgba(148, 163, 184, 0.65)";
+                } else if (roomNpcId && ownerNames[roomNpcId]) {
+                    const nName = ownerNames[roomNpcId];
+                    const nColor = ownerColors[roomNpcId] || "#c084fc";
+                    label = nName;
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · ${nName}` : `${nName} · 昏迷`) : nName;
+                    tagColor = adjacentDir ? "#ffffff" : "rgba(203, 213, 225, 0.85)";
+                    subTagColor = nColor;
                 } else {
                     label = cleanName;
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 未探索` : "未探索") : "";
-                }
-                if (adjacentDir) {
-                    tagColor = "#ffffff";
-                    subTagColor = "#38bdf8"; // 高亮青色，提示用户点击即可行进
-                } else {
-                    tagColor = "rgba(203, 213, 225, 0.85)";
-                    subTagColor = "rgba(148, 163, 184, 0.65)";
+                    if (adjacentDir) {
+                        tagColor = "#ffffff";
+                        subTagColor = "#38bdf8"; // 高亮青色，提示用户点击即可行进
+                    } else {
+                        tagColor = "rgba(203, 213, 225, 0.85)";
+                        subTagColor = "rgba(148, 163, 184, 0.65)";
+                    }
                 }
             }
 
@@ -7387,7 +7418,12 @@ class ExplorationEngine {
                 this.gameEngine.getAliveTeamMembers().some(m => m.id === "barnes")
             )
         );
-        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending;
+        // 如果终点节点包含未救助的NPC（如第五关主反应堆的伊莲），不可提前视为最终脱出阻断，必须步入触发NPC救助
+        const nextRoomNpcId = (nextNode.event && nextNode.event.type === "npc" && nextNode.event.npcId) || nextNode.npcId;
+        const targetNpc = nextRoomNpcId ? this.gameEngine.getNpcById(nextRoomNpcId) : null;
+        const hasUnmetNpc = targetNpc && targetNpc.status === "unmet" && !this.consumedEvents.has(`${nextNode.id}_event`);
+
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !hasUnmetNpc;
         if (isEffectiveExit) {
             if (!isAlreadyExplored) {
                 this.choiceCount++;
@@ -7423,6 +7459,54 @@ class ExplorationEngine {
         // 更新左上角区域名称与UI
         this.gameEngine.updateHeaderUI();
 
+        // 1. 特殊关卡机制：第二关与第三关停电始发地合闸通电特殊确认弹窗
+        // 核心要求：完成修电任务需要有特殊弹窗提示确认，若NPC在上面则先触发修电弹窗再触发NPC选择
+        const isPowerRestoreNeeded = (
+            ((this.gameEngine?.currentLevel?.levelId === 2 && !this.gameEngine.level2PowerRestored) ||
+             (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored)) &&
+            (node.id === "room_west_end" || node.isPowerOrigin)
+        );
+
+        if (isPowerRestoreNeeded) {
+            this.gameEngine.showPowerRestoreModal(node, () => {
+                if (this.gameEngine?.currentLevel?.levelId === 2) {
+                    this.gameEngine.level2PowerRestored = true;
+                } else if (this.gameEngine?.currentLevel?.levelId === 3) {
+                    this.gameEngine.level3PowerRestored = true;
+                }
+                this.gameEngine.logAction(`【电源修复】抵达全舰停电始发地 [${node.name}]！手动合上高压母线总断路器，逃生系统主电网供电成功恢复！`);
+                if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
+                    Sound.playAlarmSound();
+                }
+                if (this.gameEngine.showStageToast) {
+                    this.gameEngine.showStageToast("⚡ [停电始发地] 主电网重合闸成功！逃生舱气动锁已解除！");
+                }
+                if (this.gameEngine.renderMissionsPanel) {
+                    this.gameEngine.renderMissionsPanel();
+                }
+                // 修电确认完成后，再顺序触发该节点内的其他事件（如陆知行 NPC 救援选择）
+                this.handleNodeEvents(node, isAlreadyExplored);
+            });
+            return;
+        }
+
+        // 2. 优先检查：如果该节点包含未救助的NPC (例如第五关重核聚变主反应堆的伊莲，或特勤套房的柯尔特&巴恩斯)
+        const eventKey = `${node.id}_event`;
+        const roomNpcId = (node.event && node.event.type === "npc" && node.event.npcId) || node.npcId;
+        const targetNpc = roomNpcId ? this.gameEngine.getNpcById(roomNpcId) : null;
+        const isNpcUnmet = targetNpc && targetNpc.status === "unmet" && !this.consumedEvents.has(eventKey);
+
+        if (isNpcUnmet) {
+            this.handleNpcEvent(node, eventKey, () => {
+                this.processNodeAfterNpc(node, isAlreadyExplored, true);
+            });
+            return;
+        }
+
+        this.processNodeAfterNpc(node, isAlreadyExplored, false);
+    }
+
+    processNodeAfterNpc(node, isAlreadyExplored = false, skipNpc = false) {
         // A. 终点判定 (走到用户决定的地图终点即宣布成功)
         if (node.isExit || (node.event && node.event.type === "exit")) {
             // 第二关与第三关专属拦截：若尚未在停电始发地合闸通电，禁止撤离
@@ -7482,16 +7566,6 @@ class ExplorationEngine {
                         this.gameEngine.refreshStageMap();
                     }
                     return;
-                }
-
-                // 踩上终点且已带离柯尔特与巴恩斯，若伊莲处于昏迷未遇状态，在此引渡汇合并带离
-                const elenaNpc = this.gameEngine.getNpcById("elena");
-                if (elenaNpc && elenaNpc.status === "unmet") {
-                    elenaNpc.status = "active";
-                    if (!this.gameEngine.teamMembers.some(m => m.id === "elena")) {
-                        this.gameEngine.teamMembers.push(elenaNpc);
-                    }
-                    this.gameEngine.logAction(`【引渡汇合】在终点重核聚变主反应堆找到了守候在此的 [伊莲]，救醒并带上一同撤离！`);
                 }
             }
 
@@ -7562,51 +7636,20 @@ class ExplorationEngine {
             }
         }
 
-        // D. 特殊关卡机制：第二关与第三关停电始发地合闸通电特殊确认弹窗
-        // 核心要求：完成修电任务需要有特殊弹窗提示确认，若NPC在上面则先触发修电弹窗再触发NPC选择
-        const isPowerRestoreNeeded = (
-            ((this.gameEngine?.currentLevel?.levelId === 2 && !this.gameEngine.level2PowerRestored) ||
-             (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored)) &&
-            (node.id === "room_west_end" || node.isPowerOrigin)
-        );
-
-        if (isPowerRestoreNeeded) {
-            this.gameEngine.showPowerRestoreModal(node, () => {
-                if (this.gameEngine?.currentLevel?.levelId === 2) {
-                    this.gameEngine.level2PowerRestored = true;
-                } else if (this.gameEngine?.currentLevel?.levelId === 3) {
-                    this.gameEngine.level3PowerRestored = true;
-                }
-                this.gameEngine.logAction(`【电源修复】抵达全舰停电始发地 [${node.name}]！手动合上高压母线总断路器，逃生系统主电网供电成功恢复！`);
-                if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
-                    Sound.playAlarmSound();
-                }
-                if (this.gameEngine.showStageToast) {
-                    this.gameEngine.showStageToast("⚡ [停电始发地] 主电网重合闸成功！逃生舱气动锁已解除！");
-                }
-                if (this.gameEngine.renderMissionsPanel) {
-                    this.gameEngine.renderMissionsPanel();
-                }
-                // 修电确认完成后，再顺序触发该节点内的其他事件（如陆知行 NPC 救援选择）
-                this.processRoomEvents(node, isAlreadyExplored);
-            });
-            return;
-        }
-
-        this.processRoomEvents(node, isAlreadyExplored);
+        this.processRoomEvents(node, isAlreadyExplored, skipNpc);
     }
 
     /**
      * 处理房间内的常规事件（食物物资、NPC昏迷救助、傍晚检定）
      */
-    processRoomEvents(node, isAlreadyExplored) {
+    processRoomEvents(node, isAlreadyExplored, skipNpc = false) {
         // 检查该节点的事件是否已被触发过
         const eventKey = `${node.id}_event`;
         if (node.event && !this.consumedEvents.has(eventKey)) {
             if (node.event.type === "food") {
                 this.handleFoodEvent(node, eventKey);
                 return;
-            } else if (node.event.type === "npc") {
+            } else if (node.event.type === "npc" && !skipNpc) {
                 this.handleNpcEvent(node, eventKey);
                 return;
             }
@@ -7679,12 +7722,13 @@ class ExplorationEngine {
     /**
      * 遇到昏迷NPC事件
      */
-    handleNpcEvent(node, eventKey) {
-        const npcId = node.event.npcId;
+    handleNpcEvent(node, eventKey, onHandledCallback = null) {
+        const npcId = (node.event && node.event.npcId) || node.npcId;
         const npc = this.gameEngine.getNpcById(npcId);
 
         if (!npc) {
-            this.checkEveningTrigger();
+            if (onHandledCallback) onHandledCallback();
+            else this.checkEveningTrigger();
             return;
         }
 
@@ -7701,14 +7745,16 @@ class ExplorationEngine {
                 this.gameEngine.protagonist,
                 `这里是 [${npc.name}] 最后的停留地……现场留下了激烈的搏斗痕迹，伪人抢先一步下了杀手。`,
                 () => {
-                    this.checkEveningTrigger();
+                    if (onHandledCallback) onHandledCallback();
+                    else this.checkEveningTrigger();
                 }
             );
             return;
         }
 
         if (npc.status !== "unmet") {
-            this.checkEveningTrigger();
+            if (onHandledCallback) onHandledCallback();
+            else this.checkEveningTrigger();
             return;
         }
 
@@ -7718,7 +7764,11 @@ class ExplorationEngine {
             if (joined) {
                 this.consumedEvents.add(eventKey);
             }
-            this.checkEveningTrigger();
+            if (onHandledCallback) {
+                onHandledCallback();
+            } else {
+                this.checkEveningTrigger();
+            }
         });
     }
 
@@ -9028,6 +9078,25 @@ class GameEngine {
     // 遇到昏迷NPC交互弹窗
     showNpcEncounterModal(npc, node, onHandled) {
         if (!this.modalEncounter) return;
+
+        // 特殊链式处理：柯尔特与巴恩斯双人站位
+        // 核心要求：柯尔特与巴恩斯的收纳必须先后弹窗出现，收纳对话也是依次出现，不要只有柯尔特
+        if (npc && npc.id === "colt_barnes") {
+            const colt = this.allNpcMap.get("colt");
+            const barnes = this.allNpcMap.get("barnes");
+            if (colt && colt.status === "unmet") {
+                return this.showNpcEncounterModal(colt, node, (coltJoined) => {
+                    if (coltJoined && barnes && barnes.status === "unmet") {
+                        return this.showNpcEncounterModal(barnes, node, (barnesJoined) => {
+                            if (onHandled) onHandled(barnesJoined);
+                        });
+                    }
+                    if (onHandled) onHandled(coltJoined);
+                });
+            } else if (barnes && barnes.status === "unmet") {
+                return this.showNpcEncounterModal(barnes, node, onHandled);
+            }
+        }
 
         const titleElem = document.getElementById("encounter-npc-name");
         const avatarElem = document.getElementById("encounter-npc-avatar");

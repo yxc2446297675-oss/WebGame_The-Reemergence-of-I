@@ -1594,6 +1594,8 @@ export function buildSpaceshipLevelMap(levelId) {
         const eligibleRooms = openRoomIds.filter(id =>
             id !== spec.startNodeId &&
             id !== spec.exitNodeId &&
+            id !== "room_exit" &&
+            id !== "room_npc_kaze" &&
             !(spec.npcPlacements && spec.npcPlacements[id])
         );
         const shuffled = [...eligibleRooms];
@@ -1645,6 +1647,10 @@ export function buildSpaceshipLevelMap(levelId) {
                 type: "npc",
                 npcId: spec.npcPlacements[id]
             };
+            node.npcId = spec.npcPlacements[id];
+            if (!node.npcOwnerId) {
+                node.npcOwnerId = spec.npcPlacements[id];
+            }
         }
 
         if (finalFoodRooms.has(id)) {

@@ -1173,6 +1173,25 @@ export class GameEngine {
     showNpcEncounterModal(npc, node, onHandled) {
         if (!this.modalEncounter) return;
 
+        // 特殊链式处理：柯尔特与巴恩斯双人站位
+        // 核心要求：柯尔特与巴恩斯的收纳必须先后弹窗出现，收纳对话也是依次出现，不要只有柯尔特
+        if (npc && npc.id === "colt_barnes") {
+            const colt = this.allNpcMap.get("colt");
+            const barnes = this.allNpcMap.get("barnes");
+            if (colt && colt.status === "unmet") {
+                return this.showNpcEncounterModal(colt, node, (coltJoined) => {
+                    if (coltJoined && barnes && barnes.status === "unmet") {
+                        return this.showNpcEncounterModal(barnes, node, (barnesJoined) => {
+                            if (onHandled) onHandled(barnesJoined);
+                        });
+                    }
+                    if (onHandled) onHandled(coltJoined);
+                });
+            } else if (barnes && barnes.status === "unmet") {
+                return this.showNpcEncounterModal(barnes, node, onHandled);
+            }
+        }
+
         const titleElem = document.getElementById("encounter-npc-name");
         const avatarElem = document.getElementById("encounter-npc-avatar");
         const descElem = document.getElementById("encounter-npc-dialogue");
