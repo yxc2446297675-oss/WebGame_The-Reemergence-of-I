@@ -392,6 +392,63 @@ export const BaseLevels = [
                 toast: "成功携行三名乘员完成全队防爆撤离！开放【第十九关】！"
             }
         ]
+    },
+    {
+        levelId: 8,
+        title: "第八关：虚数空间 · 偏置向量",
+        subtitle: "巴恩斯同伴视角 · 走私据点协同突围",
+        blackScreenText: [
+            "柯尔特还是那个老样子……毫无顾忌地缩在暗格里打瞌睡。",
+            "虽然在这样的鬼地方，你也没好到哪里去……",
+            "忽然……四周死一般的寂静让你瞬间警觉起来。",
+            "思索片刻后，你与他决定一同出去，去探清这诡异的沉寂究竟由何而来……",
+            "——触摸屏幕，携伴突围。"
+        ],
+        initialStamina: 100,
+        initialTeam: ["colt"], // 开局自动携带搭档柯尔特
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量配置：随机 1~2 人
+        wolfCountRange: [1, 2],
+        candidateNPCs: [
+            { id: "colt", assignedRole: null },   // 柯尔特 (开局随行)
+            { id: "elsa", assignedRole: null },   // 艾尔莎 (纳米手术舱 · 生化检测室)
+            { id: "sophia", assignedRole: null }, // 索菲亚 (立体水培温室)
+            { id: "noah", assignedRole: null }    // 诺亚 (维生环境总控机房)
+        ],
+
+        mapImageUrl: null,
+        // 地图拓扑网络 (基于宇宙飞船母蓝图构建，22间开放舱室)
+        map: buildSpaceshipLevelMap(8),
+
+        // 第八关解锁规则列表
+        unlockRules: [
+            {
+                id: "l8_colt_evac",
+                condition: { 
+                    type: "require_npcs", 
+                    npcIds: ["colt"] 
+                },
+                unlockLevelIds: [9],
+                taskName: "任务一：带离柯尔特撤离",
+                taskObjective: "携行搭档柯尔特共同抵达防爆甬道完成撤离",
+                title: "搭档同盟脱离",
+                toast: "成功携行柯尔特抵达防爆甬道撤离！开放【第九关】！"
+            },
+            {
+                id: "l8_three_npcs_evac",
+                condition: { 
+                    type: "require_npc_count", 
+                    count: 3 
+                },
+                unlockLevelIds: [20],
+                taskName: "任务二：带离三名NPC撤离",
+                taskObjective: "在探索途中救助更多失散同伴，带领至少三名乘员共同撤离",
+                title: "深空多人救援",
+                toast: "成功携行三名乘员完成全队防爆撤离！开放【第二十关】！"
+            }
+        ]
     }
 ];
 

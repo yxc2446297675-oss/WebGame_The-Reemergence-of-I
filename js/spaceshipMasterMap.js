@@ -1273,24 +1273,36 @@ export const LEVEL_SECTOR_SPECS = {
         ]
     },
     8: {
-        title: "第八关：超弦引力 · 多维共振膜",
-        subtitle: "东翼生活生态区与工程主反应堆并网",
-        startNodeId: "room_living_quarter",
-        exitNodeId: "room_singularity_gate",
+        title: "第八关：虚数空间 · 偏置向量",
+        subtitle: "走私据点协同突围 · 携同伴突破防爆甬道",
+        startNodeId: "room_npc_colt_barnes", // 巴恩斯与柯尔特的据点 [9, 5] (起点)
+        exitNodeId: "room_armored_corridor",  // 舰尾重装甲巡检长廊 · 防爆甬道 [7, 5] (终点)
         openRoomIds: [
+            // Y=0 舰桥中枢行 (3间)
+            "room_ai_core", "room_comm_center", "room_observation",
+            // Y=1 生化医疗与休眠行 (3间)
+            "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
+            // Y=2 起居、温室与餐厅行 (4间)
             "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
-            "room_gravity_well", "room_armory", "room_recreation_gym", "room_east_airlock",
+            // Y=3 重力井与训练馆行 (3间)
+            "room_gravity_well", "room_recreation_gym", "room_east_airlock",
+            // Y=4 机械工坊与维生辅机行 (4间)
             "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
-            "room_machine_shop", "room_hangar_deck", "room_coolant_tank", "room_warp_field_gen",
-            "room_armored_corridor", "room_main_reactor", "room_plasma_manifold", "room_antimatter_tap",
-            "room_singularity_gate", "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e"
+            // Y=5 聚变反应堆与推进长廊行 (5间)
+            "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock", "room_npc_colt_barnes"
         ],
         npcPlacements: {
-            "room_armory": "kaze",
-            "room_hydro_garden": "shaokexin",
-            "room_warp_field_gen": "mode"
+            "room_med_surgery": "elsa",    // 艾尔莎 (纳米手术舱 · 生化检测室)
+            "room_hydro_garden": "sophia",  // 索菲亚 (立体水培温室)
+            "room_life_support": "noah"    // 诺亚 (维生环境总控机房)
         },
-        foodPlacements: ["room_mess_hall", "room_coolant_tank"]
+        randomFoodCount: 2, // 场景随机投放两处体力箱
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [
+            // [6, 3] 军械库、Y=6 三间推进与逃生舱
+            "room_armory",
+            "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e"
+        ]
     },
     9: {
         title: "第九关：矩阵崩塌 · 拓扑断层",

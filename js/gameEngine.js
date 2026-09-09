@@ -962,6 +962,7 @@ export class GameEngine {
         this.level2PowerRestored = false;
         this.level3PowerRestored = false;
         this.level4PatrolVisited = new Set();
+        this.unlockedNpcRooms = new Set();
         this.modalEncounter?.classList.add("hidden");
         this.modalPowerRestore?.classList.add("hidden");
         this.modalInquiry?.classList.add("hidden");
