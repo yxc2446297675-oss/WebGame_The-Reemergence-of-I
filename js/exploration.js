@@ -99,13 +99,19 @@ export class ExplorationEngine {
         // 立即更新顶部状态栏（房间名、当前体力与百分比）
         this.gameEngine.updateHeaderUI();
 
-        // 3. 终点优先判定：若最后一步踏上的是有效终点，即使体力耗尽（降至0）也算通过
         const isExitNode = !!(nextNode.isExit || (nextNode.event && nextNode.event.type === "exit"));
         const isPowerRestorationPending = (
             (this.gameEngine?.currentLevel?.levelId === 2 && !this.gameEngine.level2PowerRestored) ||
             (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored)
         );
-        const isEffectiveExit = isExitNode && !isPowerRestorationPending;
+        const isLevel5ColtBarnesPending = (
+            this.gameEngine?.currentLevel?.levelId === 5 &&
+            !(
+                this.gameEngine.getAliveTeamMembers().some(m => m.id === "colt") &&
+                this.gameEngine.getAliveTeamMembers().some(m => m.id === "barnes")
+            )
+        );
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending;
         if (isEffectiveExit) {
             if (!isAlreadyExplored) {
                 this.choiceCount++;
@@ -178,6 +184,38 @@ export class ExplorationEngine {
                         this.gameEngine.refreshStageMap();
                     }
                     return;
+                }
+            }
+
+            // 第五关专属通关校验：必须带离柯尔特与巴恩斯撤离（不这样做就算踩上终点也不触发通过）
+            if (this.gameEngine?.currentLevel?.levelId === 5) {
+                const aliveTeam = this.gameEngine.getAliveTeamMembers();
+                const hasColt = aliveTeam.some(m => m.id === "colt");
+                const hasBarnes = aliveTeam.some(m => m.id === "barnes");
+                if (!hasColt || !hasBarnes) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！未能与柯尔特及巴恩斯汇合！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】未带离柯尔特与巴恩斯撤离，重核聚变主反应堆引渡通道拒绝开启！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "主反应堆控制中枢", themeColor: "#fb923c" },
+                        "【引渡协议拦截】柯尔特与巴恩斯未随队抵达！缺少全舰电路跳变与走私旁路授权，重核聚变主反应堆引渡通道无法开启！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+
+                // 踩上终点且已带离柯尔特与巴恩斯，若伊莲处于昏迷未遇状态，在此引渡汇合并带离
+                const elenaNpc = this.gameEngine.getNpcById("elena");
+                if (elenaNpc && elenaNpc.status === "unmet") {
+                    elenaNpc.status = "active";
+                    if (!this.gameEngine.teamMembers.some(m => m.id === "elena")) {
+                        this.gameEngine.teamMembers.push(elenaNpc);
+                    }
+                    this.gameEngine.logAction(`【引渡汇合】在终点重核聚变主反应堆找到了守候在此的 [伊莲]，救醒并带上一同撤离！`);
                 }
             }
 

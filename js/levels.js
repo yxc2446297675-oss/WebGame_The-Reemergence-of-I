@@ -238,6 +238,54 @@ export const BaseLevels = [
                 toast: "成功规避一切视线接触并完成全舰要害巡检！开放【第五关】与【第十六关】！"
             }
         ]
+    },
+    {
+        levelId: 5,
+        title: "第五关：辅电沉寂 · 拟态暗流",
+        subtitle: "辅电区域排查 · 搜寻同伴撤离",
+
+        // q1 黑屏中间白字（契合辅电沉寂与暗流涌动的悬疑留白）
+        blackScreenText: [
+            "……你只是碰巧来到这里。",
+            "谁知周围突然陷入死一般的寂静……连换气扇的微鸣也已止息。",
+            "好在二号辅电站就在身旁，微弱的应急指示灯尚在苟延残喘……",
+            "但仅仅是这样还远远不够——辅电站只能维系局部地区的运转。",
+            "或许……需要去一趟重核聚变主配电室？",
+            "——触摸屏幕，开始探查。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量配置：随机 1~2 人
+        wolfCountRange: [1, 2],
+        candidateNPCs: [
+            { id: "colt", assignedRole: null },   // 柯尔特 (黑市走私特勤套房)
+            { id: "barnes", assignedRole: null }, // 巴恩斯 (黑市走私特勤套房)
+            { id: "elena", assignedRole: null }   // 伊莲 (重核聚变主反应堆)
+        ],
+
+        mapImageUrl: null,
+        // 地图拓扑网络 (基于宇宙飞船母蓝图构建，19间开放舱室)
+        map: buildSpaceshipLevelMap(5),
+
+        // 第五关解锁规则列表
+        unlockRules: [
+            {
+                id: "l5_colt_barnes_evac",
+                condition: { 
+                    type: "require_npcs", 
+                    npcIds: ["colt", "barnes"] 
+                },
+                unlockLevelIds: [6, 17],
+                taskName: "任务一：带离柯尔特与巴恩斯撤离",
+                taskObjective: "寻找并救醒黑市套房中的柯尔特与巴恩斯，护送两人共同抵达主反应堆引渡撤离",
+                title: "暗线同盟撤离",
+                toast: "成功携行柯尔特与巴恩斯完成全舰电路重置脱离！开放【第六关】与【第十七关】！"
+            }
+        ]
     }
 ];
 

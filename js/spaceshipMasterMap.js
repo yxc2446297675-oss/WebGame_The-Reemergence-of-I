@@ -1178,21 +1178,30 @@ export const LEVEL_SECTOR_SPECS = {
         yellowLockRoomIds: [] // 原图黄色区域现在可以通行
     },
     5: {
-        title: "第五关：拟态深渊 · 凝视视界",
-        subtitle: "动力心脏与推进总管 · 深渊拟态苏醒",
-        startNodeId: "room_sub_coolant",
-        exitNodeId: "room_singularity_gate",
+        title: "第五关：辅电沉寂 · 拟态暗流",
+        subtitle: "辅电区域排查 · 搜寻同伴撤离",
+        startNodeId: "room_sub_generator", // 二号辅电站 [2, 4]
+        exitNodeId: "room_main_reactor",   // 重核聚变主反应堆 [4, 5]
         openRoomIds: [
-            "room_sub_coolant", "room_reactor_control", "room_plasma_manifold", "room_main_reactor",
-            "room_coolant_tank", "room_warp_field_gen", "room_ion_thruster_l", "room_antimatter_tap",
-            "room_singularity_gate", "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_w"
+            // Y=4 机库、工坊与维生辅机区 (9间)
+            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck", "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
+            // Y=5 护盾、聚变反应堆与能源干线区 (10间)
+            "room_shields_emitter", "room_sub_coolant", "room_reactor_control", "room_plasma_manifold", "room_main_reactor", "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock", "room_npc_colt_barnes"
         ],
         npcPlacements: {
-            "room_reactor_control": "kaze",
-            "room_coolant_tank": "shaokexin",
-            "room_escape_pod_w": "mode"
+            "room_npc_colt_barnes": "colt_barnes", // 柯尔特与巴恩斯双人站位 (黑市走私特勤套房)
+            "room_main_reactor": "elena"           // 伊莲 (重核聚变主反应堆)
         },
-        foodPlacements: ["room_coolant_tank", "room_matter_stream"]
+        randomFoodCount: 4, // 场景随机投放四处体力箱
+        additionalConnections: [
+            ["room_sub_generator", "room_hangar_deck"],
+            ["room_machine_shop", "room_water_purify"]
+        ],
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [
+            // Y=6 底部推进与逃生区 (7间锁死区)
+            "room_escape_pod_w", "room_ion_thruster_l", "room_antimatter_tap", "room_singularity_gate", "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e"
+        ]
     },
     6: {
         title: "第六关：量子回声 · 波函数坍缩",

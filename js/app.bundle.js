@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-08T16:12:18.201Z
+ * 自动生成于 2026-09-09T01:56:12.120Z
  */
 (function() {
     'use strict';
@@ -3038,21 +3038,30 @@ const LEVEL_SECTOR_SPECS = {
         yellowLockRoomIds: [] // 原图黄色区域现在可以通行
     },
     5: {
-        title: "第五关：拟态深渊 · 凝视视界",
-        subtitle: "动力心脏与推进总管 · 深渊拟态苏醒",
-        startNodeId: "room_sub_coolant",
-        exitNodeId: "room_singularity_gate",
+        title: "第五关：辅电沉寂 · 拟态暗流",
+        subtitle: "辅电区域排查 · 搜寻同伴撤离",
+        startNodeId: "room_sub_generator", // 二号辅电站 [2, 4]
+        exitNodeId: "room_main_reactor",   // 重核聚变主反应堆 [4, 5]
         openRoomIds: [
-            "room_sub_coolant", "room_reactor_control", "room_plasma_manifold", "room_main_reactor",
-            "room_coolant_tank", "room_warp_field_gen", "room_ion_thruster_l", "room_antimatter_tap",
-            "room_singularity_gate", "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_w"
+            // Y=4 机库、工坊与维生辅机区 (9间)
+            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck", "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
+            // Y=5 护盾、聚变反应堆与能源干线区 (10间)
+            "room_shields_emitter", "room_sub_coolant", "room_reactor_control", "room_plasma_manifold", "room_main_reactor", "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock", "room_npc_colt_barnes"
         ],
         npcPlacements: {
-            "room_reactor_control": "kaze",
-            "room_coolant_tank": "shaokexin",
-            "room_escape_pod_w": "mode"
+            "room_npc_colt_barnes": "colt_barnes", // 柯尔特与巴恩斯双人站位 (黑市走私特勤套房)
+            "room_main_reactor": "elena"           // 伊莲 (重核聚变主反应堆)
         },
-        foodPlacements: ["room_coolant_tank", "room_matter_stream"]
+        randomFoodCount: 4, // 场景随机投放四处体力箱
+        additionalConnections: [
+            ["room_sub_generator", "room_hangar_deck"],
+            ["room_machine_shop", "room_water_purify"]
+        ],
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [
+            // Y=6 底部推进与逃生区 (7间锁死区)
+            "room_escape_pod_w", "room_ion_thruster_l", "room_antimatter_tap", "room_singularity_gate", "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e"
+        ]
     },
     6: {
         title: "第六关：量子回声 · 波函数坍缩",
@@ -3614,7 +3623,7 @@ function buildSpaceshipLevelMap(levelId) {
 
 const GeneratedLevels = [];
 
-for (let lvlId = 5; lvlId <= 25; lvlId++) {
+for (let lvlId = 6; lvlId <= 25; lvlId++) {
     const spec = LEVEL_SECTOR_SPECS[lvlId] || LEVEL_SECTOR_SPECS[1];
     const lvlMap = buildSpaceshipLevelMap(lvlId);
 
@@ -3899,6 +3908,54 @@ const BaseLevels = [
                 taskObjective: "巡视三大要害中枢（停机坪甲板、重力发生核、防护中枢），并在不被任何人凝视的前提下前往动力操作台",
                 title: "静默巡检达成",
                 toast: "成功规避一切视线接触并完成全舰要害巡检！开放【第五关】与【第十六关】！"
+            }
+        ]
+    },
+    {
+        levelId: 5,
+        title: "第五关：辅电沉寂 · 拟态暗流",
+        subtitle: "辅电区域排查 · 搜寻同伴撤离",
+
+        // q1 黑屏中间白字（契合辅电沉寂与暗流涌动的悬疑留白）
+        blackScreenText: [
+            "……你只是碰巧来到这里。",
+            "谁知周围突然陷入死一般的寂静……连换气扇的微鸣也已止息。",
+            "好在二号辅电站就在身旁，微弱的应急指示灯尚在苟延残喘……",
+            "但仅仅是这样还远远不够——辅电站只能维系局部地区的运转。",
+            "或许……需要去一趟重核聚变主配电室？",
+            "——触摸屏幕，开始探查。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量配置：随机 1~2 人
+        wolfCountRange: [1, 2],
+        candidateNPCs: [
+            { id: "colt", assignedRole: null },   // 柯尔特 (黑市走私特勤套房)
+            { id: "barnes", assignedRole: null }, // 巴恩斯 (黑市走私特勤套房)
+            { id: "elena", assignedRole: null }   // 伊莲 (重核聚变主反应堆)
+        ],
+
+        mapImageUrl: null,
+        // 地图拓扑网络 (基于宇宙飞船母蓝图构建，19间开放舱室)
+        map: buildSpaceshipLevelMap(5),
+
+        // 第五关解锁规则列表
+        unlockRules: [
+            {
+                id: "l5_colt_barnes_evac",
+                condition: { 
+                    type: "require_npcs", 
+                    npcIds: ["colt", "barnes"] 
+                },
+                unlockLevelIds: [6, 17],
+                taskName: "任务一：带离柯尔特与巴恩斯撤离",
+                taskObjective: "寻找并救醒黑市套房中的柯尔特与巴恩斯，护送两人共同抵达主反应堆引渡撤离",
+                title: "暗线同盟撤离",
+                toast: "成功携行柯尔特与巴恩斯完成全舰电路重置脱离！开放【第六关】与【第十七关】！"
             }
         ]
     }
@@ -7318,13 +7375,19 @@ class ExplorationEngine {
         // 立即更新顶部状态栏（房间名、当前体力与百分比）
         this.gameEngine.updateHeaderUI();
 
-        // 3. 终点优先判定：若最后一步踏上的是有效终点，即使体力耗尽（降至0）也算通过
         const isExitNode = !!(nextNode.isExit || (nextNode.event && nextNode.event.type === "exit"));
         const isPowerRestorationPending = (
             (this.gameEngine?.currentLevel?.levelId === 2 && !this.gameEngine.level2PowerRestored) ||
             (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored)
         );
-        const isEffectiveExit = isExitNode && !isPowerRestorationPending;
+        const isLevel5ColtBarnesPending = (
+            this.gameEngine?.currentLevel?.levelId === 5 &&
+            !(
+                this.gameEngine.getAliveTeamMembers().some(m => m.id === "colt") &&
+                this.gameEngine.getAliveTeamMembers().some(m => m.id === "barnes")
+            )
+        );
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending;
         if (isEffectiveExit) {
             if (!isAlreadyExplored) {
                 this.choiceCount++;
@@ -7397,6 +7460,38 @@ class ExplorationEngine {
                         this.gameEngine.refreshStageMap();
                     }
                     return;
+                }
+            }
+
+            // 第五关专属通关校验：必须带离柯尔特与巴恩斯撤离（不这样做就算踩上终点也不触发通过）
+            if (this.gameEngine?.currentLevel?.levelId === 5) {
+                const aliveTeam = this.gameEngine.getAliveTeamMembers();
+                const hasColt = aliveTeam.some(m => m.id === "colt");
+                const hasBarnes = aliveTeam.some(m => m.id === "barnes");
+                if (!hasColt || !hasBarnes) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！未能与柯尔特及巴恩斯汇合！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】未带离柯尔特与巴恩斯撤离，重核聚变主反应堆引渡通道拒绝开启！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "主反应堆控制中枢", themeColor: "#fb923c" },
+                        "【引渡协议拦截】柯尔特与巴恩斯未随队抵达！缺少全舰电路跳变与走私旁路授权，重核聚变主反应堆引渡通道无法开启！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+
+                // 踩上终点且已带离柯尔特与巴恩斯，若伊莲处于昏迷未遇状态，在此引渡汇合并带离
+                const elenaNpc = this.gameEngine.getNpcById("elena");
+                if (elenaNpc && elenaNpc.status === "unmet") {
+                    elenaNpc.status = "active";
+                    if (!this.gameEngine.teamMembers.some(m => m.id === "elena")) {
+                        this.gameEngine.teamMembers.push(elenaNpc);
+                    }
+                    this.gameEngine.logAction(`【引渡汇合】在终点重核聚变主反应堆找到了守候在此的 [伊莲]，救醒并带上一同撤离！`);
                 }
             }
 
@@ -8963,10 +9058,28 @@ class GameEngine {
 
         btnJoin.onclick = () => {
             cleanup();
-            // 让其加入队伍
-            npc.status = "active";
-            this.teamMembers.push(npc);
-            this.logAction(`【营救同伴】救醒了 [${npc.name}]，加入队伍！当前队伍人数: ${this.getAliveTeamMembers().length} 人`);
+            if (npc.id === "colt_barnes") {
+                const colt = this.allNpcMap.get("colt");
+                const barnes = this.allNpcMap.get("barnes");
+                if (colt) {
+                    colt.status = "active";
+                    if (!this.teamMembers.some(m => m.id === "colt")) {
+                        this.teamMembers.push(colt);
+                    }
+                }
+                if (barnes) {
+                    barnes.status = "active";
+                    if (!this.teamMembers.some(m => m.id === "barnes")) {
+                        this.teamMembers.push(barnes);
+                    }
+                }
+                this.logAction(`【营救同伴】救醒了 [柯尔特 & 巴恩斯]，两人同时加入队伍！当前队伍人数: ${this.getAliveTeamMembers().length} 人`);
+            } else {
+                // 让其加入队伍
+                npc.status = "active";
+                this.teamMembers.push(npc);
+                this.logAction(`【营救同伴】救醒了 [${npc.name}]，加入队伍！当前队伍人数: ${this.getAliveTeamMembers().length} 人`);
+            }
             this.updateHeaderUI();
             this.checkAndUnlockNpcRooms();
 
@@ -10260,6 +10373,33 @@ class GameEngine {
     // 工具辅助函数
     // =========================================================================
     getNpcById(id) {
+        if (id === "colt_barnes") {
+            const colt = this.allNpcMap.get("colt");
+            const barnes = this.allNpcMap.get("barnes");
+            if (colt && barnes) {
+                return {
+                    id: "colt_barnes",
+                    name: "柯尔特 & 巴恩斯",
+                    gender: "双人",
+                    themeColor: "#f59e0b",
+                    boxBorderColor: "rgba(245, 158, 11, 0.9)",
+                    boxBgGlow: "rgba(245, 158, 11, 0.25)",
+                    folder: "Colt",
+                    avatarUrl: colt.avatarUrl,
+                    expressions: colt.expressions,
+                    status: (colt.status === "active" && barnes.status === "active") ? "active" : ((colt.status === "dead" && barnes.status === "dead") ? "dead" : "unmet"),
+                    introDialogue: [
+                        { text: "（柯尔特把玩着筹码，身旁巴恩斯正护着防爆物资箱）哟，大指挥官，可算有人摸到特勤套房了！", expression: "clam" },
+                        { text: "巴恩斯：现在的规矩是全舰死寂，要想离开这鬼地方，带上我们俩是最划算的买卖！", expression: "happy" },
+                        { text: "柯尔特：别发愣了，前面主反应堆还不知道堆着多少怪物呢，联手脱出吧！", expression: "angry" }
+                    ]
+                };
+            } else if (colt) {
+                return colt;
+            } else if (barnes) {
+                return barnes;
+            }
+        }
         return this.allNpcMap.get(id);
     }
 
@@ -10511,7 +10651,14 @@ class GameEngine {
             (this.currentLevel?.levelId === 2 && !this.level2PowerRestored) ||
             (this.currentLevel?.levelId === 3 && !this.level3PowerRestored)
         );
-        const isEffectiveExit = isExitNode && !isPowerRestorationPending;
+        const isLevel5ColtBarnesPending = (
+            this.currentLevel?.levelId === 5 &&
+            !(
+                this.getAliveTeamMembers().some(m => m.id === "colt") &&
+                this.getAliveTeamMembers().some(m => m.id === "barnes")
+            )
+        );
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending;
 
         // 若体力已耗尽且不是通往有效终点，直接触发结算倒下
         if (this.stamina <= 0 && !isEffectiveExit) {

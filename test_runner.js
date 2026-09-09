@@ -1185,6 +1185,8 @@ for (let lvlId = 1; lvlId <= 25; lvlId++) {
         ? { minRooms: 30, maxRooms: 35, tierName: '第三关专设（截图33间舱室）' }
         : (lvlId === 4)
         ? { minRooms: 50, maxRooms: 55, tierName: '第四关专设（截图53间舱室）' }
+        : (lvlId === 5)
+        ? { minRooms: 18, maxRooms: 20, tierName: '第五关专设（截图19间舱室）' }
         : tierRules.find(r => lvlId >= r.minLvl && lvlId <= r.maxLvl);
 
     if (roomCount < rule.minRooms || roomCount > rule.maxRooms) {
@@ -2663,6 +2665,143 @@ console.log('\n40. 验证第四关专属定制（黑屏白字、53舱室拓扑�
     console.log('   【已验证】机制隔离性检定：其余关卡死寂降临与黑夜流程 100% 正常运行，未受任何干扰！');
 }
 
-console.log('\n====== [TEST PASSED] 全部 40 项核心流程、第二关/第三关/第四关定制与全机制测试 100% 成功！ ======');
+// =========================================================================
+// 41. 验证第五关（Level 5）辅电沉寂、19间舱室、黑屏文案、双人搜救与双重解锁机制
+// =========================================================================
+console.log('\n41. 验证第五关（Level 5）辅电沉寂、19间舱室拓扑、双人招募与双重关卡解锁...');
+{
+    const lvl5 = allRegLevels.find(l => l.levelId === 5);
+    if (!lvl5) {
+        throw new Error('LevelRegistry 中缺少第五关 (levelId === 5)！');
+    }
+
+    // A. 验证黑屏文案与初始体力
+    if (!lvl5.blackScreenText || lvl5.blackScreenText.length < 5) {
+        throw new Error('第五关缺少 5 段递进留白前置黑屏文字！');
+    }
+    const txtJoined = lvl5.blackScreenText.join('');
+    if (!txtJoined.includes('你只是碰巧来到这里') || !txtJoined.includes('寂静') || !txtJoined.includes('辅电站') || !txtJoined.includes('配电')) {
+        throw new Error('第五关前置黑屏文字未能包含关卡核心要素！');
+    }
+    if (lvl5.initialStamina !== 100) {
+        throw new Error('第五关初始体力应当为 100！当前: ' + lvl5.initialStamina);
+    }
+    console.log('   【已验证】第五关 5 段留白递进黑屏文案与 100 点初始体力配置正确！');
+
+    // B. 验证伪人范围与候选NPC
+    if (!lvl5.wolfCountRange || lvl5.wolfCountRange[0] !== 1 || lvl5.wolfCountRange[1] !== 2) {
+        throw new Error('第五关伪人数范围应当为 [1, 2]！');
+    }
+    const candIds = lvl5.candidateNPCs.map(c => c.id);
+    if (!candIds.includes('colt') || !candIds.includes('barnes') || !candIds.includes('elena')) {
+        throw new Error('第五关候选NPC未正确配置柯尔特、巴恩斯、伊莲！');
+    }
+    if (candIds.includes('vivian')) {
+        throw new Error('第五关应去除薇薇安，但 candidateNPCs 中仍存在 vivian！');
+    }
+    console.log('   【已验证】第五关伪人范围 [1, 2]，已彻底去除薇薇安，候选NPC包含柯尔特、巴恩斯、伊莲！');
+
+    // C. 验证地图拓扑（19间开放，起点为二号辅电站，终点为重核聚变主反应堆）
+    const map5 = lvl5.map;
+    const roomKeys = Object.keys(map5.nodes);
+    if (roomKeys.length !== 19) {
+        throw new Error(`第五关开放房间数应为 19 间！实际: ${roomKeys.length}`);
+    }
+    if (map5.startNodeId !== 'room_sub_generator') {
+        throw new Error(`第五关起点应当为二号辅电站 room_sub_generator！实际: ${map5.startNodeId}`);
+    }
+    if (map5.exitNodeId !== 'room_main_reactor') {
+        throw new Error(`第五关终点应当为重核聚变主反应堆 room_main_reactor！实际: ${map5.exitNodeId}`);
+    }
+    console.log('   【已验证】第五关 19 间开放舱室，起点 room_sub_generator，终点 room_main_reactor！');
+
+    // D. 验证阻断理由：黄区（Y=6）为气闸锁死供电切断，其余为宿主契合度不足
+    const lockedRooms = map5.masterShip.lockedRooms;
+    const y6Rooms = ['room_escape_pod_w', 'room_ion_thruster_l', 'room_antimatter_tap', 'room_singularity_gate', 'room_matter_stream', 'room_ion_thruster_r', 'room_escape_pod_e'];
+    y6Rooms.forEach(id => {
+        if (lockedRooms[id]) {
+            if (lockedRooms[id].lockReason !== '防爆安全气闸锁死 · 供电切断') {
+                throw new Error(`Y=6 黄区房间 ${id} 阻断理由不正确: ${lockedRooms[id].lockReason}`);
+            }
+        }
+    });
+    // 检查其他方向阻断理由（如 Y=3 的北向阻断）
+    const otherLocked = Object.values(lockedRooms).filter(r => !y6Rooms.includes(r.id) && !r.isNpcRoom);
+    if (otherLocked.length > 0) {
+        const sample = otherLocked[0];
+        if (sample.lockReason !== '宿主契合度不足，无法探索') {
+            throw new Error(`非黄区房间 ${sample.id} 阻断理由应当为“宿主契合度不足，无法探索”！实际: ${sample.lockReason}`);
+        }
+    }
+    console.log('   【已验证】黄区气闸锁死供电切断，其余封闭区阻断理由为“宿主契合度不足，无法探索”！');
+
+    // E. 验证随机体力箱投放（4处，且不在起点、终点、NPC房间）
+    const foodNodes = Object.values(map5.nodes).filter(n => n.event && n.event.type === 'food');
+    if (foodNodes.length !== 4) {
+        throw new Error(`第五关应当随机投放 4 处体力箱！实际: ${foodNodes.length}`);
+    }
+    foodNodes.forEach(n => {
+        if (n.id === 'room_sub_generator' || n.id === 'room_main_reactor' || n.id === 'room_npc_colt_barnes') {
+            throw new Error(`食物投放到了受限房间: ${n.id}`);
+        }
+    });
+    console.log('   【已验证】第五关成功随机投放 4 处体力箱，且避开了起点、终点和 NPC 舱室！');
+
+    // F. 验证未招募柯尔特与巴恩斯时踩上终点被严格拦截
+    app.startNewGame(5);
+    app.phase = 'q3_explore';
+    const exitNode5 = app.currentLevel.map.nodes['room_main_reactor'];
+    app.explorationEngine.handleNodeEvents(exitNode5, false);
+    if (app.phase === 'victory') {
+        throw new Error('未带离柯尔特与巴恩斯时踩上终点错误触发了通关！');
+    }
+    console.log('   【已验证】未招募柯尔特与巴恩斯时踩上终点，被严格拦截并弹出警报提示！');
+
+    // G. 验证柯尔特与巴恩斯双人招募逻辑
+    const coltBarnesNode = app.currentLevel.map.nodes['room_npc_colt_barnes'];
+    const coltBarnesComposite = app.getNpcById('colt_barnes');
+    if (!coltBarnesComposite || coltBarnesComposite.name !== '柯尔特 & 巴恩斯') {
+        throw new Error('getNpcById(colt_barnes) 未返回正确的双人复合对象！');
+    }
+    // 模拟招募
+    app.showNpcEncounterModal(coltBarnesComposite, coltBarnesNode, (joined) => {
+        if (!joined) throw new Error('招募回调失败！');
+    });
+    const btnAccept = document.getElementById('btn-encounter-accept');
+    btnAccept.click();
+    const aliveTeam = app.getAliveTeamMembers();
+    const teamIds = aliveTeam.map(m => m.id);
+    if (!teamIds.includes('colt') || !teamIds.includes('barnes')) {
+        throw new Error('招募柯尔特与巴恩斯后两人未能同时加入队伍！当前队伍: ' + teamIds.join(', '));
+    }
+    console.log('   【已验证】特勤套房触发双人救助，柯尔特与巴恩斯同时加入队伍！');
+
+    // H. 验证带齐两人踩上终点成功通关，并同时解锁第六关与第十七关
+    app.saveSystem.memoryStore[app.saveSystem.unlockedKey] = JSON.stringify([1, 2, 3, 4, 5]);
+    app.explorationEngine.handleNodeEvents(exitNode5, false);
+    if (app.phase !== 'victory') {
+        throw new Error('携行柯尔特与巴恩斯抵达终点未能触发通关！当前 phase: ' + app.phase);
+    }
+    if (!app.saveSystem.isLevelUnlocked(6)) {
+        throw new Error('通关第五关后未能成功解锁第六关！');
+    }
+    if (!app.saveSystem.isLevelUnlocked(17)) {
+        throw new Error('通关第五关后未能成功解锁第十七关！');
+    }
+    console.log('   【已验证】带离柯尔特与巴恩斯顺利通关，同时成功解锁【第六关】与【第十七关】！');
+
+    // I. 验证隔离性：前四关与其他关卡正常运行
+    app.startNewGame(4);
+    if (app.currentLevel.levelId !== 4) {
+        throw new Error('第四关启动异常！');
+    }
+    app.startNewGame(1);
+    if (app.currentLevel.levelId !== 1) {
+        throw new Error('第一关启动异常！');
+    }
+    console.log('   【已验证】机制隔离性检定：前四关正常运行，无任何逻辑污染！');
+}
+
+console.log('\n====== [TEST PASSED] 全部 41 项核心流程、第二关/第三关/第四关/第五关定制与全机制测试 100% 成功！ ======');
 
 

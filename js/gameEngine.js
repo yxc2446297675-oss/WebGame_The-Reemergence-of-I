@@ -1202,10 +1202,28 @@ export class GameEngine {
 
         btnJoin.onclick = () => {
             cleanup();
-            // 让其加入队伍
-            npc.status = "active";
-            this.teamMembers.push(npc);
-            this.logAction(`【营救同伴】救醒了 [${npc.name}]，加入队伍！当前队伍人数: ${this.getAliveTeamMembers().length} 人`);
+            if (npc.id === "colt_barnes") {
+                const colt = this.allNpcMap.get("colt");
+                const barnes = this.allNpcMap.get("barnes");
+                if (colt) {
+                    colt.status = "active";
+                    if (!this.teamMembers.some(m => m.id === "colt")) {
+                        this.teamMembers.push(colt);
+                    }
+                }
+                if (barnes) {
+                    barnes.status = "active";
+                    if (!this.teamMembers.some(m => m.id === "barnes")) {
+                        this.teamMembers.push(barnes);
+                    }
+                }
+                this.logAction(`【营救同伴】救醒了 [柯尔特 & 巴恩斯]，两人同时加入队伍！当前队伍人数: ${this.getAliveTeamMembers().length} 人`);
+            } else {
+                // 让其加入队伍
+                npc.status = "active";
+                this.teamMembers.push(npc);
+                this.logAction(`【营救同伴】救醒了 [${npc.name}]，加入队伍！当前队伍人数: ${this.getAliveTeamMembers().length} 人`);
+            }
             this.updateHeaderUI();
             this.checkAndUnlockNpcRooms();
 
@@ -2499,6 +2517,33 @@ export class GameEngine {
     // 工具辅助函数
     // =========================================================================
     getNpcById(id) {
+        if (id === "colt_barnes") {
+            const colt = this.allNpcMap.get("colt");
+            const barnes = this.allNpcMap.get("barnes");
+            if (colt && barnes) {
+                return {
+                    id: "colt_barnes",
+                    name: "柯尔特 & 巴恩斯",
+                    gender: "双人",
+                    themeColor: "#f59e0b",
+                    boxBorderColor: "rgba(245, 158, 11, 0.9)",
+                    boxBgGlow: "rgba(245, 158, 11, 0.25)",
+                    folder: "Colt",
+                    avatarUrl: colt.avatarUrl,
+                    expressions: colt.expressions,
+                    status: (colt.status === "active" && barnes.status === "active") ? "active" : ((colt.status === "dead" && barnes.status === "dead") ? "dead" : "unmet"),
+                    introDialogue: [
+                        { text: "（柯尔特把玩着筹码，身旁巴恩斯正护着防爆物资箱）哟，大指挥官，可算有人摸到特勤套房了！", expression: "clam" },
+                        { text: "巴恩斯：现在的规矩是全舰死寂，要想离开这鬼地方，带上我们俩是最划算的买卖！", expression: "happy" },
+                        { text: "柯尔特：别发愣了，前面主反应堆还不知道堆着多少怪物呢，联手脱出吧！", expression: "angry" }
+                    ]
+                };
+            } else if (colt) {
+                return colt;
+            } else if (barnes) {
+                return barnes;
+            }
+        }
         return this.allNpcMap.get(id);
     }
 
@@ -2750,7 +2795,14 @@ export class GameEngine {
             (this.currentLevel?.levelId === 2 && !this.level2PowerRestored) ||
             (this.currentLevel?.levelId === 3 && !this.level3PowerRestored)
         );
-        const isEffectiveExit = isExitNode && !isPowerRestorationPending;
+        const isLevel5ColtBarnesPending = (
+            this.currentLevel?.levelId === 5 &&
+            !(
+                this.getAliveTeamMembers().some(m => m.id === "colt") &&
+                this.getAliveTeamMembers().some(m => m.id === "barnes")
+            )
+        );
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending;
 
         // 若体力已耗尽且不是通往有效终点，直接触发结算倒下
         if (this.stamina <= 0 && !isEffectiveExit) {
