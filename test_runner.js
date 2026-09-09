@@ -1187,6 +1187,8 @@ for (let lvlId = 1; lvlId <= 25; lvlId++) {
         ? { minRooms: 50, maxRooms: 55, tierName: '第四关专设（截图53间舱室）' }
         : (lvlId === 5)
         ? { minRooms: 18, maxRooms: 20, tierName: '第五关专设（截图19间舱室）' }
+        : (lvlId === 9)
+        ? { minRooms: 34, maxRooms: 36, tierName: '第九关专设（截图35间舱室）' }
         : tierRules.find(r => lvlId >= r.minLvl && lvlId <= r.maxLvl);
 
     if (roomCount < rule.minRooms || roomCount > rule.maxRooms) {
@@ -3380,7 +3382,192 @@ console.log('\n44. 验证第八关（虚数空间 · 偏置向量）专属定制
     console.log('   【已验证】全关卡机制隔离性检定：前七关与后续关卡 100% 独立正常运行！');
 }
 
-console.log('\n====== [TEST PASSED] 全部 44 项核心流程、前七关与第八关专属定制及全机制测试 100% 成功！ ======');
+// ==========================================
+// TEST 45: 第九关全流程、前置黑屏文案、规避NPC、按序打卡、终点撤离双解锁及隔离性全面校验
+// ==========================================
+console.log('\n[TEST 45] 开始执行第九关专属定制、潜行规避、要害核查与双关卡解锁全面验证...');
+{
+    const lvl9 = LevelRegistry.find(l => l.levelId === 9);
+    if (!lvl9) {
+        throw new Error('未在 LevelRegistry 中找到第九关配置！');
+    }
+
+    // A. 前置黑屏文案检定 (悬疑、留白、史诗感)
+    if (!lvl9.blackScreenText || lvl9.blackScreenText.length < 4) {
+        throw new Error('第九关前置黑屏文案不完整！');
+    }
+    console.log('   第九关前置黑屏文案预览:');
+    lvl9.blackScreenText.forEach((t, i) => console.log(`     ${i + 1}. ${t}`));
+
+    // B. 关卡参数校验：伪人数量为0，体力箱3处，初始单人潜行无随行
+    if (lvl9.wolfCountRange[0] !== 0 || lvl9.wolfCountRange[1] !== 0) {
+        throw new Error('第九关伪人数应为严格 0！');
+    }
+    if (!lvl9.initialTeam || lvl9.initialTeam.length !== 0) {
+        throw new Error('第九关初始队伍应为空（L.P.H 单人潜行）！');
+    }
+    console.log('   【已验证】第九关伪人数为 0，主角 L.P.H 单人潜行！');
+
+    // C. 启动第九关并验证起终点
+    app.startNewGame(9);
+    if (app.currentLevel.levelId !== 9) {
+        throw new Error('第九关启动失败！');
+    }
+    const mapConfig = app.currentLevel.map;
+    if (mapConfig.startNodeId !== "room_sensor_array") {
+        throw new Error(`第九关起点应为深空雷达穹顶 [room_sensor_array]，实际: ${mapConfig.startNodeId}`);
+    }
+    if (mapConfig.exitNodeId !== "room_med_surgery") {
+        throw new Error(`第九关终点应为全自动急救台 [room_med_surgery]，实际: ${mapConfig.exitNodeId}`);
+    }
+    console.log('   【已验证】第九关起点为深空雷达穹顶 [1, 0]，终点为全自动急救台 [5, 1]！');
+
+    // D. 开放舱室数量与连通性检定 (母舰开放 35 间，连同主角专属舱室共 36 间)
+    if (lvl9.map.masterShip.openRoomIds.length !== 35) {
+        throw new Error(`第九关母舰开放舱室基础配置应恰好为 35 间，实际为: ${lvl9.map.masterShip.openRoomIds.length}`);
+    }
+    const openNodes = Object.keys(mapConfig.nodes);
+    if (openNodes.length !== 36) {
+        throw new Error(`第九关连同主角私人舱开放舱室数量应恰好为 36 间，实际为: ${openNodes.length}`);
+    }
+    if (!openNodes.includes("room_decon_airlock")) {
+        throw new Error('第九关应开放前沿技术科室 [room_decon_airlock]！');
+    }
+    // 验证无孤岛
+    const visitedBfs = new Set(["room_sensor_array"]);
+    const queueBfs = ["room_sensor_array"];
+    while (queueBfs.length > 0) {
+        const currId = queueBfs.shift();
+        const node = mapConfig.nodes[currId];
+        for (const nextId of Object.values(node.connections)) {
+            if (mapConfig.nodes[nextId] && !visitedBfs.has(nextId)) {
+                visitedBfs.add(nextId);
+                queueBfs.push(nextId);
+            }
+        }
+    }
+    if (visitedBfs.size !== 36) {
+        throw new Error(`第九关存在未连通孤岛！连通数: ${visitedBfs.size}/36`);
+    }
+    console.log('   【已验证】第九关 35 间开放母舰舱室 + 主角专属舱全网 100% 连通无孤岛！');
+
+    // E. 验证未开放区域阻断理由为“宿主契合度不足，无法探索”
+    const lockedRooms = mapConfig.masterShip.lockedRooms;
+    for (const [rId, room] of Object.entries(lockedRooms)) {
+        if (!room.isNpcRoom && room.lockReason !== "宿主契合度不足，无法探索") {
+            throw new Error(`未开放舱室 [${rId}] 阻断理由应为“宿主契合度不足，无法探索”，实际: ${room.lockReason}`);
+        }
+    }
+    console.log('   【已验证】未开放区域阻断理由统一呈现为“宿主契合度不足，无法探索”！');
+
+    // F. 验证 5 位 NPC 停电站位
+    const expectedNpcPositions = {
+        "room_npc3": "mode",
+        "room_npc2": "shaokexin",
+        "room_hydro_garden": "sophia",
+        "room_sub_generator": "vivian",
+        "room_life_support": "noah"
+    };
+    for (const [rId, npcId] of Object.entries(expectedNpcPositions)) {
+        if (mapConfig.nodes[rId].npcId !== npcId) {
+            throw new Error(`舱室 [${rId}] 放置的 NPC 应为 [${npcId}]，实际为: ${mapConfig.nodes[rId].npcId}`);
+        }
+    }
+    console.log('   【已验证】莫德、邵可欣、索菲亚、薇薇安、诺亚 5 位 NPC 精确就位于各自停电站位！');
+
+    // G. 验证体力箱动态投放（3 处且无冲突）
+    const foodNodes = Object.values(mapConfig.nodes).filter(n => n.event && n.event.type === "food");
+    if (foodNodes.length !== 3) {
+        throw new Error(`第九关应随机投放 3 处体力箱，实际: ${foodNodes.length}`);
+    }
+    for (const fn of foodNodes) {
+        if (fn.id === "room_sensor_array" || fn.id === "room_med_surgery" || fn.npcId) {
+            throw new Error(`体力箱投放到了起终点或NPC舱室: ${fn.id}`);
+        }
+    }
+    console.log('   【已验证】第九关成功投放 3 处体力箱，且无起终点或NPC冲突！');
+
+    // H. 验证触碰 NPC 即刻判定失败（你被他人所凝视，复现失败）
+    app.phase = 'q3_explore';
+    const npcNode = mapConfig.nodes["room_npc3"];
+    let gameOverTriggered = false;
+    let gameOverReason = "";
+    const origTriggerGameOver = app.triggerGameOver.bind(app);
+    app.triggerGameOver = function(reason) {
+        gameOverTriggered = true;
+        gameOverReason = reason;
+    };
+    app.explorationEngine.handleNodeEvents(npcNode, false);
+    if (!gameOverTriggered || !gameOverReason.includes("你被他人所凝视，复现失败")) {
+        throw new Error('触碰 NPC 未能触发即刻失败！实际 reason: ' + gameOverReason);
+    }
+    app.triggerGameOver = origTriggerGameOver;
+    console.log('   【已验证】踩入 NPC 舱室即刻触发潜行失败：“你被他人所凝视，复现失败”！');
+
+    // I. 验证未完成排查时进入终点急救台拦截
+    app.phase = 'q3_explore';
+    app.level9PatrolStep = 0;
+    const exitNode = mapConfig.nodes["room_med_surgery"];
+    app.explorationEngine.handleNodeEvents(exitNode, false);
+    if (app.phase === 'victory') {
+        throw new Error('未排查任何要害时踩上急救台错误通关！');
+    }
+    console.log('   【已验证】尚未排查要害时踩上全自动急救台被严格拦截，无法通关！');
+
+    // J. 验证顺序打卡：重力发生核 -> 前沿技术科室 -> 急救台撤离
+    // 1) 抵达重力发生核
+    const gravNode = mapConfig.nodes["room_gravity_well"];
+    app.explorationEngine.handleNodeEvents(gravNode, false);
+    if (app.level9PatrolStep !== 1) {
+        throw new Error(`抵达重力发生核后 level9PatrolStep 应为 1，实际: ${app.level9PatrolStep}`);
+    }
+    console.log('   【已验证】抵达【重力发生核】后成功推进至进度 1/2，点亮前沿技术科室！');
+
+    // 2) 再次尝试踩急救台（仅完成 1 处）
+    app.explorationEngine.handleNodeEvents(exitNode, false);
+    if (app.phase === 'victory') {
+        throw new Error('仅完成 1 处排查时踩上急救台错误通关！');
+    }
+
+    // 3) 抵达前沿技术科室
+    const deconNode = mapConfig.nodes["room_decon_airlock"];
+    app.explorationEngine.handleNodeEvents(deconNode, false);
+    if (app.level9PatrolStep !== 2) {
+        throw new Error(`抵达前沿技术科室后 level9PatrolStep 应为 2，实际: ${app.level9PatrolStep}`);
+    }
+    console.log('   【已验证】抵达【前沿技术科室】后成功推进至进度 2/2，激活急救台撤离！');
+
+    // K. 撤离并验证双关卡解锁：第十关与第二十一关
+    app.saveSystem.memoryStore[app.saveSystem.unlockedKey] = JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    app.explorationEngine.handleNodeEvents(exitNode, false);
+    if (app.phase !== 'victory') {
+        throw new Error('排查完成后抵达急救台未能成功触发通关！');
+    }
+    if (!app.saveSystem.isLevelUnlocked(10)) {
+        throw new Error('通关第九关未能成功解锁第十关！');
+    }
+    if (!app.saveSystem.isLevelUnlocked(21)) {
+        throw new Error('通关第九关未能成功解锁第二十一关！');
+    }
+    console.log('   【已验证】全流程脱出成功，同时解锁【第十关】与【第二十一关】！');
+
+    // L. 隔离性检定：前八关与后续关卡不受影响
+    app.startNewGame(8);
+    if (app.currentLevel.levelId !== 8) {
+        throw new Error('第八关启动异常！');
+    }
+    app.startNewGame(4);
+    if (app.currentLevel.levelId !== 4) {
+        throw new Error('第四关启动异常！');
+    }
+    app.startNewGame(1);
+    if (app.currentLevel.levelId !== 1) {
+        throw new Error('第一关启动异常！');
+    }
+    console.log('   【已验证】全关卡隔离性检定：前八关及其他关卡 100% 独立且正常运行！');
+}
+
+console.log('\n====== [TEST PASSED] 全部 45 项核心流程、前八关与第九关专属定制及全机制测试 100% 成功！ ======');
 
 
 

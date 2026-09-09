@@ -1305,24 +1305,33 @@ export const LEVEL_SECTOR_SPECS = {
         ]
     },
     9: {
-        title: "第九关：矩阵崩塌 · 拓扑断层",
-        subtitle: "机库重载区与全舰尾部推进阵列打通",
-        startNodeId: "room_salvage_bay",
-        exitNodeId: "room_singularity_gate",
+        title: "第九关：深空低语 · 静默规避",
+        subtitle: "雷达穹顶潜行 · 规避全舰视线接触",
+        startNodeId: "room_sensor_array", // 深空雷达穹顶位置 [1, 0] (起点)
+        exitNodeId: "room_med_surgery",   // 全自动急救台 [5, 1] (终点)
+        patrolNodes: ["room_gravity_well", "room_decon_airlock"], // 顺序打卡要害目标
         openRoomIds: [
-            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck",
-            "room_machine_shop", "room_shields_emitter", "room_sub_coolant", "room_reactor_control",
-            "room_plasma_manifold", "room_main_reactor", "room_coolant_tank", "room_warp_field_gen",
-            "room_armored_corridor", "room_escape_pod_w", "room_ion_thruster_l", "room_antimatter_tap",
-            "room_singularity_gate", "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e",
-            "room_start", "room_corner_se", "room_gravity_well", "room_water_purify", "room_starboard_dock"
+            // Y=0 舰首战术区 (6间)
+            "room_sensor_array", "room_tactical_plan", "room_bridge_sub", "room_bridge_main", "room_ai_core", "room_comm_center",
+            // Y=1 终点、科研与医疗区 (8间)
+            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne", "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
+            // Y=2 中层枢纽与生活生态区 (7间)
+            "room_npc3", "room_junction_nw", "room_path_e", "room_hub_n1", "room_npc2", "room_living_quarter", "room_hydro_garden",
+            // Y=3 动力控制、重力核与防御区 (7间)
+            "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se", "room_gravity_well", "room_armory",
+            // Y=4 机库、工坊与维生辅机区 (7间)
+            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck", "room_machine_shop", "room_water_purify", "room_life_support"
         ],
         npcPlacements: {
-            "room_reactor_control": "kaze",
-            "room_hangar_deck": "shaokexin",
-            "room_shields_emitter": "mode"
+            "room_npc3": "mode",          // 莫德 (西北隔离舱 · 安全避难室)
+            "room_npc2": "shaokexin",     // 邵可欣 (东侧备勤室 · 医护角落)
+            "room_hydro_garden": "sophia", // 索菲亚 (立体水培温室 · 绿光生态舱)
+            "room_sub_generator": "vivian",// 薇薇安 (辅助等离子发电站 · 二号辅电站)
+            "room_life_support": "noah"   // 诺亚 (维生环境总控机房 · 一号核心芯片失窃点)
         },
-        foodPlacements: ["room_water_purify", "room_coolant_tank"]
+        randomFoodCount: 3, // 场景随机投放三处体力箱
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [] // 黄色区域在此关卡可以通行
     },
     10: {
         title: "第十关：绝对零度 · 冷冻沉寂",

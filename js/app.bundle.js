@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-09T03:34:40.124Z
+ * 自动生成于 2026-09-09T13:58:25.542Z
  */
 (function() {
     'use strict';
@@ -3165,24 +3165,33 @@ const LEVEL_SECTOR_SPECS = {
         ]
     },
     9: {
-        title: "第九关：矩阵崩塌 · 拓扑断层",
-        subtitle: "机库重载区与全舰尾部推进阵列打通",
-        startNodeId: "room_salvage_bay",
-        exitNodeId: "room_singularity_gate",
+        title: "第九关：深空低语 · 静默规避",
+        subtitle: "雷达穹顶潜行 · 规避全舰视线接触",
+        startNodeId: "room_sensor_array", // 深空雷达穹顶位置 [1, 0] (起点)
+        exitNodeId: "room_med_surgery",   // 全自动急救台 [5, 1] (终点)
+        patrolNodes: ["room_gravity_well", "room_decon_airlock"], // 顺序打卡要害目标
         openRoomIds: [
-            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck",
-            "room_machine_shop", "room_shields_emitter", "room_sub_coolant", "room_reactor_control",
-            "room_plasma_manifold", "room_main_reactor", "room_coolant_tank", "room_warp_field_gen",
-            "room_armored_corridor", "room_escape_pod_w", "room_ion_thruster_l", "room_antimatter_tap",
-            "room_singularity_gate", "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e",
-            "room_start", "room_corner_se", "room_gravity_well", "room_water_purify", "room_starboard_dock"
+            // Y=0 舰首战术区 (6间)
+            "room_sensor_array", "room_tactical_plan", "room_bridge_sub", "room_bridge_main", "room_ai_core", "room_comm_center",
+            // Y=1 终点、科研与医疗区 (8间)
+            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne", "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
+            // Y=2 中层枢纽与生活生态区 (7间)
+            "room_npc3", "room_junction_nw", "room_path_e", "room_hub_n1", "room_npc2", "room_living_quarter", "room_hydro_garden",
+            // Y=3 动力控制、重力核与防御区 (7间)
+            "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se", "room_gravity_well", "room_armory",
+            // Y=4 机库、工坊与维生辅机区 (7间)
+            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck", "room_machine_shop", "room_water_purify", "room_life_support"
         ],
         npcPlacements: {
-            "room_reactor_control": "kaze",
-            "room_hangar_deck": "shaokexin",
-            "room_shields_emitter": "mode"
+            "room_npc3": "mode",          // 莫德 (西北隔离舱 · 安全避难室)
+            "room_npc2": "shaokexin",     // 邵可欣 (东侧备勤室 · 医护角落)
+            "room_hydro_garden": "sophia", // 索菲亚 (立体水培温室 · 绿光生态舱)
+            "room_sub_generator": "vivian",// 薇薇安 (辅助等离子发电站 · 二号辅电站)
+            "room_life_support": "noah"   // 诺亚 (维生环境总控机房 · 一号核心芯片失窃点)
         },
-        foodPlacements: ["room_water_purify", "room_coolant_tank"]
+        randomFoodCount: 3, // 场景随机投放三处体力箱
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [] // 黄色区域在此关卡可以通行
     },
     10: {
         title: "第十关：绝对零度 · 冷冻沉寂",
@@ -3671,7 +3680,7 @@ function buildSpaceshipLevelMap(levelId) {
 
 const GeneratedLevels = [];
 
-for (let lvlId = 9; lvlId <= 25; lvlId++) {
+for (let lvlId = 10; lvlId <= 25; lvlId++) {
     const spec = LEVEL_SECTOR_SPECS[lvlId] || LEVEL_SECTOR_SPECS[1];
     const lvlMap = buildSpaceshipLevelMap(lvlId);
 
@@ -4167,6 +4176,52 @@ const BaseLevels = [
                 taskObjective: "在探索途中救助更多失散同伴，带领至少三名乘员共同撤离",
                 title: "深空多人救援",
                 toast: "成功携行三名乘员完成全队防爆撤离！开放【第二十关】！"
+            }
+        ]
+    },
+    {
+        levelId: 9,
+        title: "第九关：深空低语 · 静默规避",
+        subtitle: "雷达穹顶潜行 · 规避全舰视线接触",
+
+        // q1 黑屏中间白字（悬疑留白与史诗感）
+        blackScreenText: [
+            "偏振雷达穹顶在极度冰寒的虚空中无声盘旋，引力波记录仪骤然归零。",
+            "可四周突然陷入死一般的寂静……连换气格栅的微鸣也已彻底湮灭。",
+            "视网膜边缘浮现出猩红的警示：高熵同化正在各区蔓延，任何直视都将引发拟态共鸣！",
+            "必须避开所有人的视线，先后前往重力发生核与前沿技术科室确认异常，再行撤离……",
+            "——触摸屏幕，静默行动。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量配置：严格为零
+        wolfCountRange: [0, 0],
+        candidateNPCs: [
+            { id: "mode", assignedRole: null },       // 莫德 (西北隔离舱)
+            { id: "shaokexin", assignedRole: null },  // 邵可欣 (东侧备勤室 · 医护角落)
+            { id: "sophia", assignedRole: null },     // 索菲亚 (立体水培温室)
+            { id: "vivian", assignedRole: null },     // 薇薇安 (二号辅电站)
+            { id: "noah", assignedRole: null }        // 诺亚 (维生环境机房)
+        ],
+
+        mapImageUrl: null,
+        // 地图拓扑网络 (基于宇宙飞船母蓝图构建，35间开放舱室)
+        map: buildSpaceshipLevelMap(9),
+
+        // 第九关解锁规则列表
+        unlockRules: [
+            {
+                id: "l9_stealth_clear",
+                condition: { type: "clear_any" },
+                unlockLevelIds: [10, 21],
+                taskName: "任务一：静默巡检并撤离",
+                taskObjective: "在不被任何人发现的前提下，先后前往重力发生核与前沿技术科室，最后前往急救台撤离",
+                title: "幽灵巡检达成",
+                toast: "成功规避全舰视线接触并完成要害核查脱离！开放【第十关】与【第二十一关】！"
             }
         ]
     }
@@ -6471,9 +6526,19 @@ class MapRenderer {
             revealedSet.add(animatedMarker.toId);
         }
 
-        // 第四关专属：指定要害巡检位置 (停机坪甲板、重力发生核、防护中枢) 直接在地图上提前单独亮起
+        // 第四关与第九关专属：要害巡检位置点亮逻辑
         const patrolNodes = levelMap.patrolNodes || (levelMap.masterShip && levelMap.masterShip.patrolNodes) || [];
-        if (patrolNodes.length > 0) {
+        const isLevel9 = (levelMap.startNodeId === "room_sensor_array" || levelMap.id === 9);
+        if (isLevel9) {
+            const step = options.level9PatrolStep || 0;
+            if (step === 0) {
+                if (levelMap.nodes["room_gravity_well"]) revealedSet.add("room_gravity_well");
+            } else if (step === 1) {
+                if (levelMap.nodes["room_decon_airlock"]) revealedSet.add("room_decon_airlock");
+            } else if (step >= 2) {
+                if (levelMap.nodes["room_med_surgery"]) revealedSet.add("room_med_surgery");
+            }
+        } else if (patrolNodes.length > 0) {
             patrolNodes.forEach(pId => {
                 if (levelMap.nodes[pId]) {
                     revealedSet.add(pId);
@@ -6688,9 +6753,16 @@ class MapRenderer {
             const isHovered = options.hoveredNodeId === node.id;
             const adjacentDir = connectedDirMap[node.id];
             const shape = node.shape || "rect";
-            const equipment = node.equipment;
-            const isPatrolTarget = patrolNodes.includes(node.id);
-            const isPatrolDone = options.patrolVisited && options.patrolVisited.has(node.id);
+            const equipment = node.equipment || null;
+            const isPatrolTarget = isLevel9
+                ? ((options.level9PatrolStep === 0 && node.id === "room_gravity_well") ||
+                   (options.level9PatrolStep === 1 && node.id === "room_decon_airlock") ||
+                   (options.level9PatrolStep >= 2 && node.id === "room_med_surgery"))
+                : patrolNodes.includes(node.id);
+            const isPatrolDone = isLevel9
+                ? ((options.level9PatrolStep >= 1 && node.id === "room_gravity_well") ||
+                   (options.level9PatrolStep >= 2 && node.id === "room_decon_airlock"))
+                : (options.patrolVisited && options.patrolVisited.has(node.id));
 
             const x = p.x - boxSize / 2;
             const y = p.y - boxSize / 2;
@@ -7650,12 +7722,16 @@ class ExplorationEngine {
             this.gameEngine?.currentLevel?.levelId === 8 &&
             !this.gameEngine.getAliveTeamMembers().some(m => m.id === "colt")
         );
+        const isLevel9PatrolPending = (
+            this.gameEngine?.currentLevel?.levelId === 9 &&
+            (this.gameEngine.level9PatrolStep || 0) < 2
+        );
         // 如果终点节点包含未救助的NPC（如第五关主反应堆的伊莲），不可提前视为最终脱出阻断，必须步入触发NPC救助
         const nextRoomNpcId = (nextNode.event && nextNode.event.type === "npc" && nextNode.event.npcId) || nextNode.npcId;
         const targetNpc = nextRoomNpcId ? this.gameEngine.getNpcById(nextRoomNpcId) : null;
         const hasUnmetNpc = targetNpc && targetNpc.status === "unmet" && !this.consumedEvents.has(`${nextNode.id}_event`);
 
-        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !isLevel8ColtPending && !hasUnmetNpc;
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !isLevel8ColtPending && !isLevel9PatrolPending && !hasUnmetNpc;
         if (isEffectiveExit) {
             if (!isAlreadyExplored) {
                 this.choiceCount++;
@@ -7865,6 +7941,27 @@ class ExplorationEngine {
                 }
             }
 
+            // 第九关专属通关校验：必须先后前往【重力发生核】与【前沿技术科室】完成巡视排查
+            if (this.gameEngine?.currentLevel?.levelId === 9) {
+                const patrolStep = this.gameEngine.level9PatrolStep || 0;
+                if (patrolStep < 2) {
+                    const stepDesc = patrolStep === 0 ? "【重力发生核】与【前沿技术科室】" : "【前沿技术科室】";
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast(`⚠️ 任务未完成！尚需静默前往${stepDesc}！`);
+                    }
+                    this.gameEngine.logAction(`【规避未竟】尚未抵达${stepDesc}排查，全自动急救台撤离程序尚未就绪！`);
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "全自动急救台控制面板", themeColor: "#fbbf24" },
+                        `【静默规避协议未完成】当前撤离条件未满足。在前往${stepDesc}完成静默规避与排查前，急救台冷冻撤离舱拒绝闭合！`
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
             this.gameEngine.logAction(`【通关突破】全员成功抵达目的地 [${node.name}]！准备跳跃！`);
             this.gameEngine.triggerVictory(node);
             return;
@@ -7890,6 +7987,38 @@ class ExplorationEngine {
                     }
                     this.gameEngine.logAction(`【要害巡视】完成了对三大中枢之一 [${node.name}] 的静默巡查（当前进度: ${count}/3）！`);
                     this.gameEngine.updateHeaderUI();
+                }
+            }
+        }
+
+        // 第九关专属静默规避打卡判定 (先后前往单独亮起的【重力发生核】与【前沿技术科室】)
+        if (this.gameEngine?.currentLevel && this.gameEngine.currentLevel.levelId === 9) {
+            const currentStep = this.gameEngine.level9PatrolStep || 0;
+            if (currentStep === 0 && node.id === "room_gravity_well") {
+                this.gameEngine.level9PatrolStep = 1;
+                if (this.gameEngine.showStageToast) {
+                    this.gameEngine.showStageToast("🎯 [静默排查 1/2] 已抵达【重力发生核】！前沿技术科室已亮起！");
+                }
+                this.gameEngine.logAction(`【静默穿行】在未惊动任何人的情况下完成了对 [${node.name}] 的排查（进度: 1/2）！【前沿技术科室】已亮起！`);
+                if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
+                    Sound.playAlarmSound();
+                }
+                this.gameEngine.updateHeaderUI();
+                if (this.gameEngine.refreshStageMap) {
+                    this.gameEngine.refreshStageMap();
+                }
+            } else if (currentStep === 1 && node.id === "room_decon_airlock") {
+                this.gameEngine.level9PatrolStep = 2;
+                if (this.gameEngine.showStageToast) {
+                    this.gameEngine.showStageToast("🎯 [静默排查 2/2] 已抵达【前沿技术科室】！终点急救台已激活！");
+                }
+                this.gameEngine.logAction(`【静默穿行】成功深入并排查了 [${node.name}]（进度: 2/2）！撤离终点【全自动急救台】已激活就绪，请前往撤离！`);
+                if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
+                    Sound.playAlarmSound();
+                }
+                this.gameEngine.updateHeaderUI();
+                if (this.gameEngine.refreshStageMap) {
+                    this.gameEngine.refreshStageMap();
                 }
             }
         }
@@ -8028,8 +8157,8 @@ class ExplorationEngine {
             return;
         }
 
-        // 第四关专属潜行规避逻辑：不可与任何NPC发生视线接触，若踩到NPC所在区域直接游戏结束“你被他人所凝视，复现失败”
-        if (this.gameEngine.currentLevel && this.gameEngine.currentLevel.levelId === 4) {
+        // 第四关与第九关专属潜行规避逻辑：不可与任何NPC发生视线接触，若踩到NPC所在区域直接游戏结束“你被他人所凝视，复现失败”
+        if (this.gameEngine?.currentLevel && (this.gameEngine.currentLevel.levelId === 4 || this.gameEngine.currentLevel.levelId === 9)) {
             this.gameEngine.triggerGameOver("你被他人所凝视，复现失败");
             return;
         }
@@ -8074,8 +8203,8 @@ class ExplorationEngine {
      * 触发后重置 choiceCount，进入 q4 询问环节
      */
     checkEveningTrigger() {
-        // 第四关专属优化：本关卡为全舰白昼静默巡检，没有黑天时刻，没有死寂降临
-        if (this.gameEngine?.currentLevel?.levelId === 4) {
+        // 第四关与第九关专属优化：本关卡为全舰白昼静默巡检/深空静默规避，没有黑天时刻，没有死寂降临
+        if (this.gameEngine?.currentLevel && (this.gameEngine.currentLevel.levelId === 4 || this.gameEngine.currentLevel.levelId === 9)) {
             this.gameEngine.renderExplorationControls();
             return;
         }
@@ -8969,6 +9098,18 @@ class GameEngine {
                         realtimeStatus = "⚡ 逃生舱主电网切断中（需先前往停电始发地修复电源）";
                         realtimeClass = "realtime-waiting";
                     }
+                } else if (this.currentLevel?.levelId === 9) {
+                    const step = this.level9PatrolStep || 0;
+                    if (step === 0) {
+                        realtimeStatus = "🎯 目标一：前往【重力发生核】排查（尚未抵达）";
+                        realtimeClass = "realtime-waiting";
+                    } else if (step === 1) {
+                        realtimeStatus = "🎯 目标二：前往【前沿技术科室】排查（重力发生核已排查）";
+                        realtimeClass = "realtime-waiting";
+                    } else {
+                        realtimeStatus = "🟢 双要害排查已闭环，前往【全自动急救台】即可撤离";
+                        realtimeClass = "realtime-ready";
+                    }
                 } else {
                     realtimeStatus = "🏃 突破重叠回廊，开启终点折跃气闸即可达成";
                     realtimeClass = "realtime-ready";
@@ -9164,6 +9305,7 @@ class GameEngine {
         this.level2PowerRestored = false;
         this.level3PowerRestored = false;
         this.level4PatrolVisited = new Set();
+        this.level9PatrolStep = 0;
         this.unlockedNpcRooms = new Set();
         this.modalEncounter?.classList.add("hidden");
         this.modalPowerRestore?.classList.add("hidden");
@@ -10654,7 +10796,8 @@ class GameEngine {
             unlockedNpcRooms: Array.from(this.unlockedNpcRooms || []),
             level2PowerRestored: !!this.level2PowerRestored,
             level3PowerRestored: !!this.level3PowerRestored,
-            level4PatrolVisited: Array.from(this.level4PatrolVisited || [])
+            level4PatrolVisited: Array.from(this.level4PatrolVisited || []),
+            level9PatrolStep: this.level9PatrolStep || 0
         };
 
         const success = this.saveSystem.saveGame(state);
@@ -10675,6 +10818,14 @@ class GameEngine {
 
         const levelConfig = LevelRegistry.find(l => l.levelId === data.levelId) || LevelRegistry[0];
         this.currentLevel = levelConfig;
+        this.dayCount = data.dayCount;
+        this.stamina = data.stamina;
+        this.phase = data.phase;
+        this.unlockedNpcRooms = new Set(data.unlockedNpcRooms || []);
+        this.level2PowerRestored = !!data.level2PowerRestored;
+        this.level3PowerRestored = !!data.level3PowerRestored;
+        this.level4PatrolVisited = new Set(data.level4PatrolVisited || []);
+        this.level9PatrolStep = data.level9PatrolStep || 0;
 
         // 恢复主角
         this.protagonist = {
@@ -11204,7 +11355,8 @@ class GameEngine {
                 {
                     canFastTravel: this.phase === "q3_explore",
                     hoveredNodeId: this.hoveredMapNodeId,
-                    patrolVisited: this.level4PatrolVisited
+                    patrolVisited: this.level4PatrolVisited,
+                    level9PatrolStep: this.level9PatrolStep || 0
                 }
             );
         }
@@ -11234,7 +11386,8 @@ class GameEngine {
                 {
                     canFastTravel: this.phase === "q3_explore",
                     hoveredNodeId: this.hoveredMapNodeId,
-                    patrolVisited: this.level4PatrolVisited
+                    patrolVisited: this.level4PatrolVisited,
+                    level9PatrolStep: this.level9PatrolStep || 0
                 }
             );
         }

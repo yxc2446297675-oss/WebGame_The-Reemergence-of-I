@@ -126,12 +126,16 @@ export class ExplorationEngine {
             this.gameEngine?.currentLevel?.levelId === 8 &&
             !this.gameEngine.getAliveTeamMembers().some(m => m.id === "colt")
         );
+        const isLevel9PatrolPending = (
+            this.gameEngine?.currentLevel?.levelId === 9 &&
+            (this.gameEngine.level9PatrolStep || 0) < 2
+        );
         // 如果终点节点包含未救助的NPC（如第五关主反应堆的伊莲），不可提前视为最终脱出阻断，必须步入触发NPC救助
         const nextRoomNpcId = (nextNode.event && nextNode.event.type === "npc" && nextNode.event.npcId) || nextNode.npcId;
         const targetNpc = nextRoomNpcId ? this.gameEngine.getNpcById(nextRoomNpcId) : null;
         const hasUnmetNpc = targetNpc && targetNpc.status === "unmet" && !this.consumedEvents.has(`${nextNode.id}_event`);
 
-        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !isLevel8ColtPending && !hasUnmetNpc;
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !isLevel8ColtPending && !isLevel9PatrolPending && !hasUnmetNpc;
         if (isEffectiveExit) {
             if (!isAlreadyExplored) {
                 this.choiceCount++;
@@ -341,6 +345,27 @@ export class ExplorationEngine {
                 }
             }
 
+            // 第九关专属通关校验：必须先后前往【重力发生核】与【前沿技术科室】完成巡视排查
+            if (this.gameEngine?.currentLevel?.levelId === 9) {
+                const patrolStep = this.gameEngine.level9PatrolStep || 0;
+                if (patrolStep < 2) {
+                    const stepDesc = patrolStep === 0 ? "【重力发生核】与【前沿技术科室】" : "【前沿技术科室】";
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast(`⚠️ 任务未完成！尚需静默前往${stepDesc}！`);
+                    }
+                    this.gameEngine.logAction(`【规避未竟】尚未抵达${stepDesc}排查，全自动急救台撤离程序尚未就绪！`);
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "全自动急救台控制面板", themeColor: "#fbbf24" },
+                        `【静默规避协议未完成】当前撤离条件未满足。在前往${stepDesc}完成静默规避与排查前，急救台冷冻撤离舱拒绝闭合！`
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
             this.gameEngine.logAction(`【通关突破】全员成功抵达目的地 [${node.name}]！准备跳跃！`);
             this.gameEngine.triggerVictory(node);
             return;
@@ -366,6 +391,38 @@ export class ExplorationEngine {
                     }
                     this.gameEngine.logAction(`【要害巡视】完成了对三大中枢之一 [${node.name}] 的静默巡查（当前进度: ${count}/3）！`);
                     this.gameEngine.updateHeaderUI();
+                }
+            }
+        }
+
+        // 第九关专属静默规避打卡判定 (先后前往单独亮起的【重力发生核】与【前沿技术科室】)
+        if (this.gameEngine?.currentLevel && this.gameEngine.currentLevel.levelId === 9) {
+            const currentStep = this.gameEngine.level9PatrolStep || 0;
+            if (currentStep === 0 && node.id === "room_gravity_well") {
+                this.gameEngine.level9PatrolStep = 1;
+                if (this.gameEngine.showStageToast) {
+                    this.gameEngine.showStageToast("🎯 [静默排查 1/2] 已抵达【重力发生核】！前沿技术科室已亮起！");
+                }
+                this.gameEngine.logAction(`【静默穿行】在未惊动任何人的情况下完成了对 [${node.name}] 的排查（进度: 1/2）！【前沿技术科室】已亮起！`);
+                if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
+                    Sound.playAlarmSound();
+                }
+                this.gameEngine.updateHeaderUI();
+                if (this.gameEngine.refreshStageMap) {
+                    this.gameEngine.refreshStageMap();
+                }
+            } else if (currentStep === 1 && node.id === "room_decon_airlock") {
+                this.gameEngine.level9PatrolStep = 2;
+                if (this.gameEngine.showStageToast) {
+                    this.gameEngine.showStageToast("🎯 [静默排查 2/2] 已抵达【前沿技术科室】！终点急救台已激活！");
+                }
+                this.gameEngine.logAction(`【静默穿行】成功深入并排查了 [${node.name}]（进度: 2/2）！撤离终点【全自动急救台】已激活就绪，请前往撤离！`);
+                if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
+                    Sound.playAlarmSound();
+                }
+                this.gameEngine.updateHeaderUI();
+                if (this.gameEngine.refreshStageMap) {
+                    this.gameEngine.refreshStageMap();
                 }
             }
         }
@@ -504,8 +561,8 @@ export class ExplorationEngine {
             return;
         }
 
-        // 第四关专属潜行规避逻辑：不可与任何NPC发生视线接触，若踩到NPC所在区域直接游戏结束“你被他人所凝视，复现失败”
-        if (this.gameEngine.currentLevel && this.gameEngine.currentLevel.levelId === 4) {
+        // 第四关与第九关专属潜行规避逻辑：不可与任何NPC发生视线接触，若踩到NPC所在区域直接游戏结束“你被他人所凝视，复现失败”
+        if (this.gameEngine?.currentLevel && (this.gameEngine.currentLevel.levelId === 4 || this.gameEngine.currentLevel.levelId === 9)) {
             this.gameEngine.triggerGameOver("你被他人所凝视，复现失败");
             return;
         }
@@ -550,8 +607,8 @@ export class ExplorationEngine {
      * 触发后重置 choiceCount，进入 q4 询问环节
      */
     checkEveningTrigger() {
-        // 第四关专属优化：本关卡为全舰白昼静默巡检，没有黑天时刻，没有死寂降临
-        if (this.gameEngine?.currentLevel?.levelId === 4) {
+        // 第四关与第九关专属优化：本关卡为全舰白昼静默巡检/深空静默规避，没有黑天时刻，没有死寂降临
+        if (this.gameEngine?.currentLevel && (this.gameEngine.currentLevel.levelId === 4 || this.gameEngine.currentLevel.levelId === 9)) {
             this.gameEngine.renderExplorationControls();
             return;
         }

@@ -449,6 +449,52 @@ export const BaseLevels = [
                 toast: "成功携行三名乘员完成全队防爆撤离！开放【第二十关】！"
             }
         ]
+    },
+    {
+        levelId: 9,
+        title: "第九关：深空低语 · 静默规避",
+        subtitle: "雷达穹顶潜行 · 规避全舰视线接触",
+
+        // q1 黑屏中间白字（悬疑留白与史诗感）
+        blackScreenText: [
+            "偏振雷达穹顶在极度冰寒的虚空中无声盘旋，引力波记录仪骤然归零。",
+            "可四周突然陷入死一般的寂静……连换气格栅的微鸣也已彻底湮灭。",
+            "视网膜边缘浮现出猩红的警示：高熵同化正在各区蔓延，任何直视都将引发拟态共鸣！",
+            "必须避开所有人的视线，先后前往重力发生核与前沿技术科室确认异常，再行撤离……",
+            "——触摸屏幕，静默行动。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量配置：严格为零
+        wolfCountRange: [0, 0],
+        candidateNPCs: [
+            { id: "mode", assignedRole: null },       // 莫德 (西北隔离舱)
+            { id: "shaokexin", assignedRole: null },  // 邵可欣 (东侧备勤室 · 医护角落)
+            { id: "sophia", assignedRole: null },     // 索菲亚 (立体水培温室)
+            { id: "vivian", assignedRole: null },     // 薇薇安 (二号辅电站)
+            { id: "noah", assignedRole: null }        // 诺亚 (维生环境机房)
+        ],
+
+        mapImageUrl: null,
+        // 地图拓扑网络 (基于宇宙飞船母蓝图构建，35间开放舱室)
+        map: buildSpaceshipLevelMap(9),
+
+        // 第九关解锁规则列表
+        unlockRules: [
+            {
+                id: "l9_stealth_clear",
+                condition: { type: "clear_any" },
+                unlockLevelIds: [10, 21],
+                taskName: "任务一：静默巡检并撤离",
+                taskObjective: "在不被任何人发现的前提下，先后前往重力发生核与前沿技术科室，最后前往急救台撤离",
+                title: "幽灵巡检达成",
+                toast: "成功规避全舰视线接触并完成要害核查脱离！开放【第十关】与【第二十一关】！"
+            }
+        ]
     }
 ];
 

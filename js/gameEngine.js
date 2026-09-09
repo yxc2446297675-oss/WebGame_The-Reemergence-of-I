@@ -767,6 +767,18 @@ export class GameEngine {
                         realtimeStatus = "⚡ 逃生舱主电网切断中（需先前往停电始发地修复电源）";
                         realtimeClass = "realtime-waiting";
                     }
+                } else if (this.currentLevel?.levelId === 9) {
+                    const step = this.level9PatrolStep || 0;
+                    if (step === 0) {
+                        realtimeStatus = "🎯 目标一：前往【重力发生核】排查（尚未抵达）";
+                        realtimeClass = "realtime-waiting";
+                    } else if (step === 1) {
+                        realtimeStatus = "🎯 目标二：前往【前沿技术科室】排查（重力发生核已排查）";
+                        realtimeClass = "realtime-waiting";
+                    } else {
+                        realtimeStatus = "🟢 双要害排查已闭环，前往【全自动急救台】即可撤离";
+                        realtimeClass = "realtime-ready";
+                    }
                 } else {
                     realtimeStatus = "🏃 突破重叠回廊，开启终点折跃气闸即可达成";
                     realtimeClass = "realtime-ready";
@@ -962,6 +974,7 @@ export class GameEngine {
         this.level2PowerRestored = false;
         this.level3PowerRestored = false;
         this.level4PatrolVisited = new Set();
+        this.level9PatrolStep = 0;
         this.unlockedNpcRooms = new Set();
         this.modalEncounter?.classList.add("hidden");
         this.modalPowerRestore?.classList.add("hidden");
@@ -2452,7 +2465,8 @@ export class GameEngine {
             unlockedNpcRooms: Array.from(this.unlockedNpcRooms || []),
             level2PowerRestored: !!this.level2PowerRestored,
             level3PowerRestored: !!this.level3PowerRestored,
-            level4PatrolVisited: Array.from(this.level4PatrolVisited || [])
+            level4PatrolVisited: Array.from(this.level4PatrolVisited || []),
+            level9PatrolStep: this.level9PatrolStep || 0
         };
 
         const success = this.saveSystem.saveGame(state);
@@ -2473,6 +2487,14 @@ export class GameEngine {
 
         const levelConfig = LevelRegistry.find(l => l.levelId === data.levelId) || LevelRegistry[0];
         this.currentLevel = levelConfig;
+        this.dayCount = data.dayCount;
+        this.stamina = data.stamina;
+        this.phase = data.phase;
+        this.unlockedNpcRooms = new Set(data.unlockedNpcRooms || []);
+        this.level2PowerRestored = !!data.level2PowerRestored;
+        this.level3PowerRestored = !!data.level3PowerRestored;
+        this.level4PatrolVisited = new Set(data.level4PatrolVisited || []);
+        this.level9PatrolStep = data.level9PatrolStep || 0;
 
         // 恢复主角
         this.protagonist = {
@@ -3002,7 +3024,8 @@ export class GameEngine {
                 {
                     canFastTravel: this.phase === "q3_explore",
                     hoveredNodeId: this.hoveredMapNodeId,
-                    patrolVisited: this.level4PatrolVisited
+                    patrolVisited: this.level4PatrolVisited,
+                    level9PatrolStep: this.level9PatrolStep || 0
                 }
             );
         }
@@ -3032,7 +3055,8 @@ export class GameEngine {
                 {
                     canFastTravel: this.phase === "q3_explore",
                     hoveredNodeId: this.hoveredMapNodeId,
-                    patrolVisited: this.level4PatrolVisited
+                    patrolVisited: this.level4PatrolVisited,
+                    level9PatrolStep: this.level9PatrolStep || 0
                 }
             );
         }

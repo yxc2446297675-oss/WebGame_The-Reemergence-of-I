@@ -1311,9 +1311,19 @@ export class MapRenderer {
             revealedSet.add(animatedMarker.toId);
         }
 
-        // 第四关专属：指定要害巡检位置 (停机坪甲板、重力发生核、防护中枢) 直接在地图上提前单独亮起
+        // 第四关与第九关专属：要害巡检位置点亮逻辑
         const patrolNodes = levelMap.patrolNodes || (levelMap.masterShip && levelMap.masterShip.patrolNodes) || [];
-        if (patrolNodes.length > 0) {
+        const isLevel9 = (levelMap.startNodeId === "room_sensor_array" || levelMap.id === 9);
+        if (isLevel9) {
+            const step = options.level9PatrolStep || 0;
+            if (step === 0) {
+                if (levelMap.nodes["room_gravity_well"]) revealedSet.add("room_gravity_well");
+            } else if (step === 1) {
+                if (levelMap.nodes["room_decon_airlock"]) revealedSet.add("room_decon_airlock");
+            } else if (step >= 2) {
+                if (levelMap.nodes["room_med_surgery"]) revealedSet.add("room_med_surgery");
+            }
+        } else if (patrolNodes.length > 0) {
             patrolNodes.forEach(pId => {
                 if (levelMap.nodes[pId]) {
                     revealedSet.add(pId);
@@ -1528,9 +1538,16 @@ export class MapRenderer {
             const isHovered = options.hoveredNodeId === node.id;
             const adjacentDir = connectedDirMap[node.id];
             const shape = node.shape || "rect";
-            const equipment = node.equipment;
-            const isPatrolTarget = patrolNodes.includes(node.id);
-            const isPatrolDone = options.patrolVisited && options.patrolVisited.has(node.id);
+            const equipment = node.equipment || null;
+            const isPatrolTarget = isLevel9
+                ? ((options.level9PatrolStep === 0 && node.id === "room_gravity_well") ||
+                   (options.level9PatrolStep === 1 && node.id === "room_decon_airlock") ||
+                   (options.level9PatrolStep >= 2 && node.id === "room_med_surgery"))
+                : patrolNodes.includes(node.id);
+            const isPatrolDone = isLevel9
+                ? ((options.level9PatrolStep >= 1 && node.id === "room_gravity_well") ||
+                   (options.level9PatrolStep >= 2 && node.id === "room_decon_airlock"))
+                : (options.patrolVisited && options.patrolVisited.has(node.id));
 
             const x = p.x - boxSize / 2;
             const y = p.y - boxSize / 2;
