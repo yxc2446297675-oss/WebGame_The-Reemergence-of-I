@@ -210,6 +210,22 @@ while (app.phase !== 'q3_explore' && clickCount < 20) {
 console.log('   当前阶段:', app.phase, '当前位置:', app.explorationEngine.getCurrentNode().name);
 console.log('   当前体力:', app.stamina);
 
+// 关闭第一关开场强引导教程（若弹出）
+function dismissLevel1Tutorials(appRef, maxClicks = 12) {
+    const btnTut = global.document.getElementById('btn-l1-tutorial-next');
+    const modalTut = global.document.getElementById('modal-level1-tutorial');
+    let guard = 0;
+    while (modalTut && !modalTut.classList.contains('hidden') && guard < maxClicks) {
+        btnTut.click();
+        guard++;
+    }
+    if (appRef && appRef.level1TutorialSeen) {
+        ['explore_bundle', 'mimic_intro', 'explore_choice', 'missions', 'logs', 'npc_recruit', 'inquiry', 'judgement', 'night']
+            .forEach(id => appRef.level1TutorialSeen.add(id));
+    }
+}
+dismissLevel1Tutorials(app);
+
 console.log('5. 模拟向左移动探索 (前往NPC1 卡罗房间)...');
 const btnLeft = global.document.getElementById('btn-move-left');
 app.explorationEngine.moveTo('left'); // 走到西侧走廊
@@ -414,6 +430,7 @@ if (app.mapRenderer && app.mapRenderer.skipAnimation) {
 console.log('   平移动画完成或跳过检定通过！');
 
 console.log('11. 验证【核心规则】：队伍里没有伪人绝对不刀人；队伍里有伪人必定自主刀人...');
+dismissLevel1Tutorials(app);
 const wolfNpc = app.getNpcById('kaze');
 const humanNpc = app.getNpcById('shaokexin');
 wolfNpc.role = 'wolf';
@@ -468,7 +485,9 @@ if (app.phase !== 'death_black') {
 console.log('   【已验证】队伍里有伪人时必定自主刀人，测试通过！');
 
 console.log('12. 验证遇到NPC选择不救助时，再次踏入该房间会重新触发救助确认弹窗...');
+dismissLevel1Tutorials(app);
 app.enterQ3Exploration();
+dismissLevel1Tutorials(app);
 const modalEncounter = global.document.getElementById('modal-npc-encounter');
 const btnReject = global.document.getElementById('btn-encounter-reject');
 const btnAccept = global.document.getElementById('btn-encounter-accept');
@@ -2927,24 +2946,27 @@ console.log('\n42. 验证第六关（量子回声 · 波函数坍缩）专属定
     }
     console.log('   【已验证】黄色锁死区域与宿主契合度不足区域双重阻断语义完全符合设定！');
 
-    // F. 验证 NPC 排除伊莲，且艾尔莎、诺亚、索菲亚各自位于停电站位
+    // F. 验证 NPC 排除伊莲，且艾尔莎、诺亚、索菲亚、邵可欣各自位于停电站位
     const candidateIds = app.currentLevel.candidateNPCs.map(c => c.id);
     if (candidateIds.includes("elena")) {
         throw new Error('第六关作为伊莲主导视角，候选NPC中不应包含伊莲！');
     }
-    if (!candidateIds.includes("elsa") || !candidateIds.includes("noah") || !candidateIds.includes("sophia")) {
-        throw new Error('第六关候选NPC必须包含艾尔莎、诺亚与索菲亚！');
+    if (!candidateIds.includes("elsa") || !candidateIds.includes("noah") || !candidateIds.includes("sophia") || !candidateIds.includes("shaokexin")) {
+        throw new Error('第六关候选NPC必须包含艾尔莎、诺亚、索菲亚与邵可欣！');
     }
     if (mapConfig.nodes["room_med_surgery"]?.npcId !== "elsa") {
         throw new Error('纳米手术舱未正确绑定艾尔莎 (elsa)！');
     }
-    if (mapConfig.nodes["room_cryo_stasis"]?.npcId !== "noah") {
-        throw new Error('深潜休眠矩阵舱未正确绑定诺亚 (noah)！');
+    if (mapConfig.nodes["room_recreation_gym"]?.npcId !== "noah") {
+        throw new Error('失重体能训练馆未正确绑定诺亚 (noah)！');
     }
     if (mapConfig.nodes["room_hydro_garden"]?.npcId !== "sophia") {
         throw new Error('立体水培温室未正确绑定索菲亚 (sophia)！');
     }
-    console.log('   【已验证】伊莲已彻底从 NPC 剔除，艾尔莎、诺亚、索菲亚各自就位于停电站位！');
+    if (mapConfig.nodes["room_npc2"]?.npcId !== "shaokexin") {
+        throw new Error('东侧备勤室（医护角落）未正确绑定邵可欣 (shaokexin)！');
+    }
+    console.log('   【已验证】伊莲已彻底从 NPC 剔除，艾尔莎、诺亚、索菲亚、邵可欣各自就位于停电站位！');
 
     // G. 验证随机 3 处体力箱投放
     const foodNodes = Object.values(mapConfig.nodes).filter(n => n.event && n.event.type === "food");
@@ -2979,7 +3001,7 @@ console.log('\n42. 验证第六关（量子回声 · 波函数坍缩）专属定
         vnBox.click();
     }
 
-    const noahNode = mapConfig.nodes["room_cryo_stasis"];
+    const noahNode = mapConfig.nodes["room_recreation_gym"];
     const noahNpc = app.getNpcById('noah');
     app.explorationEngine.handleNodeEvents(noahNode, false);
     btnAccept.click();
@@ -4021,7 +4043,95 @@ console.log('\n48. 验证第十二关（时间牢笼 · 因果钟摆）专属定
     console.log('   【已验证】第十二关独立机制完全隔离，其余关卡正常运行！');
 }
 
-console.log('\n====== [TEST PASSED] 全部 48 项核心流程、前十一关与第十二关专属定制及全机制测试 100% 成功！ ======');
+// =============================================================================
+// 49. 验证第一关新手强引导教程（伪人/探索/任务/日志/收纳/询问/裁决/黑夜）
+// =============================================================================
+console.log('\n49. 验证第一关新手教程强引导机制...');
+{
+    const level1 = LevelRegistry.find(l => l.levelId === 1);
+    if (!level1?.blackScreenText?.some(t => t.includes('伪人'))) {
+        throw new Error('第一关黑屏文案应引入伪人概念！');
+    }
+    if (!level1?.blackScreenText?.some(t => t.includes('新手'))) {
+        throw new Error('第一关黑屏文案应标明新手航线引导！');
+    }
+    console.log('   【已验证】第一关黑屏文案已引入伪人概念与新手引导说明！');
+
+    const modalTut = global.document.getElementById('modal-level1-tutorial');
+    const btnTut = global.document.getElementById('btn-l1-tutorial-next');
+    if (!modalTut || !btnTut) {
+        throw new Error('缺少第一关教程弹窗 DOM：modal-level1-tutorial / btn-l1-tutorial-next');
+    }
+
+    app.startNewGame(1);
+    app.level1TutorialSeen = new Set();
+    app.phase = 'q3_explore';
+    app.enterQ3Exploration();
+    if (modalTut.classList.contains('hidden')) {
+        throw new Error('第一关首次进入探索时应弹出强引导教程！');
+    }
+    if (!String(app.l1TutorialTitle?.textContent || '').includes('伪人')) {
+        throw new Error('开场第一页教程应介绍伪人概念！实际: ' + app.l1TutorialTitle?.textContent);
+    }
+    for (let i = 0; i < 4; i++) btnTut.click();
+    if (!modalTut.classList.contains('hidden')) {
+        throw new Error('开场引导序列结束后教程弹窗应关闭！');
+    }
+    if (!app.level1TutorialSeen.has('explore_bundle')) {
+        throw new Error('开场引导完成后应标记 explore_bundle 已读！');
+    }
+    console.log('   【已验证】开场四页强引导（伪人/面临选择/任务/日志）工作正常！');
+
+    app.level1TutorialSeen.delete('npc_recruit');
+    const kazeNpc = app.allNpcMap.get('kaze');
+    kazeNpc.status = 'unmet';
+    app.showNpcEncounterModal(kazeNpc, app.currentLevel.map.nodes['room_npc1'], () => {});
+    if (modalTut.classList.contains('hidden')) {
+        throw new Error('首次遭遇 NPC 时应先弹出收纳引导！');
+    }
+    if (!String(app.l1TutorialTitle?.textContent || '').includes('收纳')) {
+        throw new Error('NPC 引导页标题应涉及收纳！实际: ' + app.l1TutorialTitle?.textContent);
+    }
+    btnTut.click();
+    const modalEncounter2 = global.document.getElementById('modal-npc-encounter');
+    if (modalEncounter2.classList.contains('hidden')) {
+        throw new Error('收纳引导关闭后应立刻打开 NPC 遭遇弹窗！');
+    }
+    console.log('   【已验证】首遇 NPC 强提示鼓励收纳，随后打开遭遇弹窗！');
+
+    app.level1TutorialSeen.delete('inquiry');
+    app.showInquiryModal();
+    if (modalTut.classList.contains('hidden') || !String(app.l1TutorialTitle?.textContent || '').includes('询问')) {
+        throw new Error('首次询问阶段应弹出询问引导！');
+    }
+    btnTut.click();
+
+    app.level1TutorialSeen.delete('judgement');
+    app.showJudgementModal();
+    if (modalTut.classList.contains('hidden') || !String(app.l1TutorialTitle?.textContent || '').includes('裁决')) {
+        throw new Error('首次裁决时刻应弹出裁决引导！');
+    }
+    btnTut.click();
+
+    app.level1TutorialSeen.delete('night');
+    app.teamMembers = [app.protagonist, kazeNpc];
+    kazeNpc.status = 'active';
+    app.showNightActionModal();
+    if (modalTut.classList.contains('hidden') || !String(app.l1TutorialTitle?.textContent || '').includes('黑夜')) {
+        throw new Error('首次黑夜行动应弹出黑夜引导！');
+    }
+    btnTut.click();
+    console.log('   【已验证】询问、裁决、黑夜三阶段强引导均已就绪！');
+
+    app.startNewGame(2);
+    app.enterQ3Exploration();
+    if (!modalTut.classList.contains('hidden')) {
+        throw new Error('第二关不应弹出第一关新手教程！');
+    }
+    console.log('   【已验证】教程机制严格隔离，仅第一关生效！');
+}
+
+console.log('\n====== [TEST PASSED] 全部 49 项核心流程、前十二关专属定制与第一关新手教程测试 100% 成功！ ======');
 
 
 

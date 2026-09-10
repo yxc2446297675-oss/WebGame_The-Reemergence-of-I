@@ -14,6 +14,7 @@ import { MapRenderer } from "./mapRenderer.js";
 import { UnlockEvaluator } from "./unlockEvaluator.js";
 import { DiaryUI } from "./diaryUI.js";
 import { getNpcRoomDefs, getRelativeDirection, buildSpaceshipLevelMap } from "./spaceshipMasterMap.js";
+import { Level1TutorialPages, Level1ExploreTutorialSequence } from "./level1Tutorial.js";
 
 export class GameEngine {
     constructor() {
@@ -138,6 +139,13 @@ export class GameEngine {
         this.btnClosePersonaLog = document.getElementById("btn-close-persona-log");
         this.personaCharTabs = document.getElementById("persona-char-tabs");
         this.personaCharDetail = document.getElementById("persona-char-detail");
+
+        // 第一关新手教程弹窗
+        this.modalLevel1Tutorial = document.getElementById("modal-level1-tutorial");
+        this.l1TutorialTitle = document.getElementById("l1-tutorial-title");
+        this.l1TutorialBody = document.getElementById("l1-tutorial-body");
+        this.l1TutorialProgress = document.getElementById("l1-tutorial-progress");
+        this.btnL1TutorialNext = document.getElementById("btn-l1-tutorial-next");
 
         // 小地图战术微型雷达 DOM 引用
         this.hudMiniRadar = document.getElementById("hud-mini-radar");
@@ -1012,6 +1020,9 @@ export class GameEngine {
         this.level10KazeNightKilled = false;
         this.level10KeyEntered = false;
         this.level11LifeSupportVisited = false;
+        this.level1TutorialSeen = new Set();
+        this._l1TutorialQueue = null;
+        this._l1TutorialOnDone = null;
         this.unlockedNpcRooms = new Set();
         this.modalEncounter?.classList.add("hidden");
         this.modalPowerRestore?.classList.add("hidden");
@@ -1019,6 +1030,7 @@ export class GameEngine {
         this.modalJudgement?.classList.add("hidden");
         this.modalNight?.classList.add("hidden");
         this.modalResult?.classList.add("hidden");
+        this.modalLevel1Tutorial?.classList.add("hidden");
         this.screenLevel4Cutscene?.classList.add("hidden");
         this.logAction(`【开始新循环】启动关卡：${levelConfig.title}。主角 L.P.H 身份：${WorldviewConfig.roleNames[this.protagonist.role].name}`);
 
@@ -1192,13 +1204,101 @@ export class GameEngine {
         this.updateHeaderUI();
         this.renderExplorationControls();
 
-        const currentNode = this.explorationEngine.getCurrentNode();
-        if (currentNode) {
-            this.dialogueUI.say(
-                { name: "区域指引", themeColor: "#94a3b8" },
-                `当前位于 [${currentNode.name}]。${currentNode.desc} 请选择行动方向。`
-            );
+        const beginExploreHint = () => {
+            const currentNode = this.explorationEngine.getCurrentNode();
+            if (currentNode) {
+                this.dialogueUI.say(
+                    { name: "区域指引", themeColor: "#94a3b8" },
+                    `当前位于 [${currentNode.name}]。${currentNode.desc} 请选择行动方向。`
+                );
+            }
+        };
+
+        // 第一关：首次进入探索时连续弹出新手强引导（伪人 / 面临选择 / 任务 / 日志）
+        if (this.currentLevel?.levelId === 1 && !this.level1TutorialSeen.has("explore_bundle")) {
+            this.runLevel1TutorialSequence(Level1ExploreTutorialSequence, () => {
+                this.level1TutorialSeen.add("explore_bundle");
+                beginExploreHint();
+            });
+            return;
         }
+
+        beginExploreHint();
+    }
+
+    /**
+     * 第一关专用：弹出单页强引导教程框
+     */
+    showLevel1TutorialPage(pageId, onDone, progressText = "") {
+        if (this.currentLevel?.levelId !== 1) {
+            if (onDone) onDone();
+            return;
+        }
+        const page = Level1TutorialPages[pageId];
+        if (!page || !this.modalLevel1Tutorial) {
+            if (onDone) onDone();
+            return;
+        }
+
+        if (this.l1TutorialTitle) this.l1TutorialTitle.textContent = page.title;
+        if (this.l1TutorialBody) this.l1TutorialBody.innerHTML = page.body;
+        if (this.l1TutorialProgress) this.l1TutorialProgress.textContent = progressText || "";
+
+        this.modalLevel1Tutorial.classList.remove("hidden");
+        if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
+
+        if (this.btnL1TutorialNext) {
+            this.btnL1TutorialNext.onclick = () => {
+                this.modalLevel1Tutorial.classList.add("hidden");
+                this.btnL1TutorialNext.onclick = null;
+                if (onDone) onDone();
+            };
+        }
+    }
+
+    /**
+     * 第一关专用：按队列连续弹出多页教程
+     */
+    runLevel1TutorialSequence(pageIds = [], onDone = null) {
+        if (this.currentLevel?.levelId !== 1 || !Array.isArray(pageIds) || pageIds.length === 0) {
+            if (onDone) onDone();
+            return;
+        }
+        const queue = [...pageIds];
+        const total = queue.length;
+        const stepNext = () => {
+            if (queue.length === 0) {
+                if (onDone) onDone();
+                return;
+            }
+            const pageId = queue.shift();
+            const doneCount = total - queue.length;
+            this.showLevel1TutorialPage(
+                pageId,
+                stepNext,
+                `指引进度 ${doneCount} / ${total}`
+            );
+        };
+        stepNext();
+    }
+
+    /**
+     * 第一关专用：若该步骤尚未展示过，则展示一次后回调
+     */
+    maybeShowLevel1TutorialOnce(pageId, onDone) {
+        if (this.currentLevel?.levelId !== 1) {
+            if (onDone) onDone();
+            return;
+        }
+        if (!this.level1TutorialSeen) this.level1TutorialSeen = new Set();
+        if (this.level1TutorialSeen.has(pageId)) {
+            if (onDone) onDone();
+            return;
+        }
+        this.showLevel1TutorialPage(pageId, () => {
+            this.level1TutorialSeen.add(pageId);
+            if (onDone) onDone();
+        });
     }
 
     renderExplorationControls() {
@@ -1247,6 +1347,13 @@ export class GameEngine {
             } else if (barnes && barnes.status === "unmet") {
                 return this.showNpcEncounterModal(barnes, node, onHandled);
             }
+        }
+
+        // 第一关：首次遭遇 NPC 时强提示鼓励收纳（以便体验询问/裁决循环）
+        if (this.currentLevel?.levelId === 1 && !this.level1TutorialSeen.has("npc_recruit")) {
+            return this.maybeShowLevel1TutorialOnce("npc_recruit", () => {
+                this.showNpcEncounterModal(npc, node, onHandled);
+            });
         }
 
         const titleElem = document.getElementById("encounter-npc-name");
@@ -1513,6 +1620,11 @@ export class GameEngine {
     }
 
     showInquiryModal() {
+        // 第一关：首次进入询问阶段时弹出强引导
+        if (this.currentLevel?.levelId === 1 && !this.level1TutorialSeen.has("inquiry")) {
+            return this.maybeShowLevel1TutorialOnce("inquiry", () => this.showInquiryModal());
+        }
+
         const aliveNpcs = this.getAliveNpcTeamMembers();
         const listContainer = document.getElementById("inquiry-target-list");
         const btnSkip = document.getElementById("btn-inquiry-skip");
@@ -1619,6 +1731,11 @@ export class GameEngine {
     }
 
     showJudgementModal() {
+        // 第一关：首次进入裁决时刻时弹出强引导
+        if (this.currentLevel?.levelId === 1 && !this.level1TutorialSeen.has("judgement")) {
+            return this.maybeShowLevel1TutorialOnce("judgement", () => this.showJudgementModal());
+        }
+
         const aliveNpcs = this.getAliveNpcTeamMembers();
         const container = document.getElementById("judgement-target-list");
         const btnPass = document.getElementById("btn-judgement-pass");
@@ -1790,6 +1907,11 @@ export class GameEngine {
     }
 
     showNightActionModal() {
+        // 第一关：首次进入黑夜身份行动时弹出强引导（介绍伪人查验）
+        if (this.currentLevel?.levelId === 1 && !this.level1TutorialSeen.has("night")) {
+            return this.maybeShowLevel1TutorialOnce("night", () => this.showNightActionModal());
+        }
+
         const role = this.protagonist.role;
         const titleElem = document.getElementById("night-modal-title");
         const descElem = document.getElementById("night-modal-desc");

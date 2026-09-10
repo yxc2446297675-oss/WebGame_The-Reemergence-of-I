@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-10T04:10:39.631Z
+ * 自动生成于 2026-09-10T06:35:31.061Z
  */
 (function() {
     'use strict';
@@ -3083,9 +3083,10 @@ const LEVEL_SECTOR_SPECS = {
             "room_main_reactor", "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock"
         ],
         npcPlacements: {
-            "room_med_surgery": "elsa",    // 艾尔莎 (纳米手术舱 · 生化检测室)
-            "room_cryo_stasis": "noah",    // 诺亚 (深潜休眠矩阵舱)
-            "room_hydro_garden": "sophia"  // 索菲亚 (立体水培温室)
+            "room_med_surgery": "elsa",       // 艾尔莎 (纳米手术舱 · 全自动急救台)
+            "room_recreation_gym": "noah",    // 诺亚 (失重体能训练馆 · 体能维持舱)
+            "room_hydro_garden": "sophia",    // 索菲亚 (立体水培温室 · 绿光生态舱)
+            "room_npc2": "shaokexin"          // 邵可欣 (东侧备勤室 · 医护角落)
         },
         randomFoodCount: 3, // 场景随机投放三处体力箱
         additionalConnections: [
@@ -3802,11 +3803,10 @@ const BaseLevels = [
 
         // q1 黑屏中间白字（契合基地爆炸与同伴失散的世界观）
         blackScreenText: [
-            "……基地爆炸的剧烈冲击波仿佛还在耳膜深处轰鸣。",
-            "浓烟散去，冰冷的金属地面将你冻醒，你发现自己孤身遗落在这片陌生的封闭区域。",
-            "你的记忆有些模糊，但你知道失散的同伴们正昏迷在错综复杂的舱室各处。",
-            "更可怕的是，异样的高熵感染信号在附近闪烁——有潜伏的伪人混入了我们之中。",
-            "探明走廊，救醒同伴，保持理智裁决，最终抵达北侧的【终点脱出大门】。",
+            "……爆炸余波还在耳膜里回响。你在冰冷甲板苏醒，身边空无一人。",
+            "失散的同伴昏迷在各处舱室——但其中，可能已经混入了伪人。",
+            "伪人与人类无异，却会在黑夜中袭击同伴。你必须搜救、倾听、裁决，再抵达终点。",
+            "本关是新手航线：系统将逐步指引你熟悉日志、任务、探索与完整昼夜循环。",
             "——触摸屏幕，开始行动。"
         ],
 
@@ -4097,9 +4097,10 @@ const BaseLevels = [
         // 伪人数量配置：随机 1~2 人
         wolfCountRange: [1, 2],
         candidateNPCs: [
-            { id: "elsa", assignedRole: null },   // 艾尔莎 (纳米手术舱 · 生化检测室)
-            { id: "noah", assignedRole: null },   // 诺亚 (深潜休眠矩阵舱)
-            { id: "sophia", assignedRole: null }  // 索菲亚 (立体水培温室)
+            { id: "elsa", assignedRole: null },       // 艾尔莎 (纳米手术舱 · 全自动急救台)
+            { id: "noah", assignedRole: null },       // 诺亚 (失重体能训练馆 · 体能维持舱)
+            { id: "sophia", assignedRole: null },     // 索菲亚 (立体水培温室 · 绿光生态舱)
+            { id: "shaokexin", assignedRole: null }   // 邵可欣 (东侧备勤室 · 医护角落)
         ],
 
         mapImageUrl: null,
@@ -4675,6 +4676,91 @@ const LevelRegistry = [
     ...ExclusiveBranchLevels
 ];
 
+
+
+    // =========================================================================
+    // 模块: level1Tutorial.js
+    // =========================================================================
+/**
+ * 第一关新手教程文案与步骤表 (仅 levelId === 1 使用)
+ * 强引导：关键节点弹出可点击关闭的教程框
+ */
+
+const Level1TutorialPages = {
+    mimic_intro: {
+        title: "核心规则 · 伪人",
+        body: [
+            "这片星舰里混入了<strong>伪人</strong>——外表与人类无异，却会在夜间悄然袭击同伴。",
+            "你的主线不是单纯逃命：要<strong>搜救同伴、辨别真伪、在裁决中做选择</strong>，再抵达终点。",
+            "记住：队伍越热闹，越可能藏着伪装体；独自一人则跳过询问与裁决，但也更难获得线索。"
+        ].join("<br><br>")
+    },
+    explore_choice: {
+        title: "探索 · 面临选择",
+        body: [
+            "使用方向键踏入相邻舱室。进入<strong>未知舱室</strong>会消耗体力，并累加一次「面临选择」。",
+            "折返已探明区域<strong>不耗体力、不计入面临选择</strong>。面临选择累积后，傍晚时分会概率到来。",
+            "傍晚意味着：询问线索 → 裁决处分 → 黑夜行动 → 黎明继续探索。"
+        ].join("<br><br>")
+    },
+    missions: {
+        title: "界面 · 任务",
+        body: [
+            "点击顶部 <strong>🎯 任务</strong>，或查看左上角「观测目标」，可随时核对本关目标。",
+            "任务一：抵达终点即可解锁下一扇区。",
+            "任务二：若带离指定同伴（如邵可欣），可能额外解锁隐藏扇区——报酬在通关前不会剧透。"
+        ].join("<br><br>")
+    },
+    logs: {
+        title: "界面 · 日志",
+        body: [
+            "左侧（或移动端「日志」按钮）是<strong>行动日志</strong>：移动、营救、询问、裁决与夜间结果都会记录在此。",
+            "推理伪人时，请多回顾日志里的发言与处分结果——线索往往藏在字里行间。"
+        ].join("<br><br>")
+    },
+    npc_recruit: {
+        title: "遭遇 · 是否收纳",
+        body: [
+            "你遇到了昏迷的同伴。选择<strong>救助加入</strong>，对方会进入队伍；选择忽略，之后仍可回来。",
+            "<strong>建议：新手请先收纳至少一人。</strong>只有队伍中有同伴时，你才会体验完整的「询问 → 裁决 → 黑夜」主循环。",
+            "注意：被收纳的同伴也可能是伪人。收纳不是终点，而是推理的开始。"
+        ].join("<br><br>")
+    },
+    inquiry: {
+        title: "傍晚 · 询问阶段",
+        body: [
+            "傍晚集结后，你可以与最多 <strong>2 名</strong>同伴单独交谈，获取口供与态度。",
+            "也可以直接跳过询问进入裁决。交谈次数会累积，某些人物图鉴线索也依赖反复交谈。",
+            "把他们当作嫌疑人来听：矛盾、回避、过度冷静，都可能是伪装的裂痕。"
+        ].join("<br><br>")
+    },
+    judgement: {
+        title: "裁决时刻",
+        body: [
+            "作为队长，你可以：",
+            "• <strong>禁锢今夜</strong>：限制对方夜间行动；若其为伪人，今晚往往无法动手。",
+            "• <strong>永久放逐</strong>：将其踢出队伍（无法挽回）。",
+            "• <strong>放弃裁决</strong>：今晚不做处分。",
+            "没有证据时可以放弃；有强烈嫌疑时，禁锢往往是更稳妥的试探。"
+        ].join("<br><br>")
+    },
+    night: {
+        title: "黑夜 · 身份行动",
+        body: [
+            "你本关默认身份是<strong>魔镜</strong>：可在夜间查验一名同伴的真身——人类，或伪人。",
+            "若队伍中存在伪人，它们可能在夜间袭击某人；黎明时你将看到结果。",
+            "查验、守护、救赎……不同身份各有手段。善用夜晚，白天的裁决才会更清醒。"
+        ].join("<br><br>")
+    }
+};
+
+/** 开场探索引导的顺序（进入 Q3 时连续弹出） */
+const Level1ExploreTutorialSequence = [
+    "mimic_intro",
+    "explore_choice",
+    "missions",
+    "logs"
+];
 
 
     // =========================================================================
@@ -8708,6 +8794,7 @@ class ExplorationEngine {
 
 
 
+
 class GameEngine {
     constructor() {
         this.saveSystem = new SaveSystem();
@@ -8831,6 +8918,13 @@ class GameEngine {
         this.btnClosePersonaLog = document.getElementById("btn-close-persona-log");
         this.personaCharTabs = document.getElementById("persona-char-tabs");
         this.personaCharDetail = document.getElementById("persona-char-detail");
+
+        // 第一关新手教程弹窗
+        this.modalLevel1Tutorial = document.getElementById("modal-level1-tutorial");
+        this.l1TutorialTitle = document.getElementById("l1-tutorial-title");
+        this.l1TutorialBody = document.getElementById("l1-tutorial-body");
+        this.l1TutorialProgress = document.getElementById("l1-tutorial-progress");
+        this.btnL1TutorialNext = document.getElementById("btn-l1-tutorial-next");
 
         // 小地图战术微型雷达 DOM 引用
         this.hudMiniRadar = document.getElementById("hud-mini-radar");
@@ -9705,6 +9799,9 @@ class GameEngine {
         this.level10KazeNightKilled = false;
         this.level10KeyEntered = false;
         this.level11LifeSupportVisited = false;
+        this.level1TutorialSeen = new Set();
+        this._l1TutorialQueue = null;
+        this._l1TutorialOnDone = null;
         this.unlockedNpcRooms = new Set();
         this.modalEncounter?.classList.add("hidden");
         this.modalPowerRestore?.classList.add("hidden");
@@ -9712,6 +9809,7 @@ class GameEngine {
         this.modalJudgement?.classList.add("hidden");
         this.modalNight?.classList.add("hidden");
         this.modalResult?.classList.add("hidden");
+        this.modalLevel1Tutorial?.classList.add("hidden");
         this.screenLevel4Cutscene?.classList.add("hidden");
         this.logAction(`【开始新循环】启动关卡：${levelConfig.title}。主角 L.P.H 身份：${WorldviewConfig.roleNames[this.protagonist.role].name}`);
 
@@ -9885,13 +9983,101 @@ class GameEngine {
         this.updateHeaderUI();
         this.renderExplorationControls();
 
-        const currentNode = this.explorationEngine.getCurrentNode();
-        if (currentNode) {
-            this.dialogueUI.say(
-                { name: "区域指引", themeColor: "#94a3b8" },
-                `当前位于 [${currentNode.name}]。${currentNode.desc} 请选择行动方向。`
-            );
+        const beginExploreHint = () => {
+            const currentNode = this.explorationEngine.getCurrentNode();
+            if (currentNode) {
+                this.dialogueUI.say(
+                    { name: "区域指引", themeColor: "#94a3b8" },
+                    `当前位于 [${currentNode.name}]。${currentNode.desc} 请选择行动方向。`
+                );
+            }
+        };
+
+        // 第一关：首次进入探索时连续弹出新手强引导（伪人 / 面临选择 / 任务 / 日志）
+        if (this.currentLevel?.levelId === 1 && !this.level1TutorialSeen.has("explore_bundle")) {
+            this.runLevel1TutorialSequence(Level1ExploreTutorialSequence, () => {
+                this.level1TutorialSeen.add("explore_bundle");
+                beginExploreHint();
+            });
+            return;
         }
+
+        beginExploreHint();
+    }
+
+    /**
+     * 第一关专用：弹出单页强引导教程框
+     */
+    showLevel1TutorialPage(pageId, onDone, progressText = "") {
+        if (this.currentLevel?.levelId !== 1) {
+            if (onDone) onDone();
+            return;
+        }
+        const page = Level1TutorialPages[pageId];
+        if (!page || !this.modalLevel1Tutorial) {
+            if (onDone) onDone();
+            return;
+        }
+
+        if (this.l1TutorialTitle) this.l1TutorialTitle.textContent = page.title;
+        if (this.l1TutorialBody) this.l1TutorialBody.innerHTML = page.body;
+        if (this.l1TutorialProgress) this.l1TutorialProgress.textContent = progressText || "";
+
+        this.modalLevel1Tutorial.classList.remove("hidden");
+        if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
+
+        if (this.btnL1TutorialNext) {
+            this.btnL1TutorialNext.onclick = () => {
+                this.modalLevel1Tutorial.classList.add("hidden");
+                this.btnL1TutorialNext.onclick = null;
+                if (onDone) onDone();
+            };
+        }
+    }
+
+    /**
+     * 第一关专用：按队列连续弹出多页教程
+     */
+    runLevel1TutorialSequence(pageIds = [], onDone = null) {
+        if (this.currentLevel?.levelId !== 1 || !Array.isArray(pageIds) || pageIds.length === 0) {
+            if (onDone) onDone();
+            return;
+        }
+        const queue = [...pageIds];
+        const total = queue.length;
+        const stepNext = () => {
+            if (queue.length === 0) {
+                if (onDone) onDone();
+                return;
+            }
+            const pageId = queue.shift();
+            const doneCount = total - queue.length;
+            this.showLevel1TutorialPage(
+                pageId,
+                stepNext,
+                `指引进度 ${doneCount} / ${total}`
+            );
+        };
+        stepNext();
+    }
+
+    /**
+     * 第一关专用：若该步骤尚未展示过，则展示一次后回调
+     */
+    maybeShowLevel1TutorialOnce(pageId, onDone) {
+        if (this.currentLevel?.levelId !== 1) {
+            if (onDone) onDone();
+            return;
+        }
+        if (!this.level1TutorialSeen) this.level1TutorialSeen = new Set();
+        if (this.level1TutorialSeen.has(pageId)) {
+            if (onDone) onDone();
+            return;
+        }
+        this.showLevel1TutorialPage(pageId, () => {
+            this.level1TutorialSeen.add(pageId);
+            if (onDone) onDone();
+        });
     }
 
     renderExplorationControls() {
@@ -9940,6 +10126,13 @@ class GameEngine {
             } else if (barnes && barnes.status === "unmet") {
                 return this.showNpcEncounterModal(barnes, node, onHandled);
             }
+        }
+
+        // 第一关：首次遭遇 NPC 时强提示鼓励收纳（以便体验询问/裁决循环）
+        if (this.currentLevel?.levelId === 1 && !this.level1TutorialSeen.has("npc_recruit")) {
+            return this.maybeShowLevel1TutorialOnce("npc_recruit", () => {
+                this.showNpcEncounterModal(npc, node, onHandled);
+            });
         }
 
         const titleElem = document.getElementById("encounter-npc-name");
@@ -10206,6 +10399,11 @@ class GameEngine {
     }
 
     showInquiryModal() {
+        // 第一关：首次进入询问阶段时弹出强引导
+        if (this.currentLevel?.levelId === 1 && !this.level1TutorialSeen.has("inquiry")) {
+            return this.maybeShowLevel1TutorialOnce("inquiry", () => this.showInquiryModal());
+        }
+
         const aliveNpcs = this.getAliveNpcTeamMembers();
         const listContainer = document.getElementById("inquiry-target-list");
         const btnSkip = document.getElementById("btn-inquiry-skip");
@@ -10312,6 +10510,11 @@ class GameEngine {
     }
 
     showJudgementModal() {
+        // 第一关：首次进入裁决时刻时弹出强引导
+        if (this.currentLevel?.levelId === 1 && !this.level1TutorialSeen.has("judgement")) {
+            return this.maybeShowLevel1TutorialOnce("judgement", () => this.showJudgementModal());
+        }
+
         const aliveNpcs = this.getAliveNpcTeamMembers();
         const container = document.getElementById("judgement-target-list");
         const btnPass = document.getElementById("btn-judgement-pass");
@@ -10483,6 +10686,11 @@ class GameEngine {
     }
 
     showNightActionModal() {
+        // 第一关：首次进入黑夜身份行动时弹出强引导（介绍伪人查验）
+        if (this.currentLevel?.levelId === 1 && !this.level1TutorialSeen.has("night")) {
+            return this.maybeShowLevel1TutorialOnce("night", () => this.showNightActionModal());
+        }
+
         const role = this.protagonist.role;
         const titleElem = document.getElementById("night-modal-title");
         const descElem = document.getElementById("night-modal-desc");

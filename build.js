@@ -12,6 +12,7 @@ const files = [
     'spaceshipMasterMap.js',
     'generatedLevels.js',
     'levels.js',
+    'level1Tutorial.js',
     'dialogueUI.js',
     'diaryUI.js',
     'saveSystem.js',

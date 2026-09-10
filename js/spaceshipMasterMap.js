@@ -1223,9 +1223,10 @@ export const LEVEL_SECTOR_SPECS = {
             "room_main_reactor", "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock"
         ],
         npcPlacements: {
-            "room_med_surgery": "elsa",    // 艾尔莎 (纳米手术舱 · 生化检测室)
-            "room_cryo_stasis": "noah",    // 诺亚 (深潜休眠矩阵舱)
-            "room_hydro_garden": "sophia"  // 索菲亚 (立体水培温室)
+            "room_med_surgery": "elsa",       // 艾尔莎 (纳米手术舱 · 全自动急救台)
+            "room_recreation_gym": "noah",    // 诺亚 (失重体能训练馆 · 体能维持舱)
+            "room_hydro_garden": "sophia",    // 索菲亚 (立体水培温室 · 绿光生态舱)
+            "room_npc2": "shaokexin"          // 邵可欣 (东侧备勤室 · 医护角落)
         },
         randomFoodCount: 3, // 场景随机投放三处体力箱
         additionalConnections: [
