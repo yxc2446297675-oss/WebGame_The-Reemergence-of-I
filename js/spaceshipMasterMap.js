@@ -1374,41 +1374,79 @@ export const LEVEL_SECTOR_SPECS = {
     },
     11: {
         title: "第十一关：暗物质界 · 引力源扰动",
-        subtitle: "舰艏指挥、中腹与西翼科研三区连通",
-        startNodeId: "room_start",
-        exitNodeId: "room_bridge_main",
+        subtitle: "体能维持舱出发 · 维生总控后孤身撤离",
+        startNodeId: "room_recreation_gym", // 体能维持舱 [7, 3]
+        exitNodeId: "room_gravity_well",    // 重力发生核 [5, 3]
+        patrolNodes: ["room_life_support"], // 任务目标：维生环境总控机房提前亮起
         openRoomIds: [
-            "room_sensor_array", "room_tactical_plan", "room_bridge_sub", "room_bridge_main", "room_ai_core", "room_comm_center", "room_observation",
-            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne", "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
-            "room_npc3", "room_junction_nw", "room_path_e", "room_hub_n1", "room_npc2", "room_living_quarter", "room_hydro_garden",
-            "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se", "room_gravity_well", "room_armory",
-            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck", "room_machine_shop", "room_water_purify", "room_life_support", "room_shields_emitter"
+            // Y=0 舰桥中枢行 (3间)
+            "room_ai_core", "room_comm_center", "room_observation",
+            // Y=1 生化医疗与休眠行 (3间)
+            "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
+            // Y=2 起居、温室与餐厅行 (4间)
+            "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
+            // Y=3 重力井与训练馆行 (3间；军火库气闸锁死)
+            "room_gravity_well", "room_recreation_gym", "room_east_airlock",
+            // Y=4 机械工坊与维生辅机行 (4间)
+            "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
+            // Y=5 聚变反应堆与推进长廊行 (5间)
+            "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock", "room_npc_colt_barnes"
         ],
         npcPlacements: {
-            "room_tactical_plan": "kaze",
-            "room_med_surgery": "shaokexin",
-            "room_npc3": "mode"
+            "room_med_surgery": "elsa",           // 艾尔莎（纳米手术舱·停电站位）
+            "room_hydro_garden": "sophia",        // 索菲亚（立体水培温室·停电站位）
+            "room_npc_colt_barnes": "colt"        // 柯尔特（特勤套房·停电站位）；去除诺亚与主角LPH
         },
-        foodPlacements: ["room_storage_ne", "room_west_end", "room_water_purify"]
+        randomFoodCount: 2, // 场景随机投放两处体力箱
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [
+            // 防爆军火库、尾迹引导间、右舷离子推进机房、右舷2号紧急救生舱
+            "room_armory",
+            "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e"
+        ]
     },
     12: {
         title: "第十二关：时间牢笼 · 因果钟摆",
-        subtitle: "中腹、东翼与反应堆工程连通",
-        startNodeId: "room_start",
-        exitNodeId: "room_singularity_gate",
+        subtitle: "绿光生态舱出发 · 搜寻同伴返回生态舱脱离",
+        startNodeId: "room_hydro_garden", // 立体水培温室 · 绿光生态舱 [6, 2] (起点)
+        exitNodeId: "room_hydro_garden",  // 立体水培温室 · 绿光生态舱 [6, 2] (终点)
         openRoomIds: [
-            "room_hub_n1", "room_storage_ne", "room_npc2", "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
-            "room_corridor_w1", "room_start", "room_corner_se", "room_gravity_well", "room_armory", "room_recreation_gym", "room_east_airlock",
-            "room_cargo_lift", "room_sub_generator", "room_hangar_deck", "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
-            "room_sub_coolant", "room_reactor_control", "room_plasma_manifold", "room_main_reactor", "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock",
-            "room_escape_pod_w", "room_ion_thruster_l", "room_antimatter_tap", "room_singularity_gate", "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e", "room_npc1", "room_path_e", "room_junction_nw"
+            // Y=1 科研医疗与脱离行 (8间)
+            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne",
+            "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
+            // Y=2 中层起居与温室生态行 (8间)
+            "room_npc3", "room_junction_nw", "room_path_e", "room_hub_n1",
+            "room_npc2", "room_living_quarter", "room_hydro_garden", "room_mess_hall",
+            // Y=3 动力控制与重力训练行 (7间，军火库锁死)
+            "room_west_end", "room_npc1", "room_corridor_w1", "room_start",
+            "room_corner_se", "room_gravity_well", "room_recreation_gym",
+            // Y=4 机库工程与维生辅机行 (8间)
+            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck",
+            "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler",
+            // Y=5 反应堆核心与防爆甬道行 (8间)
+            "room_shields_emitter", "room_sub_coolant", "room_reactor_control", "room_plasma_manifold",
+            "room_main_reactor", "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor"
         ],
         npcPlacements: {
-            "room_npc1": "kaze",
-            "room_npc2": "shaokexin",
-            "room_warp_field_gen": "mode"
+            "room_npc3": "mode",            // 莫德（西北隔离舱 · 安全避难室）
+            "room_npc2": "shaokexin",       // 邵可欣（东侧备勤室 · 医护角落）
+            "room_med_surgery": "elsa",      // 艾尔莎（纳米手术舱 · 全自动急救台）
+            "room_west_end": "prof_lu",     // 陆知行（主配电值班舱 · 全舰停电始发站）
+            "room_npc1": "kaze",            // 卡罗（西区整备间 · 动力操作台）
+            "room_sub_generator": "vivian", // 薇薇安（辅助等离子发电站 · 二号辅电站）
+            "room_life_support": "noah",    // 诺亚（维生环境总控机房 · 一号核心芯片失窃点）
+            "room_main_reactor": "elena"    // 伊莲（重核聚变主反应堆）
         },
-        foodPlacements: ["room_storage_ne", "room_mess_hall", "room_coolant_tank"]
+        randomFoodCount: 2, // 场景随机投放两处体力箱
+        severedConnections: [
+            ["room_path_e", "room_corner_ne"],       // 中继过渡间至跃迁前厅垂直气闸阻断
+            ["room_corridor_w1", "room_sub_generator"], // 狭长甬道至二号辅电站垂直气闸阻断
+            ["room_start", "room_hangar_deck"]        // 苏醒密封厅至停机坪甲板垂直气闸阻断
+        ],
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [
+            "room_armory" // [6, 3] 舰载武装军械库 · 防爆空火库（黄色气闸锁死）
+        ]
     },
     13: {
         title: "第十三关：拟人茧房 · 拟态繁殖工坊",

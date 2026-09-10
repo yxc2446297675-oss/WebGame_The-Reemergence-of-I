@@ -3,7 +3,8 @@
  * 基于统一宇宙飞船基地母蓝图系统 (SpaceshipMasterMap) 驱动：
  * - 关卡 3~5：第一梯级 (11~16间)，局部甲板封锁
  * - 关卡 6~10：第二梯级 (22~26间)，双甲板贯通互联
- * - 关卡 11~15：第三梯级 (36~42间)，三甲板大型网状贯通与异化变体
+ * - 关卡 11：已迁入 levels.js 手工定制
+ * - 关卡 12~15：第三梯级 (36~42间)，三甲板大型网状贯通与异化变体
  * - 关卡 16~20：第四梯级 (44~48间)，四甲板大贯通，大半星舰解锁
  * - 关卡 21~25：第五梯级 (52~58间)，全舰大通关终极决战
  */
@@ -12,7 +13,7 @@ import { buildSpaceshipLevelMap, LEVEL_SECTOR_SPECS } from "./spaceshipMasterMap
 
 export const GeneratedLevels = [];
 
-for (let lvlId = 11; lvlId <= 25; lvlId++) {
+for (let lvlId = 13; lvlId <= 25; lvlId++) {
     const spec = LEVEL_SECTOR_SPECS[lvlId] || LEVEL_SECTOR_SPECS[1];
     const lvlMap = buildSpaceshipLevelMap(lvlId);
 

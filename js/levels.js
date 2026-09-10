@@ -551,6 +551,97 @@ export const BaseLevels = [
                 toast: "密钥序列已刻入记忆！开放【第二十二关】！"
             }
         ]
+    },
+    {
+        levelId: 11,
+        title: "第十一关：暗物质界 · 引力源扰动",
+        subtitle: "体能维持舱出发 · 维生总控后孤身撤离",
+
+        // 前置黑屏白字（悬疑留白）
+        blackScreenText: [
+            "……你只是一台机器。",
+            "人类的生死，真的需要你去衡量吗？",
+            "这个问题悬在黑暗里，没有回声。",
+            "所谓危机感——对你而言，只是一段未定义的噪声。",
+            "……无所谓了。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量：随机 1~2 人
+        wolfCountRange: [1, 2],
+        candidateNPCs: [
+            { id: "elsa", assignedRole: null },   // 艾尔莎 (纳米手术舱)
+            { id: "sophia", assignedRole: null }, // 索菲亚 (立体水培温室)
+            { id: "colt", assignedRole: null }    // 柯尔特 (特勤套房)；去除诺亚
+        ],
+
+        mapImageUrl: null,
+        map: buildSpaceshipLevelMap(11),
+
+        unlockRules: [
+            {
+                id: "l11_task1_life_support_solo",
+                condition: { type: "level11_solo_after_life_support" },
+                unlockLevelIds: [12, 23],
+                taskName: "任务一：维生核检 · 孤身撤离",
+                taskObjective: "前往维生环境总控机房完成核检，再独自一人撤离至重力发生核",
+                title: "暗物质界突围",
+                toast: "维生核检已闭环，你独自脱离了引力源扰动区！开放【第十二关】与【第二十三关】！"
+            }
+        ]
+    },
+    {
+        levelId: 12,
+        title: "第十二关：时间牢笼 · 因果钟摆",
+        subtitle: "绿光生态舱出发 · 搜寻同伴返回生态舱脱离",
+
+        // 前置黑屏白字（悬疑留白、富有史诗感）
+        blackScreenText: [
+            "像往常那样，你静静呆在植物身旁不肯离去……",
+            "可不知为何，四周的光影骤然湮灭，深沉的黑暗瞬间剥夺了你的视线。",
+            "或许……又是柯尔特在哪个走廊闹出什么岔子了？",
+            "到底该不该走出温室呢？",
+            "这是一个需要深思的问题……",
+            "—— 触摸屏幕，踏入未知。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量：随机 1~2 人
+        wolfCountRange: [1, 2],
+        candidateNPCs: [
+            { id: "mode",      assignedRole: null }, // 莫德 (安全避难室)
+            { id: "shaokexin", assignedRole: null }, // 邵可欣 (医护角落)
+            { id: "elsa",      assignedRole: null }, // 艾尔莎 (全自动急救台)
+            { id: "prof_lu",   assignedRole: null }, // 陆知行 (全舰停电始发站)
+            { id: "kaze",      assignedRole: null }, // 卡罗 (动力操作台)
+            { id: "vivian",    assignedRole: null }, // 薇薇安 (二号辅电站)
+            { id: "noah",      assignedRole: null }, // 诺亚 (维生环境总控机房)
+            { id: "elena",     assignedRole: null }  // 伊莲 (重核聚变主反应堆)
+        ],
+
+        mapImageUrl: null,
+        // 地图拓扑网络（39间开放舱室）
+        map: buildSpaceshipLevelMap(12),
+
+        unlockRules: [
+            {
+                id: "l12_evacuate_3_npcs",
+                condition: { type: "require_npc_count", count: 3 },
+                unlockLevelIds: [24],
+                taskName: "任务一：携手同伴 · 生态舱脱离",
+                taskObjective: "搜寻并带离至少三名存活同伴，一同返回绿光生态舱撤离",
+                title: "时间牢笼脱离",
+                toast: "成功携行 3 名同伴脱出绿光生态舱！开放【第二十四关】！"
+            }
+        ]
     }
 ];
 
@@ -792,7 +883,7 @@ export const ExclusiveBranchLevels = [
 
 export const LevelRegistry = [
     ...BaseLevels,
-    ...(typeof GeneratedLevels !== "undefined" ? GeneratedLevels : []),
+    ...(typeof GeneratedLevels !== "undefined" ? GeneratedLevels.filter(g => !BaseLevels.some(b => b.levelId === g.levelId)) : []),
     ...ExclusiveBranchLevels
 ];
 

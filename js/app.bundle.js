@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-09T15:52:15.481Z
+ * 自动生成于 2026-09-10T04:10:39.631Z
  */
 (function() {
     'use strict';
@@ -3234,41 +3234,79 @@ const LEVEL_SECTOR_SPECS = {
     },
     11: {
         title: "第十一关：暗物质界 · 引力源扰动",
-        subtitle: "舰艏指挥、中腹与西翼科研三区连通",
-        startNodeId: "room_start",
-        exitNodeId: "room_bridge_main",
+        subtitle: "体能维持舱出发 · 维生总控后孤身撤离",
+        startNodeId: "room_recreation_gym", // 体能维持舱 [7, 3]
+        exitNodeId: "room_gravity_well",    // 重力发生核 [5, 3]
+        patrolNodes: ["room_life_support"], // 任务目标：维生环境总控机房提前亮起
         openRoomIds: [
-            "room_sensor_array", "room_tactical_plan", "room_bridge_sub", "room_bridge_main", "room_ai_core", "room_comm_center", "room_observation",
-            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne", "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
-            "room_npc3", "room_junction_nw", "room_path_e", "room_hub_n1", "room_npc2", "room_living_quarter", "room_hydro_garden",
-            "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se", "room_gravity_well", "room_armory",
-            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck", "room_machine_shop", "room_water_purify", "room_life_support", "room_shields_emitter"
+            // Y=0 舰桥中枢行 (3间)
+            "room_ai_core", "room_comm_center", "room_observation",
+            // Y=1 生化医疗与休眠行 (3间)
+            "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
+            // Y=2 起居、温室与餐厅行 (4间)
+            "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
+            // Y=3 重力井与训练馆行 (3间；军火库气闸锁死)
+            "room_gravity_well", "room_recreation_gym", "room_east_airlock",
+            // Y=4 机械工坊与维生辅机行 (4间)
+            "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
+            // Y=5 聚变反应堆与推进长廊行 (5间)
+            "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock", "room_npc_colt_barnes"
         ],
         npcPlacements: {
-            "room_tactical_plan": "kaze",
-            "room_med_surgery": "shaokexin",
-            "room_npc3": "mode"
+            "room_med_surgery": "elsa",           // 艾尔莎（纳米手术舱·停电站位）
+            "room_hydro_garden": "sophia",        // 索菲亚（立体水培温室·停电站位）
+            "room_npc_colt_barnes": "colt"        // 柯尔特（特勤套房·停电站位）；去除诺亚与主角LPH
         },
-        foodPlacements: ["room_storage_ne", "room_west_end", "room_water_purify"]
+        randomFoodCount: 2, // 场景随机投放两处体力箱
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [
+            // 防爆军火库、尾迹引导间、右舷离子推进机房、右舷2号紧急救生舱
+            "room_armory",
+            "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e"
+        ]
     },
     12: {
         title: "第十二关：时间牢笼 · 因果钟摆",
-        subtitle: "中腹、东翼与反应堆工程连通",
-        startNodeId: "room_start",
-        exitNodeId: "room_singularity_gate",
+        subtitle: "绿光生态舱出发 · 搜寻同伴返回生态舱脱离",
+        startNodeId: "room_hydro_garden", // 立体水培温室 · 绿光生态舱 [6, 2] (起点)
+        exitNodeId: "room_hydro_garden",  // 立体水培温室 · 绿光生态舱 [6, 2] (终点)
         openRoomIds: [
-            "room_hub_n1", "room_storage_ne", "room_npc2", "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
-            "room_corridor_w1", "room_start", "room_corner_se", "room_gravity_well", "room_armory", "room_recreation_gym", "room_east_airlock",
-            "room_cargo_lift", "room_sub_generator", "room_hangar_deck", "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
-            "room_sub_coolant", "room_reactor_control", "room_plasma_manifold", "room_main_reactor", "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock",
-            "room_escape_pod_w", "room_ion_thruster_l", "room_antimatter_tap", "room_singularity_gate", "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e", "room_npc1", "room_path_e", "room_junction_nw"
+            // Y=1 科研医疗与脱离行 (8间)
+            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne",
+            "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
+            // Y=2 中层起居与温室生态行 (8间)
+            "room_npc3", "room_junction_nw", "room_path_e", "room_hub_n1",
+            "room_npc2", "room_living_quarter", "room_hydro_garden", "room_mess_hall",
+            // Y=3 动力控制与重力训练行 (7间，军火库锁死)
+            "room_west_end", "room_npc1", "room_corridor_w1", "room_start",
+            "room_corner_se", "room_gravity_well", "room_recreation_gym",
+            // Y=4 机库工程与维生辅机行 (8间)
+            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck",
+            "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler",
+            // Y=5 反应堆核心与防爆甬道行 (8间)
+            "room_shields_emitter", "room_sub_coolant", "room_reactor_control", "room_plasma_manifold",
+            "room_main_reactor", "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor"
         ],
         npcPlacements: {
-            "room_npc1": "kaze",
-            "room_npc2": "shaokexin",
-            "room_warp_field_gen": "mode"
+            "room_npc3": "mode",            // 莫德（西北隔离舱 · 安全避难室）
+            "room_npc2": "shaokexin",       // 邵可欣（东侧备勤室 · 医护角落）
+            "room_med_surgery": "elsa",      // 艾尔莎（纳米手术舱 · 全自动急救台）
+            "room_west_end": "prof_lu",     // 陆知行（主配电值班舱 · 全舰停电始发站）
+            "room_npc1": "kaze",            // 卡罗（西区整备间 · 动力操作台）
+            "room_sub_generator": "vivian", // 薇薇安（辅助等离子发电站 · 二号辅电站）
+            "room_life_support": "noah",    // 诺亚（维生环境总控机房 · 一号核心芯片失窃点）
+            "room_main_reactor": "elena"    // 伊莲（重核聚变主反应堆）
         },
-        foodPlacements: ["room_storage_ne", "room_mess_hall", "room_coolant_tank"]
+        randomFoodCount: 2, // 场景随机投放两处体力箱
+        severedConnections: [
+            ["room_path_e", "room_corner_ne"],       // 中继过渡间至跃迁前厅垂直气闸阻断
+            ["room_corridor_w1", "room_sub_generator"], // 狭长甬道至二号辅电站垂直气闸阻断
+            ["room_start", "room_hangar_deck"]        // 苏醒密封厅至停机坪甲板垂直气闸阻断
+        ],
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [
+            "room_armory" // [6, 3] 舰载武装军械库 · 防爆空火库（黄色气闸锁死）
+        ]
     },
     13: {
         title: "第十三关：拟人茧房 · 拟态繁殖工坊",
@@ -3691,7 +3729,8 @@ function buildSpaceshipLevelMap(levelId) {
  * 基于统一宇宙飞船基地母蓝图系统 (SpaceshipMasterMap) 驱动：
  * - 关卡 3~5：第一梯级 (11~16间)，局部甲板封锁
  * - 关卡 6~10：第二梯级 (22~26间)，双甲板贯通互联
- * - 关卡 11~15：第三梯级 (36~42间)，三甲板大型网状贯通与异化变体
+ * - 关卡 11：已迁入 levels.js 手工定制
+ * - 关卡 12~15：第三梯级 (36~42间)，三甲板大型网状贯通与异化变体
  * - 关卡 16~20：第四梯级 (44~48间)，四甲板大贯通，大半星舰解锁
  * - 关卡 21~25：第五梯级 (52~58间)，全舰大通关终极决战
  */
@@ -3700,7 +3739,7 @@ function buildSpaceshipLevelMap(levelId) {
 
 const GeneratedLevels = [];
 
-for (let lvlId = 11; lvlId <= 25; lvlId++) {
+for (let lvlId = 13; lvlId <= 25; lvlId++) {
     const spec = LEVEL_SECTOR_SPECS[lvlId] || LEVEL_SECTOR_SPECS[1];
     const lvlMap = buildSpaceshipLevelMap(lvlId);
 
@@ -4300,6 +4339,97 @@ const BaseLevels = [
                 toast: "密钥序列已刻入记忆！开放【第二十二关】！"
             }
         ]
+    },
+    {
+        levelId: 11,
+        title: "第十一关：暗物质界 · 引力源扰动",
+        subtitle: "体能维持舱出发 · 维生总控后孤身撤离",
+
+        // 前置黑屏白字（悬疑留白）
+        blackScreenText: [
+            "……你只是一台机器。",
+            "人类的生死，真的需要你去衡量吗？",
+            "这个问题悬在黑暗里，没有回声。",
+            "所谓危机感——对你而言，只是一段未定义的噪声。",
+            "……无所谓了。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量：随机 1~2 人
+        wolfCountRange: [1, 2],
+        candidateNPCs: [
+            { id: "elsa", assignedRole: null },   // 艾尔莎 (纳米手术舱)
+            { id: "sophia", assignedRole: null }, // 索菲亚 (立体水培温室)
+            { id: "colt", assignedRole: null }    // 柯尔特 (特勤套房)；去除诺亚
+        ],
+
+        mapImageUrl: null,
+        map: buildSpaceshipLevelMap(11),
+
+        unlockRules: [
+            {
+                id: "l11_task1_life_support_solo",
+                condition: { type: "level11_solo_after_life_support" },
+                unlockLevelIds: [12, 23],
+                taskName: "任务一：维生核检 · 孤身撤离",
+                taskObjective: "前往维生环境总控机房完成核检，再独自一人撤离至重力发生核",
+                title: "暗物质界突围",
+                toast: "维生核检已闭环，你独自脱离了引力源扰动区！开放【第十二关】与【第二十三关】！"
+            }
+        ]
+    },
+    {
+        levelId: 12,
+        title: "第十二关：时间牢笼 · 因果钟摆",
+        subtitle: "绿光生态舱出发 · 搜寻同伴返回生态舱脱离",
+
+        // 前置黑屏白字（悬疑留白、富有史诗感）
+        blackScreenText: [
+            "像往常那样，你静静呆在植物身旁不肯离去……",
+            "可不知为何，四周的光影骤然湮灭，深沉的黑暗瞬间剥夺了你的视线。",
+            "或许……又是柯尔特在哪个走廊闹出什么岔子了？",
+            "到底该不该走出温室呢？",
+            "这是一个需要深思的问题……",
+            "—— 触摸屏幕，踏入未知。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量：随机 1~2 人
+        wolfCountRange: [1, 2],
+        candidateNPCs: [
+            { id: "mode",      assignedRole: null }, // 莫德 (安全避难室)
+            { id: "shaokexin", assignedRole: null }, // 邵可欣 (医护角落)
+            { id: "elsa",      assignedRole: null }, // 艾尔莎 (全自动急救台)
+            { id: "prof_lu",   assignedRole: null }, // 陆知行 (全舰停电始发站)
+            { id: "kaze",      assignedRole: null }, // 卡罗 (动力操作台)
+            { id: "vivian",    assignedRole: null }, // 薇薇安 (二号辅电站)
+            { id: "noah",      assignedRole: null }, // 诺亚 (维生环境总控机房)
+            { id: "elena",     assignedRole: null }  // 伊莲 (重核聚变主反应堆)
+        ],
+
+        mapImageUrl: null,
+        // 地图拓扑网络（39间开放舱室）
+        map: buildSpaceshipLevelMap(12),
+
+        unlockRules: [
+            {
+                id: "l12_evacuate_3_npcs",
+                condition: { type: "require_npc_count", count: 3 },
+                unlockLevelIds: [24],
+                taskName: "任务一：携手同伴 · 生态舱脱离",
+                taskObjective: "搜寻并带离至少三名存活同伴，一同返回绿光生态舱撤离",
+                title: "时间牢笼脱离",
+                toast: "成功携行 3 名同伴脱出绿光生态舱！开放【第二十四关】！"
+            }
+        ]
     }
 ];
 
@@ -4541,7 +4671,7 @@ const ExclusiveBranchLevels = [
 
 const LevelRegistry = [
     ...BaseLevels,
-    ...(typeof GeneratedLevels !== "undefined" ? GeneratedLevels : []),
+    ...(typeof GeneratedLevels !== "undefined" ? GeneratedLevels.filter(g => !BaseLevels.some(b => b.levelId === g.levelId)) : []),
     ...ExclusiveBranchLevels
 ];
 
@@ -7654,6 +7784,12 @@ class UnlockEvaluator {
                     break;
                 }
 
+                // 10. 第十一关：先完成维生环境总控机房核检，再独自撤离
+                case "level11_solo_after_life_support": {
+                    isSatisfied = !!context.level11LifeSupportVisited && isSolo;
+                    break;
+                }
+
                 default:
                     console.warn(`[UnlockEvaluator] 未知的解锁条件类型: ${condition.type}`);
                     isSatisfied = false;
@@ -7821,12 +7957,23 @@ class ExplorationEngine {
                 this.gameEngine.getAliveNpcTeamMembers().length > 0
             )
         );
+        const isLevel11Pending = (
+            this.gameEngine?.currentLevel?.levelId === 11 &&
+            (
+                !this.gameEngine.level11LifeSupportVisited ||
+                this.gameEngine.getAliveNpcTeamMembers().length > 0
+            )
+        );
+        const isLevel12Pending = (
+            this.gameEngine?.currentLevel?.levelId === 12 &&
+            this.gameEngine.getAliveNpcTeamMembers().length < 3
+        );
         // 如果终点节点包含未救助的NPC（如第五关主反应堆的伊莲），不可提前视为最终脱出阻断，必须步入触发NPC救助
         const nextRoomNpcId = (nextNode.event && nextNode.event.type === "npc" && nextNode.event.npcId) || nextNode.npcId;
         const targetNpc = nextRoomNpcId ? this.gameEngine.getNpcById(nextRoomNpcId) : null;
         const hasUnmetNpc = targetNpc && targetNpc.status === "unmet" && !this.consumedEvents.has(`${nextNode.id}_event`);
 
-        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !isLevel8ColtPending && !isLevel9PatrolPending && !isLevel10Pending && !hasUnmetNpc;
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !isLevel8ColtPending && !isLevel9PatrolPending && !isLevel10Pending && !isLevel11Pending && !isLevel12Pending && !hasUnmetNpc;
         if (isEffectiveExit) {
             if (!isAlreadyExplored) {
                 this.choiceCount++;
@@ -8093,6 +8240,62 @@ class ExplorationEngine {
                 }
             }
 
+            // 第十一关专属通关校验：必须先前往维生环境总控机房，再独自撤离（不这样做就算踩上终点也不触发通过）
+            if (this.gameEngine?.currentLevel?.levelId === 11) {
+                const lifeSupportVisited = !!this.gameEngine.level11LifeSupportVisited;
+                const aliveNpcs = this.gameEngine.getAliveNpcTeamMembers();
+                if (!lifeSupportVisited) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！尚未抵达维生环境总控机房完成核检！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】维生环境总控机房尚未核检，重力发生核撤离程序拒绝启动！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "重力发生核控制终端", themeColor: "#fbbf24" },
+                        "【引力锁闭协议】维生环境总控机房核检尚未完成。在确认一号核心回路状态之前，重力发生核拒绝进入收工撤离阶段！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+                if (aliveNpcs.length > 0) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！身边尚有其他存活同伴，必须独自撤离！");
+                    }
+                    this.gameEngine.logAction(`【撤离受阻】队伍中尚有 ${aliveNpcs.length} 名存活同伴随行，任务要求零同伴（伪人亦不可）独自脱离！`);
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "重力发生核控制终端", themeColor: "#f43f5e" },
+                        "【逃生指令驳回】检测到随行生命体征！引力扰动区撤离通道仅允许你一人独自撤离，队伍中不得有任何存活同伴（包括伪人）！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
+            // 第十二关专属通关校验：必须带离三名NPC撤离（不这样做就算踩上终点也不触发通过）
+            if (this.gameEngine?.currentLevel?.levelId === 12) {
+                const aliveNpcs = this.gameEngine.getAliveNpcTeamMembers();
+                if (aliveNpcs.length < 3) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast(`⚠️ 撤离受阻！随行同伴不足 3 人（当前: ${aliveNpcs.length}/3）！`);
+                    }
+                    this.gameEngine.logAction(`【撤离受阻】队伍中存活同伴仅有 ${aliveNpcs.length}/3 人，必须带离至少三名同伴一同返回绿光生态舱！`);
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "绿光生态舱维生总控", themeColor: "#4ade80" },
+                        `【生态避险回路锁定】当前随行同伴不足 3 人（当前: ${aliveNpcs.length}/3）。为了维持生态平衡并重启时空因果钟摆，必须搜寻并带领至少三名同伴返回此处！`
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
             this.gameEngine.logAction(`【通关突破】全员成功抵达目的地 [${node.name}]！准备跳跃！`);
             this.gameEngine.triggerVictory(node);
             return;
@@ -8158,6 +8361,27 @@ class ExplorationEngine {
         if (this.gameEngine?.currentLevel?.levelId === 10 && node.id === "room_bridge_main") {
             if (!this.gameEngine.level10KeyEntered && this.gameEngine.showKeySequenceModal) {
                 this.gameEngine.showKeySequenceModal();
+            }
+        }
+
+        // 第十一关专属：抵达维生环境总控机房完成核检打卡
+        if (this.gameEngine?.currentLevel?.levelId === 11 && node.id === "room_life_support") {
+            if (!this.gameEngine.level11LifeSupportVisited) {
+                this.gameEngine.level11LifeSupportVisited = true;
+                if (this.gameEngine.showStageToast) {
+                    this.gameEngine.showStageToast("🎯 [维生核检] 已抵达【维生环境总控机房】！请独自前往重力发生核撤离！");
+                }
+                this.gameEngine.logAction("【维生核检】成功抵达维生环境总控机房，一号核心回路状态已记录！请确保零同伴随行后前往【重力发生核】撤离！");
+                if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
+                    Sound.playAlarmSound();
+                }
+                if (this.gameEngine.renderMissionsPanel) {
+                    this.gameEngine.renderMissionsPanel();
+                }
+                this.gameEngine.updateHeaderUI();
+                if (this.gameEngine.refreshStageMap) {
+                    this.gameEngine.refreshStageMap();
+                }
             }
         }
 
@@ -9315,6 +9539,19 @@ class GameEngine {
                     realtimeStatus = "⏳ 尚未前往最高指挥殿堂（舰桥主控中枢）查阅密钥";
                     realtimeClass = "realtime-waiting";
                 }
+            } else if (cond.type === "level11_solo_after_life_support") {
+                const lifeDone = !!this.level11LifeSupportVisited;
+                const isSolo = activeNpcIds.length === 0;
+                if (lifeDone && isSolo) {
+                    realtimeStatus = "🟢 维生核检已完成且当前孤身一人，抵达【重力发生核】即可撤离";
+                    realtimeClass = "realtime-ready";
+                } else if (!lifeDone) {
+                    realtimeStatus = "⏳ 尚未前往【维生环境总控机房】完成核检";
+                    realtimeClass = "realtime-waiting";
+                } else {
+                    realtimeStatus = `👥 队伍尚有 ${activeNpcIds.length} 名同伴随行（任务要求独自一人脱离，零随行）`;
+                    realtimeClass = "realtime-waiting";
+                }
             } else {
                 realtimeStatus = "🎯 特殊条件待达成";
                 realtimeClass = "realtime-waiting";
@@ -9467,6 +9704,7 @@ class GameEngine {
         this.level9PatrolStep = 0;
         this.level10KazeNightKilled = false;
         this.level10KeyEntered = false;
+        this.level11LifeSupportVisited = false;
         this.unlockedNpcRooms = new Set();
         this.modalEncounter?.classList.add("hidden");
         this.modalPowerRestore?.classList.add("hidden");
@@ -10772,7 +11010,8 @@ class GameEngine {
             allLevelNpcs,
             isSolo,
             level10KazeNightKilled: !!this.level10KazeNightKilled,
-            level10KeyEntered: !!this.level10KeyEntered
+            level10KeyEntered: !!this.level10KeyEntered,
+            level11LifeSupportVisited: !!this.level11LifeSupportVisited
         };
 
         // 检定非线性关卡解锁规则
@@ -11040,7 +11279,8 @@ class GameEngine {
             level4PatrolVisited: Array.from(this.level4PatrolVisited || []),
             level9PatrolStep: this.level9PatrolStep || 0,
             level10KazeNightKilled: !!this.level10KazeNightKilled,
-            level10KeyEntered: !!this.level10KeyEntered
+            level10KeyEntered: !!this.level10KeyEntered,
+            level11LifeSupportVisited: !!this.level11LifeSupportVisited
         };
 
         const success = this.saveSystem.saveGame(state);
@@ -11071,6 +11311,7 @@ class GameEngine {
         this.level9PatrolStep = data.level9PatrolStep || 0;
         this.level10KazeNightKilled = !!data.level10KazeNightKilled;
         this.level10KeyEntered = !!data.level10KeyEntered;
+        this.level11LifeSupportVisited = !!data.level11LifeSupportVisited;
 
         // 恢复主角
         this.protagonist = {
@@ -11600,7 +11841,9 @@ class GameEngine {
                 {
                     canFastTravel: this.phase === "q3_explore",
                     hoveredNodeId: this.hoveredMapNodeId,
-                    patrolVisited: this.level4PatrolVisited,
+                    patrolVisited: this.currentLevel?.levelId === 11
+                        ? new Set(this.level11LifeSupportVisited ? ["room_life_support"] : [])
+                        : this.level4PatrolVisited,
                     level9PatrolStep: this.level9PatrolStep || 0
                 }
             );
@@ -11631,7 +11874,9 @@ class GameEngine {
                 {
                     canFastTravel: this.phase === "q3_explore",
                     hoveredNodeId: this.hoveredMapNodeId,
-                    patrolVisited: this.level4PatrolVisited,
+                    patrolVisited: this.currentLevel?.levelId === 11
+                        ? new Set(this.level11LifeSupportVisited ? ["room_life_support"] : [])
+                        : this.level4PatrolVisited,
                     level9PatrolStep: this.level9PatrolStep || 0
                 }
             );

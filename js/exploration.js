@@ -137,12 +137,23 @@ export class ExplorationEngine {
                 this.gameEngine.getAliveNpcTeamMembers().length > 0
             )
         );
+        const isLevel11Pending = (
+            this.gameEngine?.currentLevel?.levelId === 11 &&
+            (
+                !this.gameEngine.level11LifeSupportVisited ||
+                this.gameEngine.getAliveNpcTeamMembers().length > 0
+            )
+        );
+        const isLevel12Pending = (
+            this.gameEngine?.currentLevel?.levelId === 12 &&
+            this.gameEngine.getAliveNpcTeamMembers().length < 3
+        );
         // 如果终点节点包含未救助的NPC（如第五关主反应堆的伊莲），不可提前视为最终脱出阻断，必须步入触发NPC救助
         const nextRoomNpcId = (nextNode.event && nextNode.event.type === "npc" && nextNode.event.npcId) || nextNode.npcId;
         const targetNpc = nextRoomNpcId ? this.gameEngine.getNpcById(nextRoomNpcId) : null;
         const hasUnmetNpc = targetNpc && targetNpc.status === "unmet" && !this.consumedEvents.has(`${nextNode.id}_event`);
 
-        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !isLevel8ColtPending && !isLevel9PatrolPending && !isLevel10Pending && !hasUnmetNpc;
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !isLevel8ColtPending && !isLevel9PatrolPending && !isLevel10Pending && !isLevel11Pending && !isLevel12Pending && !hasUnmetNpc;
         if (isEffectiveExit) {
             if (!isAlreadyExplored) {
                 this.choiceCount++;
@@ -409,6 +420,62 @@ export class ExplorationEngine {
                 }
             }
 
+            // 第十一关专属通关校验：必须先前往维生环境总控机房，再独自撤离（不这样做就算踩上终点也不触发通过）
+            if (this.gameEngine?.currentLevel?.levelId === 11) {
+                const lifeSupportVisited = !!this.gameEngine.level11LifeSupportVisited;
+                const aliveNpcs = this.gameEngine.getAliveNpcTeamMembers();
+                if (!lifeSupportVisited) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！尚未抵达维生环境总控机房完成核检！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】维生环境总控机房尚未核检，重力发生核撤离程序拒绝启动！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "重力发生核控制终端", themeColor: "#fbbf24" },
+                        "【引力锁闭协议】维生环境总控机房核检尚未完成。在确认一号核心回路状态之前，重力发生核拒绝进入收工撤离阶段！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+                if (aliveNpcs.length > 0) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！身边尚有其他存活同伴，必须独自撤离！");
+                    }
+                    this.gameEngine.logAction(`【撤离受阻】队伍中尚有 ${aliveNpcs.length} 名存活同伴随行，任务要求零同伴（伪人亦不可）独自脱离！`);
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "重力发生核控制终端", themeColor: "#f43f5e" },
+                        "【逃生指令驳回】检测到随行生命体征！引力扰动区撤离通道仅允许你一人独自撤离，队伍中不得有任何存活同伴（包括伪人）！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
+            // 第十二关专属通关校验：必须带离三名NPC撤离（不这样做就算踩上终点也不触发通过）
+            if (this.gameEngine?.currentLevel?.levelId === 12) {
+                const aliveNpcs = this.gameEngine.getAliveNpcTeamMembers();
+                if (aliveNpcs.length < 3) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast(`⚠️ 撤离受阻！随行同伴不足 3 人（当前: ${aliveNpcs.length}/3）！`);
+                    }
+                    this.gameEngine.logAction(`【撤离受阻】队伍中存活同伴仅有 ${aliveNpcs.length}/3 人，必须带离至少三名同伴一同返回绿光生态舱！`);
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "绿光生态舱维生总控", themeColor: "#4ade80" },
+                        `【生态避险回路锁定】当前随行同伴不足 3 人（当前: ${aliveNpcs.length}/3）。为了维持生态平衡并重启时空因果钟摆，必须搜寻并带领至少三名同伴返回此处！`
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
             this.gameEngine.logAction(`【通关突破】全员成功抵达目的地 [${node.name}]！准备跳跃！`);
             this.gameEngine.triggerVictory(node);
             return;
@@ -474,6 +541,27 @@ export class ExplorationEngine {
         if (this.gameEngine?.currentLevel?.levelId === 10 && node.id === "room_bridge_main") {
             if (!this.gameEngine.level10KeyEntered && this.gameEngine.showKeySequenceModal) {
                 this.gameEngine.showKeySequenceModal();
+            }
+        }
+
+        // 第十一关专属：抵达维生环境总控机房完成核检打卡
+        if (this.gameEngine?.currentLevel?.levelId === 11 && node.id === "room_life_support") {
+            if (!this.gameEngine.level11LifeSupportVisited) {
+                this.gameEngine.level11LifeSupportVisited = true;
+                if (this.gameEngine.showStageToast) {
+                    this.gameEngine.showStageToast("🎯 [维生核检] 已抵达【维生环境总控机房】！请独自前往重力发生核撤离！");
+                }
+                this.gameEngine.logAction("【维生核检】成功抵达维生环境总控机房，一号核心回路状态已记录！请确保零同伴随行后前往【重力发生核】撤离！");
+                if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
+                    Sound.playAlarmSound();
+                }
+                if (this.gameEngine.renderMissionsPanel) {
+                    this.gameEngine.renderMissionsPanel();
+                }
+                this.gameEngine.updateHeaderUI();
+                if (this.gameEngine.refreshStageMap) {
+                    this.gameEngine.refreshStageMap();
+                }
             }
         }
 

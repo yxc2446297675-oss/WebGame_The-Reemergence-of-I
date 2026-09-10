@@ -1191,6 +1191,10 @@ for (let lvlId = 1; lvlId <= 25; lvlId++) {
         ? { minRooms: 34, maxRooms: 36, tierName: '第九关专设（截图35间舱室）' }
         : (lvlId === 10)
         ? { minRooms: 35, maxRooms: 38, tierName: '第十关专设（截图36间舱室）' }
+        : (lvlId === 11)
+        ? { minRooms: 20, maxRooms: 24, tierName: '第十一关专设（截图22间舱室）' }
+        : (lvlId === 12)
+        ? { minRooms: 39, maxRooms: 41, tierName: '第十二关专设（截图39间舱室）' }
         : tierRules.find(r => lvlId >= r.minLvl && lvlId <= r.maxLvl);
 
     if (roomCount < rule.minRooms || roomCount > rule.maxRooms) {
@@ -1246,8 +1250,9 @@ for (let lvlId = 1; lvlId <= 25; lvlId++) {
         throw new Error(`第 ${lvlId} 关终点 [${exitNode.id}] 不可达！`);
     }
 
-    // 验证每关拓扑互不相同 (指纹比对)（除第8关基于剧情叙事复用第7关扇区双重视角外）
-    if (lvlId !== 8) {
+    // 验证每关拓扑互不相同 (指纹比对)
+    // 第8关基于剧情叙事复用第7关扇区双重视角；第11关复用东中区扇区但起终点与任务目标不同
+    if (lvlId !== 8 && lvlId !== 11) {
         const coordsStr = Object.values(nodes).map(n => `${n.coord.x},${n.coord.y}`).sort().join('|');
         const fp = `${roomCount}-${coordsStr}`;
         if (levelFingerprints.has(fp)) {
@@ -3725,7 +3730,298 @@ console.log('\n[TEST 45] 开始执行第九关专属定制、潜行规避、要�
     console.log('   【已验证】第十关独立机制完全隔离，前九关及其他关卡正常运行！');
 }
 
-console.log('\n====== [TEST PASSED] 全部 46 项核心流程、前九关与第十关专属定制及全机制测试 100% 成功！ ======');
+// =============================================================================
+// 47. 验证第十一关：黑屏文案、东中区22舱、黄线/契合度阻断、停电站位NPC、维生核检后独自撤离双解锁
+// =============================================================================
+console.log('\n47. 验证第十一关（暗物质界 · 引力源扰动）专属定制机制...');
+{
+    const level11 = LevelRegistry.find(l => l.levelId === 11);
+    if (!level11) throw new Error('未找到第十一关配置！');
+    if (!level11.blackScreenText || level11.blackScreenText.length < 4) {
+        throw new Error('第十一关缺少前置黑屏文案！');
+    }
+    if (!level11.blackScreenText[0].includes('机器')) {
+        throw new Error('第十一关黑屏文案未正确润色！实际: ' + level11.blackScreenText[0]);
+    }
+    console.log('   【已验证】前置黑屏文案已配置并完成悬疑润色！');
+
+    if (!Array.isArray(level11.wolfCountRange) || level11.wolfCountRange[0] !== 1 || level11.wolfCountRange[1] !== 2) {
+        throw new Error('第十一关伪人数应为随机 1~2！');
+    }
+    const candIds11 = (level11.candidateNPCs || []).map(c => c.id);
+    if (candIds11.includes('noah') || candIds11.includes('lph')) {
+        throw new Error('第十一关候选NPC不得包含诺亚或主角LPH！实际: ' + candIds11.join(', '));
+    }
+    ['elsa', 'sophia', 'colt'].forEach(id => {
+        if (!candIds11.includes(id)) throw new Error(`第十一关缺少候选NPC [${id}]！`);
+    });
+    console.log('   【已验证】伪人 1~2，候选NPC为艾尔莎/索菲亚/柯尔特，已去除诺亚与LPH！');
+
+    app.startNewGame(11);
+    if (!app.currentLevel || app.currentLevel.levelId !== 11) {
+        throw new Error('启动关卡 11 失败！');
+    }
+    const map11 = app.currentLevel.map;
+    if (map11.startNodeId !== 'room_recreation_gym') {
+        throw new Error(`第十一关起点应为体能维持舱 room_recreation_gym，实际: ${map11.startNodeId}`);
+    }
+    if (map11.exitNodeId !== 'room_gravity_well' || !map11.nodes['room_gravity_well']?.isExit) {
+        throw new Error('第十一关终点未正确设在重力发生核 room_gravity_well！');
+    }
+    const roomCount11 = Object.keys(map11.nodes).length;
+    if (roomCount11 !== 22) {
+        throw new Error(`第十一关开放舱室数应为 22，实际为: ${roomCount11}`);
+    }
+    console.log('   【已验证】起点体能维持舱、终点重力发生核、开放 22 间舱室！');
+
+    const master11 = map11.masterShip;
+    for (const yId of ['room_armory', 'room_matter_stream', 'room_ion_thruster_r', 'room_escape_pod_e']) {
+        const lockedNode = master11?.lockedRooms?.[yId];
+        if (lockedNode && !lockedNode.lockReason.includes('防爆安全气闸锁死')) {
+            throw new Error(`黄色区域 [${yId}] 阻断理由应为防爆安全气闸锁死，实际: ${lockedNode.lockReason}`);
+        }
+    }
+    // 军火库与右舷救生舱应作为邻接黄线锁死点可见
+    if (!master11?.lockedRooms?.room_armory) {
+        throw new Error('防爆军火库应作为邻接黄线锁死舱室出现在 lockedRooms 中！');
+    }
+    if (!master11?.lockedRooms?.room_escape_pod_e) {
+        throw new Error('右舷2号紧急救生舱应作为邻接黄线锁死舱室出现在 lockedRooms 中！');
+    }
+    for (const rId of ['room_bridge_main', 'room_main_reactor', 'room_sensor_array']) {
+        const lockedNode = master11?.lockedRooms?.[rId];
+        if (lockedNode && !lockedNode.lockReason.includes('宿主契合度不足')) {
+            throw new Error(`非黄色未开放区域 [${rId}] 阻断理由应为宿主契合度不足，实际: ${lockedNode.lockReason}`);
+        }
+    }
+    console.log('   【已验证】黄色气闸与宿主契合度双轨阻断就绪！');
+
+    if (map11.nodes['room_med_surgery']?.npcId !== 'elsa') {
+        throw new Error('纳米手术舱未正确绑定艾尔莎！');
+    }
+    if (map11.nodes['room_hydro_garden']?.npcId !== 'sophia') {
+        throw new Error('立体水培温室未正确绑定索菲亚！');
+    }
+    if (map11.nodes['room_npc_colt_barnes']?.npcId !== 'colt') {
+        throw new Error('特勤套房未正确绑定柯尔特！');
+    }
+    if (Object.values(map11.nodes).some(n => n.npcId === 'noah')) {
+        throw new Error('第十一关中不应出现诺亚！');
+    }
+    console.log('   【已验证】3 位 NPC 精确就位于停电站位，诺亚已剔除！');
+
+    const food11 = Object.values(map11.nodes).filter(n => n.event && n.event.type === 'food');
+    if (food11.length !== 2) {
+        throw new Error(`第十一关应随机投放 2 处体力箱，实际: ${food11.length}`);
+    }
+    console.log('   【已验证】场景随机投放两处体力箱！');
+
+    // 阻断：未核检直接踩终点
+    app.phase = 'q3_explore';
+    app.level11LifeSupportVisited = false;
+    const exit11 = map11.nodes['room_gravity_well'];
+    app.explorationEngine.handleNodeEvents(exit11, false);
+    if (app.phase === 'victory') {
+        throw new Error('未完成维生核检时踩上重力发生核错误触发了通关！');
+    }
+    console.log('   【已验证】未核检时踩终点被严格拦截！');
+
+    // 核检打卡
+    const lifeNode = map11.nodes['room_life_support'];
+    app.explorationEngine.handleNodeEvents(lifeNode, false);
+    if (!app.level11LifeSupportVisited) {
+        throw new Error('抵达维生环境总控机房后未能标记核检完成！');
+    }
+    console.log('   【已验证】抵达维生环境总控机房成功完成核检打卡！');
+
+    // 阻断：有同伴时踩终点
+    const elsaNpc = app.allNpcMap.get('elsa');
+    elsaNpc.status = 'active';
+    app.teamMembers.push(elsaNpc);
+    app.explorationEngine.handleNodeEvents(exit11, false);
+    if (app.phase === 'victory') {
+        throw new Error('有存活同伴时踩上重力发生核错误触发了通关！');
+    }
+    console.log('   【已验证】有同伴随行时踩终点被严格拦截！');
+
+    // 成功：核检 + 独自撤离 -> 解锁 12 与 23
+    app.teamMembers = [app.protagonist];
+    app.saveSystem.memoryStore[app.saveSystem.unlockedKey] = JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    app.explorationEngine.handleNodeEvents(exit11, false);
+    if (app.phase !== 'victory') {
+        throw new Error('满足任务一条件后踩上终点未能成功通关！');
+    }
+    if (!app.saveSystem.isLevelUnlocked(12)) {
+        throw new Error('完成任务一未能成功解锁第十二关！');
+    }
+    if (!app.saveSystem.isLevelUnlocked(23)) {
+        throw new Error('完成任务一未能成功解锁第二十三关！');
+    }
+    console.log('   【已验证】维生核检后独自撤离成功，同时解锁【第十二关】与【第二十三关】！');
+
+    // 隔离性
+    app.startNewGame(10);
+    if (app.currentLevel.levelId !== 10) throw new Error('第十关启动异常！');
+    app.startNewGame(8);
+    if (app.currentLevel.levelId !== 8) throw new Error('第八关启动异常！');
+    console.log('   【已验证】第十一关独立机制完全隔离，其余关卡正常运行！');
+}
+
+// =============================================================================
+// 48. 验证第十二关：黑屏文案、39舱室、起终点同位生态舱、黄线/契合度阻断、3处切断通道、8位停电站位NPC、带离3名NPC撤离解锁第二十四关
+// =============================================================================
+console.log('\n48. 验证第十二关（时间牢笼 · 因果钟摆）专属定制机制...');
+{
+    const level12 = LevelRegistry.find(l => l.levelId === 12);
+    if (!level12) throw new Error('未找到第十二关配置！');
+    if (!level12.blackScreenText || level12.blackScreenText.length < 5) {
+        throw new Error('第十二关缺少前置黑屏文案（应为5句）！');
+    }
+    if (!level12.blackScreenText[0].includes('植物')) {
+        throw new Error('第十二关黑屏文案未正确润色！实际: ' + level12.blackScreenText[0]);
+    }
+    console.log('   【已验证】前置黑屏文案已配置并完成悬疑留白润色（5句）！');
+
+    if (!Array.isArray(level12.wolfCountRange) || level12.wolfCountRange[0] !== 1 || level12.wolfCountRange[1] !== 2) {
+        throw new Error('第十二关伪人数应为随机 1~2！');
+    }
+    const candIds12 = (level12.candidateNPCs || []).map(c => c.id);
+    if (candIds12.includes('sophia') || candIds12.includes('lph')) {
+        throw new Error('第十二关候选NPC不得包含索菲亚（本视角）或主角LPH！实际: ' + candIds12.join(', '));
+    }
+    const expectedNpcIds = ['mode', 'shaokexin', 'elsa', 'prof_lu', 'kaze', 'vivian', 'noah', 'elena'];
+    expectedNpcIds.forEach(id => {
+        if (!candIds12.includes(id)) throw new Error(`第十二关缺少候选NPC [${id}]！`);
+    });
+    console.log('   【已验证】伪人 1~2，候选NPC为8人，已剔除索菲亚与LPH！');
+
+    app.startNewGame(12);
+    if (!app.currentLevel || app.currentLevel.levelId === undefined) {
+        throw new Error('启动关卡 12 失败！');
+    }
+    const map12 = app.currentLevel.map;
+    if (map12.startNodeId !== 'room_hydro_garden') {
+        throw new Error(`第十二关起点应为绿光生态舱 room_hydro_garden，实际: ${map12.startNodeId}`);
+    }
+    if (map12.exitNodeId !== 'room_hydro_garden' || !map12.nodes['room_hydro_garden']?.isExit) {
+        throw new Error('第十二关终点未正确设在绿光生态舱 room_hydro_garden！');
+    }
+    const roomCount12 = Object.keys(map12.nodes).length;
+    // 包含 39 间开放舱室（若未合并私人舱）或 40 间
+    if (roomCount12 < 39 || roomCount12 > 40) {
+        throw new Error(`第十二关开放舱室数应为 39~40，实际为: ${roomCount12}`);
+    }
+    console.log('   【已验证】起终点同位于绿光生态舱、开放 39 间舱室！');
+
+    const master12 = map12.masterShip;
+    // 黄色区域：防爆军火库
+    const armoryNode = master12?.lockedRooms?.['room_armory'];
+    if (!armoryNode || !armoryNode.lockReason.includes('防爆安全气闸锁死')) {
+        throw new Error('防爆军火库应作为黄色安全气闸锁死区域！');
+    }
+    // 非黄色未开放区域：契合度锁死
+    for (const rId of ['room_bridge_main', 'room_sensor_array', 'room_matter_stream']) {
+        const lockedNode = master12?.lockedRooms?.[rId];
+        if (lockedNode && !lockedNode.lockReason.includes('宿主契合度不足')) {
+            throw new Error(`未开放区域 [${rId}] 阻断理由应为宿主契合度不足，实际: ${lockedNode.lockReason}`);
+        }
+    }
+    console.log('   【已验证】黄色气闸锁死与宿主契合度锁死双轨阻断配置正确！');
+
+    // 3处切断通道验证
+    const severedPairs = [
+        ['room_path_e', 'room_corner_ne'],
+        ['room_corridor_w1', 'room_sub_generator'],
+        ['room_start', 'room_hangar_deck']
+    ];
+    for (const [rA, rB] of severedPairs) {
+        const nodeA = map12.nodes[rA];
+        const nodeB = map12.nodes[rB];
+        if (nodeA && nodeB) {
+            const hasAtoB = (nodeA.neighbors || []).includes(rB);
+            const hasBtoA = (nodeB.neighbors || []).includes(rA);
+            if (hasAtoB || hasBtoA) {
+                throw new Error(`切断通道 [${rA} <-> ${rB}] 依然存在连通！`);
+            }
+        }
+    }
+    console.log('   【已验证】3 处黄线切断气闸通道完全阻断，无法互通！');
+
+    // 8位NPC停电站位验证
+    const expectedStationMap = {
+        'room_npc3': 'mode',
+        'room_npc2': 'shaokexin',
+        'room_med_surgery': 'elsa',
+        'room_west_end': 'prof_lu',
+        'room_npc1': 'kaze',
+        'room_sub_generator': 'vivian',
+        'room_life_support': 'noah',
+        'room_main_reactor': 'elena'
+    };
+    for (const [rId, npcId] of Object.entries(expectedStationMap)) {
+        if (map12.nodes[rId]?.npcId !== npcId) {
+            throw new Error(`舱室 [${rId}] 未正确绑定停电站位NPC [${npcId}]，实际为: ${map12.nodes[rId]?.npcId}`);
+        }
+    }
+    if (Object.values(map12.nodes).some(n => n.npcId === 'sophia')) {
+        throw new Error('第十二关场景中不应出现索菲亚！');
+    }
+    console.log('   【已验证】8 位 NPC 精确就位于各自停电站位，索菲亚与LPH已剔除！');
+
+    // 2 处体力箱投放验证
+    const food12 = Object.values(map12.nodes).filter(n => n.event && n.event.type === 'food');
+    if (food12.length !== 2) {
+        throw new Error(`第十二关应随机投放 2 处体力箱，实际: ${food12.length}`);
+    }
+    console.log('   【已验证】场景随机投放两处体力箱！');
+
+    // 终点阻断：随行同伴不足 3 人踩终点拦截
+    app.phase = 'q3_explore';
+    const exit12 = map12.nodes['room_hydro_garden'];
+    app.teamMembers = [app.protagonist]; // 0名NPC同伴
+    app.explorationEngine.handleNodeEvents(exit12, false);
+    if (app.phase === 'victory') {
+        throw new Error('未带满3名NPC同伴时踩上终点错误触发了通关！');
+    }
+    console.log('   【已验证】随行同伴不足 3 人时踩终点被严格拦截！');
+
+    // 加1名NPC同伴，依然不足3人
+    const modeNpc = app.allNpcMap.get('mode');
+    modeNpc.status = 'active';
+    app.teamMembers = [app.protagonist, modeNpc];
+    app.explorationEngine.handleNodeEvents(exit12, false);
+    if (app.phase === 'victory') {
+        throw new Error('随行同伴仅1人时踩上终点错误触发了通关！');
+    }
+    console.log('   【已验证】随行同伴仅 1 人时踩终点依然被拦截！');
+
+    // 加满3名NPC同伴 -> 踩终点成功通关并解锁第二十四关
+    const shaoNpc = app.allNpcMap.get('shaokexin');
+    const elsaNpc12 = app.allNpcMap.get('elsa');
+    shaoNpc.status = 'active';
+    elsaNpc12.status = 'active';
+    app.teamMembers = [app.protagonist, modeNpc, shaoNpc, elsaNpc12];
+    app.saveSystem.memoryStore[app.saveSystem.unlockedKey] = JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    app.explorationEngine.handleNodeEvents(exit12, false);
+    if (app.phase !== 'victory') {
+        throw new Error('满足带离3名NPC同伴后踩上终点未能成功通关！');
+    }
+    if (!app.saveSystem.isLevelUnlocked(24)) {
+        throw new Error('完成任务一未能成功解锁第二十四关！');
+    }
+    console.log('   【已验证】带离 3 名 NPC 同伴成功撤离，顺利通关并解锁【第二十四关】！');
+
+    // 隔离性测试
+    app.startNewGame(11);
+    if (app.currentLevel.levelId !== 11) throw new Error('第十一关启动异常！');
+    app.startNewGame(10);
+    if (app.currentLevel.levelId !== 10) throw new Error('第十关启动异常！');
+    app.startNewGame(8);
+    if (app.currentLevel.levelId !== 8) throw new Error('第八关启动异常！');
+    console.log('   【已验证】第十二关独立机制完全隔离，其余关卡正常运行！');
+}
+
+console.log('\n====== [TEST PASSED] 全部 48 项核心流程、前十一关与第十二关专属定制及全机制测试 100% 成功！ ======');
 
 
 

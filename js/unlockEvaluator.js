@@ -99,6 +99,12 @@ export class UnlockEvaluator {
                     break;
                 }
 
+                // 10. 第十一关：先完成维生环境总控机房核检，再独自撤离
+                case "level11_solo_after_life_support": {
+                    isSatisfied = !!context.level11LifeSupportVisited && isSolo;
+                    break;
+                }
+
                 default:
                     console.warn(`[UnlockEvaluator] 未知的解锁条件类型: ${condition.type}`);
                     isSatisfied = false;

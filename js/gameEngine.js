@@ -846,6 +846,19 @@ export class GameEngine {
                     realtimeStatus = "⏳ 尚未前往最高指挥殿堂（舰桥主控中枢）查阅密钥";
                     realtimeClass = "realtime-waiting";
                 }
+            } else if (cond.type === "level11_solo_after_life_support") {
+                const lifeDone = !!this.level11LifeSupportVisited;
+                const isSolo = activeNpcIds.length === 0;
+                if (lifeDone && isSolo) {
+                    realtimeStatus = "🟢 维生核检已完成且当前孤身一人，抵达【重力发生核】即可撤离";
+                    realtimeClass = "realtime-ready";
+                } else if (!lifeDone) {
+                    realtimeStatus = "⏳ 尚未前往【维生环境总控机房】完成核检";
+                    realtimeClass = "realtime-waiting";
+                } else {
+                    realtimeStatus = `👥 队伍尚有 ${activeNpcIds.length} 名同伴随行（任务要求独自一人脱离，零随行）`;
+                    realtimeClass = "realtime-waiting";
+                }
             } else {
                 realtimeStatus = "🎯 特殊条件待达成";
                 realtimeClass = "realtime-waiting";
@@ -998,6 +1011,7 @@ export class GameEngine {
         this.level9PatrolStep = 0;
         this.level10KazeNightKilled = false;
         this.level10KeyEntered = false;
+        this.level11LifeSupportVisited = false;
         this.unlockedNpcRooms = new Set();
         this.modalEncounter?.classList.add("hidden");
         this.modalPowerRestore?.classList.add("hidden");
@@ -2303,7 +2317,8 @@ export class GameEngine {
             allLevelNpcs,
             isSolo,
             level10KazeNightKilled: !!this.level10KazeNightKilled,
-            level10KeyEntered: !!this.level10KeyEntered
+            level10KeyEntered: !!this.level10KeyEntered,
+            level11LifeSupportVisited: !!this.level11LifeSupportVisited
         };
 
         // 检定非线性关卡解锁规则
@@ -2571,7 +2586,8 @@ export class GameEngine {
             level4PatrolVisited: Array.from(this.level4PatrolVisited || []),
             level9PatrolStep: this.level9PatrolStep || 0,
             level10KazeNightKilled: !!this.level10KazeNightKilled,
-            level10KeyEntered: !!this.level10KeyEntered
+            level10KeyEntered: !!this.level10KeyEntered,
+            level11LifeSupportVisited: !!this.level11LifeSupportVisited
         };
 
         const success = this.saveSystem.saveGame(state);
@@ -2602,6 +2618,7 @@ export class GameEngine {
         this.level9PatrolStep = data.level9PatrolStep || 0;
         this.level10KazeNightKilled = !!data.level10KazeNightKilled;
         this.level10KeyEntered = !!data.level10KeyEntered;
+        this.level11LifeSupportVisited = !!data.level11LifeSupportVisited;
 
         // 恢复主角
         this.protagonist = {
@@ -3131,7 +3148,9 @@ export class GameEngine {
                 {
                     canFastTravel: this.phase === "q3_explore",
                     hoveredNodeId: this.hoveredMapNodeId,
-                    patrolVisited: this.level4PatrolVisited,
+                    patrolVisited: this.currentLevel?.levelId === 11
+                        ? new Set(this.level11LifeSupportVisited ? ["room_life_support"] : [])
+                        : this.level4PatrolVisited,
                     level9PatrolStep: this.level9PatrolStep || 0
                 }
             );
@@ -3162,7 +3181,9 @@ export class GameEngine {
                 {
                     canFastTravel: this.phase === "q3_explore",
                     hoveredNodeId: this.hoveredMapNodeId,
-                    patrolVisited: this.level4PatrolVisited,
+                    patrolVisited: this.currentLevel?.levelId === 11
+                        ? new Set(this.level11LifeSupportVisited ? ["room_life_support"] : [])
+                        : this.level4PatrolVisited,
                     level9PatrolStep: this.level9PatrolStep || 0
                 }
             );
