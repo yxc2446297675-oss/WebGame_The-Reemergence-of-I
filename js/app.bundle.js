@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-10T08:13:27.461Z
+ * 自动生成于 2026-09-10T09:27:51.108Z
  */
 (function() {
     'use strict';
@@ -127,15 +127,15 @@ const AudioConfig = {
     deathSoundVolume: 0.85,
 
     // 2. 物资获取/食物发现时的音效文件路径
-    foodSoundUrl: "assets/audio/物资获取.wav",
+    foodSoundUrl: "assets/audio/food.wav",
     foodSoundVolume: 0.80,
 
     // 3. 广播发出警报/警告时的音效文件路径
-    alarmSoundUrl: "assets/audio/警告.wav",
+    alarmSoundUrl: "assets/audio/alarm.wav",
     alarmSoundVolume: 0.85,
 
     // 4. 移动探索时的脚步/位移音效文件路径
-    moveSoundUrl: "assets/audio/移动.wav",
+    moveSoundUrl: "assets/audio/move.wav",
     moveSoundVolume: 0.65,
 
     // 5. 第四关专属通关异象音效 (放入 assets/audio/ 文件夹即可自动播放，支持 mp3/wav/ogg)
@@ -506,14 +506,14 @@ class SoundEngine {
 
     // 8. 物资获取/食物发现专属音效 (支持自定义 物资获取.wav + Web Audio 能量充能铃音保底)
     playFoodSound(customUrl = null) {
-        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.foodSoundUrl) || "assets/audio/物资获取.wav";
+        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.foodSoundUrl) || "assets/audio/food.wav";
         const volume = (typeof AudioConfig !== 'undefined' && AudioConfig.foodSoundVolume !== undefined) ? AudioConfig.foodSoundVolume : 0.80;
         this.playAudioFile(soundUrl, volume, this.synthesizeFoodChime, "物资获取音效");
     }
 
     // 9. 广播警报/危险警告专属音效 (支持自定义 警告.wav + Web Audio 红警蜂鸣双音保底)
     playAlarmSound(customUrl = null) {
-        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.alarmSoundUrl) || "assets/audio/警告.wav";
+        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.alarmSoundUrl) || "assets/audio/alarm.wav";
         const volume = (typeof AudioConfig !== 'undefined' && AudioConfig.alarmSoundVolume !== undefined) ? AudioConfig.alarmSoundVolume : 0.85;
         this.playAudioFile(soundUrl, volume, this.synthesizeAlarmKlaxon, "广播警报音效");
     }
@@ -524,7 +524,7 @@ class SoundEngine {
         if (this.lastMoveSoundTime && now - this.lastMoveSoundTime < 120) return;
         this.lastMoveSoundTime = now;
 
-        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.moveSoundUrl) || "assets/audio/移动.wav";
+        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.moveSoundUrl) || "assets/audio/move.wav";
         const volume = (typeof AudioConfig !== 'undefined' && AudioConfig.moveSoundVolume !== undefined) ? AudioConfig.moveSoundVolume : 0.65;
         this.playAudioFile(soundUrl, volume, this.synthesizeMoveStep, "移动音效");
     }
@@ -753,25 +753,25 @@ const CharacterRegistry = {
 
     // 候选NPC角色库 (采用 kaze/, shaokexin/, mode/ 独立文件夹管理)
     npcs: {
-        // NPC 1：卡罗 (男，文字框蓝色，文件夹 kaze)
+        // NPC 1：卡罗 (男，文字框蓝色，磁盘文件夹 kaluo)
         kaze: {
             id: "kaze",
-            folder: "kaze",
+            folder: "kaluo",
             name: "卡罗",
             gender: "男",
             themeColor: "#38bdf8", // 科技明蓝
             boxBorderColor: "rgba(56, 189, 248, 0.9)",
             boxBgGlow: "rgba(56, 189, 248, 0.25)",
-            avatarUrl: "assets/characters/kaze/clam.webp",
+            avatarUrl: "assets/characters/kaluo/clam.webp",
             expressions: {
-                clam: "assets/characters/kaze/clam.webp",     // 平静 (无指示时的默认照片，极速 WebP)
-                happy: "assets/characters/kaze/happy.webp",   // 开心 / 微笑
-                sad: "assets/characters/kaze/sad.webp",       // 悲伤 / 沮丧
-                normal: "assets/characters/kaze/normal.webp", // 正常
-                angry: "assets/characters/kaze/angry.webp",   // 生气 / 质问
-                doubt: "assets/characters/kaze/doubt.webp",   // 疑惑 / 审视
-                shock: "assets/characters/kaze/shock.webp",   // 震惊 / 错愕
-                dead: "assets/characters/kaze/dead.webp"      // 遇害 / 死亡
+                clam: "assets/characters/kaluo/clam.webp",
+                happy: "assets/characters/kaluo/happy.webp",
+                sad: "assets/characters/kaluo/sad.webp",
+                normal: "assets/characters/kaluo/normal.webp",
+                angry: "assets/characters/kaluo/angry.webp",
+                doubt: "assets/characters/kaluo/doubt.webp",
+                shock: "assets/characters/kaluo/shock.webp",
+                dead: "assets/characters/kaluo/dead.webp"
             },
             introDialogue: [
                 { text: "（一名穿着破损战术服的年轻男子捂着手臂，眼神凌厉而冷漠地抬起头）", expression: "clam" },
@@ -1229,22 +1229,22 @@ const CharacterRegistry = {
             }
         },
 
-        // NPC 7：陆知行 (男，首席科学官，文件夹 Prof. Lu)
+        // NPC 7：陆知行 (男，首席科学官，文件夹 Prof_Lu)
         prof_lu: {
             id: "prof_lu",
-            folder: "Prof. Lu",
+            folder: "Prof_Lu",
             name: "陆知行",
             gender: "男",
             themeColor: "#10b981",
             boxBorderColor: "rgba(16, 185, 129, 0.9)",
             boxBgGlow: "rgba(16, 185, 129, 0.25)",
-            avatarUrl: "assets/characters/Prof. Lu/calm.png",
+            avatarUrl: "assets/characters/Prof_Lu/calm.png",
             expressions: {
-                clam: "assets/characters/Prof. Lu/calm.png",
-                calm: "assets/characters/Prof. Lu/calm.png",
-                normal: "assets/characters/Prof. Lu/calm.png",
-                angry: "assets/characters/Prof. Lu/angry.png",
-                dead: "assets/characters/Prof. Lu/dead.jpg"
+                clam: "assets/characters/Prof_Lu/calm.png",
+                calm: "assets/characters/Prof_Lu/calm.png",
+                normal: "assets/characters/Prof_Lu/calm.png",
+                angry: "assets/characters/Prof_Lu/angry.png",
+                dead: "assets/characters/Prof_Lu/dead.jpg"
             },
             introDialogue: [
                 { text: "（推了推反光的单片测镜，全神贯注凝视着真空试管内的异质晶体）别打扰我……", expression: "clam" },
@@ -1284,22 +1284,22 @@ const CharacterRegistry = {
             }
         },
 
-        // NPC 8：艾尔莎 (女，主治军医，文件夹 Dr. Elsa)
+        // NPC 8：艾尔莎 (女，主治军医，文件夹 Dr_Elsa)
         elsa: {
             id: "elsa",
-            folder: "Dr. Elsa",
+            folder: "Dr_Elsa",
             name: "艾尔莎",
             gender: "女",
             themeColor: "#06b6d4",
             boxBorderColor: "rgba(6, 182, 212, 0.9)",
             boxBgGlow: "rgba(6, 182, 212, 0.25)",
-            avatarUrl: "assets/characters/Dr. Elsa/calm.jpg",
+            avatarUrl: "assets/characters/Dr_Elsa/calm.jpg",
             expressions: {
-                clam: "assets/characters/Dr. Elsa/calm.jpg",
-                calm: "assets/characters/Dr. Elsa/calm.jpg",
-                normal: "assets/characters/Dr. Elsa/calm.jpg",
-                angry: "assets/characters/Dr. Elsa/angry.jpg",
-                dead: "assets/characters/Dr. Elsa/dead.jpg"
+                clam: "assets/characters/Dr_Elsa/calm.jpg",
+                calm: "assets/characters/Dr_Elsa/calm.jpg",
+                normal: "assets/characters/Dr_Elsa/calm.jpg",
+                angry: "assets/characters/Dr_Elsa/angry.jpg",
+                dead: "assets/characters/Dr_Elsa/dead.jpg"
             },
             introDialogue: [
                 { text: "（戴着沾有荧光消毒凝胶的手套，神情清冷甚至有些严酷）心率138，血压偏低。", expression: "clam" },
@@ -1616,6 +1616,10 @@ const CharacterRegistry = {
         if (folder === "morde") folders.push("mode");
         if (folder === "kaze") folders.push("kaluo", "caro", "kalo");
         if (["kaluo", "caro", "kalo"].includes(folder)) folders.push("kaze");
+        if (folder === "Prof_Lu") folders.push("Prof. Lu");
+        if (folder === "Prof. Lu") folders.push("Prof_Lu");
+        if (folder === "Dr_Elsa") folders.push("Dr. Elsa");
+        if (folder === "Dr. Elsa") folders.push("Dr_Elsa");
         if (character.name && !folders.includes(character.name)) {
             folders.push(character.name);
         }
@@ -1770,36 +1774,85 @@ const CharacterRegistry = {
         return Object.values(this.npcs);
     },
 
-    // 资源极低成本静默预加载系统 (零主线程消耗、即点即现)
+    // 资源预加载：仅缓存真正加载成功的图片；失败 URL 进黑名单，避免局内反复 404
     preloadedImages: new Set(),
+    failedImages: new Set(),
     imageCache: (typeof Map !== "undefined") ? new Map() : null,
+
+    isImageReady(img) {
+        return !!(img && img.complete && img.naturalWidth > 0);
+    },
 
     preloadImage(url) {
         if (!url || typeof Image === "undefined") return Promise.resolve(null);
-        if (this.imageCache && this.imageCache.has(url)) {
-            return Promise.resolve(this.imageCache.get(url));
-        }
-        if (this.preloadedImages.has(url)) return Promise.resolve(null);
+        if (this.failedImages.has(url)) return Promise.resolve(null);
         this.preloadedImages.add(url);
+        if (this.imageCache && this.imageCache.has(url)) {
+            const cached = this.imageCache.get(url);
+            if (this.isImageReady(cached)) return Promise.resolve(cached);
+            this.imageCache.delete(url);
+        }
 
         return new Promise((resolve) => {
+            let settled = false;
+            const finish = (imgOrNull) => {
+                if (settled) return;
+                settled = true;
+                resolve(imgOrNull);
+            };
             try {
                 const img = new Image();
+                const markOk = () => {
+                    if (this.isImageReady(img)) {
+                        if (this.imageCache) this.imageCache.set(url, img);
+                        this.preloadedImages.add(url);
+                        finish(img);
+                    } else {
+                        this.preloadedImages.delete(url);
+                        this.failedImages.add(url);
+                        finish(null);
+                    }
+                };
+                const markFail = () => {
+                    this.preloadedImages.delete(url);
+                    this.failedImages.add(url);
+                    if (this.imageCache) this.imageCache.delete(url);
+                    finish(null);
+                };
+                img.onload = markOk;
+                img.onerror = markFail;
                 img.src = encodeURI(url);
-                if (this.imageCache) {
-                    this.imageCache.set(url, img);
-                }
-                // 现代浏览器支持异步离线解码，彻底避免首次渲染的主线程掉帧卡顿
                 if (typeof img.decode === "function") {
-                    img.decode().then(() => resolve(img)).catch(() => resolve(img));
-                } else {
-                    img.onload = () => resolve(img);
-                    img.onerror = () => resolve(img);
+                    img.decode().then(markOk).catch(() => {
+                        if (img.complete) markOk();
+                    });
                 }
             } catch (e) {
-                resolve(null);
+                this.failedImages.add(url);
+                finish(null);
             }
         });
+    },
+
+    /**
+     * 返回当前表情最可能立刻显示的立绘 URL：
+     * 优先已成功预热缓存 → 跳过已知失败 → 再回落候选队列
+     */
+    getBestPortraitUrl(character, expression = "clam") {
+        const candidates = this.getCharacterImageCandidates(character, expression) || [];
+        for (const url of candidates) {
+            if (!url || this.failedImages.has(url)) continue;
+            const cached = this.imageCache && this.imageCache.get(url);
+            if (this.isImageReady(cached)) return url;
+        }
+        for (const url of candidates) {
+            if (!url || this.failedImages.has(url)) continue;
+            if (this.preloadedImages.has(url)) return url;
+        }
+        for (const url of candidates) {
+            if (url && !this.failedImages.has(url)) return url;
+        }
+        return candidates[0] || "";
     },
 
     preloadCharacter(character) {
@@ -1813,14 +1866,18 @@ const CharacterRegistry = {
                 }
             });
         }
+        // 额外预热候选探测前几项（兼容别名路径），减少局内 onerror 轮询
+        ["clam", "happy", "angry", "dead"].forEach(exp => {
+            const candidates = this.getCharacterImageCandidates(character, exp) || [];
+            candidates.slice(0, 6).forEach(url => {
+                if (url) promises.push(this.preloadImage(url));
+            });
+        });
         return Promise.all(promises);
     },
 
     preloadForLevel(levelConfig) {
-        // 1. 预加载关卡手绘地图
         this.preloadImage("assets/level1_sketch.jpg");
-
-        // 2. 预加载本关卡候选NPC全套表情
         const candidates = (levelConfig && levelConfig.candidateNPCs) || [];
         if (candidates.length > 0) {
             candidates.forEach(c => {
@@ -3403,23 +3460,35 @@ const LEVEL_SECTOR_SPECS = {
     },
     16: {
         title: "第十六关：因果律断 · 非定域纠缠",
-        subtitle: "舰艏、科研、中腹与生活区全通",
-        startNodeId: "room_start",
-        exitNodeId: "room_bridge_main",
-        openRoomIds: [
-            "room_sensor_array", "room_tactical_plan", "room_bridge_sub", "room_bridge_main", "room_ai_core", "room_comm_center", "room_observation",
-            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne", "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
-            "room_npc3", "room_junction_nw", "room_path_e", "room_hub_n1", "room_npc2", "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
-            "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se", "room_gravity_well", "room_armory", "room_recreation_gym", "room_east_airlock",
-            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck", "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
-            "room_shields_emitter", "room_sub_coolant", "room_reactor_control", "room_plasma_manifold", "room_main_reactor"
-        ],
+        subtitle: "动力操作台出发 · 全舰搜救并修复主电站后撤离",
+        startNodeId: "room_npc1",            // 卡罗停电站位 · 动力操作台
+        exitNodeId: "room_life_support",     // 维生环境总控机房
+        // 全图开放（全部普通舱室）；专属私人舱仅随队乘员可开
+        openRoomIds: Object.keys(MASTER_ROOM_DEFS).filter(id => !MASTER_ROOM_DEFS[id].isNpcRoom),
         npcPlacements: {
-            "room_tactical_plan": "kaze",
-            "room_npc2": "shaokexin",
-            "room_npc3": "mode"
+            "room_npc1": "kaze",                    // 卡罗 · 动力操作台（停电站位 / 起点）
+            "room_npc2": "shaokexin",               // 邵可欣 · 医护角落（停电站位）
+            "room_corner_ne": "prof_lu",            // 陆知行 · 跃迁前厅（本关改位）
+            "room_gravity_well": "noah",            // 诺亚 · 重力发生核（本关改位）
+            "room_med_surgery": "elsa",             // 艾尔莎 · 全自动急救台（本关指定）
+            "room_hydro_garden": "sophia",          // 索菲亚 · 立体水培温室（停电站位）
+            // 柯尔特、巴恩斯、薇薇安、伊莲四人同在主反应堆，依次招募（去除莫德）
+            "room_main_reactor": "reactor_quartet"
         },
-        foodPlacements: ["room_storage_ne", "room_west_end", "room_mess_hall"]
+        randomFoodCount: 6,
+        severedConnections: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        yellowSeveredPairs: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [],
+        hostCompatLockReason: "神经宿主契合度不足 · 该舱段暂无法共鸣进入"
     },
     17: {
         title: "第十七关：空洞节点 · 真空极化",
@@ -3699,7 +3768,9 @@ function buildSpaceshipLevelMap(levelId) {
                 lockReason = "专属舱室上锁 · 需该乘员随行";
             } else if (spec.useHostCompatibilityLock) {
                 const isYellow = spec.yellowLockRoomIds && spec.yellowLockRoomIds.includes(id);
-                lockReason = isYellow ? "防爆安全气闸锁死 · 供电切断" : "宿主契合度不足，无法探索";
+                lockReason = isYellow
+                    ? "防爆安全气闸锁死 · 供电切断"
+                    : (spec.hostCompatLockReason || "宿主契合度不足，无法探索");
             }
 
             lockedRooms[id] = {
@@ -3760,6 +3831,7 @@ function buildSpaceshipLevelMap(levelId) {
 const GeneratedLevels = [];
 
 for (let lvlId = 15; lvlId <= 25; lvlId++) {
+    if (lvlId === 16) continue; // 第十六关已迁入 levels.js 手工定制
     const spec = LEVEL_SECTOR_SPECS[lvlId] || LEVEL_SECTOR_SPECS[1];
     const lvlMap = buildSpaceshipLevelMap(lvlId);
 
@@ -4586,6 +4658,75 @@ const BaseLevels = [
                 toast: "第十四关 · 任务三已达成！"
             }
         ]
+    },
+    {
+        levelId: 16,
+        title: "第十六关：因果律断 · 非定域纠缠",
+        subtitle: "动力操作台出发 · 全舰搜救并修复主电站后撤离",
+
+        // 第四关风味 + 被爆炸波及受伤
+        blackScreenText: [
+            "……一如既往的一天。换气格栅吐着微凉的气流。",
+            "忽然，远处传来刺耳的金属撕裂与爆炸轰鸣——冲击波将你掀翻在地。",
+            "滚烫破片划过防护服，剧痛与眩晕瞬间剥夺了视野……你又被爆炸波及了。",
+            "冷白指示灯逐一熄灭。舱壁依旧冰冷，你捂着伤口在黑暗中喘息。",
+            "失散的同伴仍在各处舱室。你必须带伤搜救至少八人、修复主电站，并携卡罗与邵可欣撤离。",
+            "——触摸屏幕，开始行动。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量：随机 4~6 人
+        wolfCountRange: [4, 6],
+        candidateNPCs: [
+            { id: "kaze", assignedRole: null },
+            { id: "shaokexin", assignedRole: null },
+            { id: "prof_lu", assignedRole: null },
+            { id: "noah", assignedRole: null },
+            { id: "colt", assignedRole: null },
+            { id: "barnes", assignedRole: null },
+            { id: "elsa", assignedRole: null },
+            { id: "sophia", assignedRole: null },
+            { id: "vivian", assignedRole: null },
+            { id: "elena", assignedRole: null }
+        ],
+
+        mapImageUrl: null,
+        map: buildSpaceshipLevelMap(16),
+
+        // 通关不解锁任何关卡；仅保存「已完成」标记
+        unlockRules: [
+            {
+                id: "l16_find_8_npcs",
+                condition: { type: "require_npc_count", count: 8 },
+                unlockLevelIds: [],
+                taskName: "任务一：找到至少 8 名同伴",
+                taskObjective: "在全舰搜救并唤醒至少 8 名同伴加入队伍",
+                title: "搜救闭环",
+                toast: "第十六关 · 任务一已达成！"
+            },
+            {
+                id: "l16_power_restore",
+                condition: { type: "level16_power_restored" },
+                unlockLevelIds: [],
+                taskName: "任务二：找到并修复主电站",
+                taskObjective: "前往【主配电值班舱】合闸恢复主电网，解除黄色气闸封锁",
+                title: "主电站重合闸",
+                toast: "第十六关 · 任务二已达成！"
+            },
+            {
+                id: "l16_escort_kaze_shaokexin",
+                condition: { type: "require_npcs", npcIds: ["kaze", "shaokexin"] },
+                unlockLevelIds: [],
+                taskName: "任务三：带离卡罗、邵可欣一起撤离",
+                taskObjective: "确保卡罗与邵可欣存活在队，一同抵达维生环境总控机房脱出",
+                title: "双核引渡",
+                toast: "第十六关 · 任务三已达成！"
+            }
+        ]
     }
 ];
 
@@ -4837,84 +4978,126 @@ const LevelRegistry = [
     // 模块: level1Tutorial.js
     // =========================================================================
 /**
- * 第一关新手教程文案与步骤表 (仅 levelId === 1 使用)
- * 强引导：关键节点弹出可点击关闭的教程框
+ * 第一关新手可视化 Coach Mark 步骤表 (仅 levelId === 1)
+ * advance: "next" = 点旁白「下一步」；"click-target" = 必须点击高亮的真实控件
+ * target: CSS 选择器 | 选择器数组 | (engine) => HTMLElement
+ * placement: top | bottom | left | right（旁白相对目标的偏好位置）
  */
 
 const Level1TutorialPages = {
     mimic_intro: {
         title: "核心规则 · 伪人",
         body: [
-            "这片星舰里混入了<strong>伪人</strong>——外表与人类无异，却会在夜间悄然袭击同伴。",
-            "你的主线不是单纯逃命：要<strong>搜救同伴、辨别真伪、在裁决中做选择</strong>，再抵达终点。",
-            "记住：队伍越热闹，越可能藏着伪装体；独自一人则跳过询问与裁决，但也更难获得线索。"
-        ].join("<br><br>")
-    },
-    explore_choice: {
-        title: "探索 · 面临选择",
-        body: [
-            "使用方向键踏入相邻舱室。进入<strong>未知舱室</strong>会消耗体力，并累加一次「面临选择」。",
-            "折返已探明区域<strong>不耗体力、不计入面临选择</strong>。面临选择累积后，傍晚时分会概率到来。",
-            "傍晚意味着：询问线索 → 裁决处分 → 黑夜行动 → 黎明继续探索。"
-        ].join("<br><br>")
+            "<strong>看这里：</strong>星舰里混入了外表正常的<strong>伪人</strong>，会在夜间袭击同伴。",
+            "<strong>要做什么：</strong>搜救、辨别真伪、在裁决中做选择，再抵达终点。"
+        ].join("<br>"),
+        target: "#stage-mission-card",
+        placement: "right",
+        advance: "next"
     },
     missions: {
         title: "界面 · 任务",
         body: [
-            "点击顶部 <strong>🎯 任务</strong>，或查看左上角「观测目标」，可随时核对本关目标。",
-            "任务一：抵达终点即可解锁下一扇区。",
-            "任务二：若带离指定同伴（如邵可欣），可能额外解锁隐藏扇区——报酬在通关前不会剧透。"
-        ].join("<br><br>")
+            "<strong>看这里：</strong>顶部「🎯 任务」与左上角观测目标卡。",
+            "<strong>要做什么：</strong>随时点开核对通关条件；带离指定同伴可能解锁隐藏扇区。"
+        ].join("<br>"),
+        target: ["#btn-view-missions", "#stage-mission-card"],
+        placement: "bottom",
+        advance: "next"
     },
     logs: {
         title: "界面 · 日志",
         body: [
-            "左侧（或移动端「日志」按钮）是<strong>行动日志</strong>：移动、营救、询问、裁决与夜间结果都会记录在此。",
-            "推理伪人时，请多回顾日志里的发言与处分结果——线索往往藏在字里行间。"
-        ].join("<br><br>")
+            "<strong>看这里：</strong>「📜 日志」按钮与左侧行动记录。",
+            "<strong>要做什么：</strong>移动、营救、询问、裁决都会记在这里——推理时请常回来翻。"
+        ].join("<br>"),
+        target: ["#btn-toggle-log-drawer", "#action-log-sidebar"],
+        placement: "bottom",
+        advance: "next"
+    },
+    stamina_choice: {
+        title: "探索 · 体力与面临选择",
+        body: [
+            "<strong>看这里：</strong>顶部体力条。踏入<strong>未知舱室</strong>会扣体力，并累加「面临选择」。",
+            "<strong>要做什么：</strong>折返已探明区域不耗体力；面临选择累积后，傍晚会概率到来。"
+        ].join("<br>"),
+        target: "#header-stamina-box",
+        placement: "bottom",
+        advance: "next"
+    },
+    move_hint: {
+        title: "开始行动",
+        body: [
+            "<strong>看这里：</strong>高亮的方向键。",
+            "<strong>要做什么：</strong>现在点击它，踏入相邻舱室开始探索！"
+        ].join("<br>"),
+        target: (engine) => {
+            const dirMap = {
+                forward: "btn-move-forward",
+                backward: "btn-move-backward",
+                left: "btn-move-left",
+                right: "btn-move-right"
+            };
+            const available = engine?.explorationEngine?.getAvailableDirections?.() || [];
+            for (const d of available) {
+                const el = document.getElementById(dirMap[d]);
+                if (el && !el.disabled) return el;
+            }
+            return document.getElementById("btn-move-forward")
+                || document.getElementById("compass-center-hub");
+        },
+        placement: "top",
+        advance: "click-target"
     },
     npc_recruit: {
         title: "遭遇 · 是否收纳",
         body: [
-            "你遇到了昏迷的同伴。选择<strong>救助加入</strong>，对方会进入队伍；选择忽略，之后仍可回来。",
-            "<strong>建议：新手请先收纳至少一人。</strong>只有队伍中有同伴时，你才会体验完整的「询问 → 裁决 → 黑夜」主循环。",
-            "注意：被收纳的同伴也可能是伪人。收纳不是终点，而是推理的开始。"
-        ].join("<br><br>")
+            "<strong>看这里：</strong>救助加入 / 不理睬。",
+            "<strong>要做什么：</strong>新手请先<strong>救助加入</strong>至少一人，才能体验完整的询问 → 裁决 → 黑夜循环。"
+        ].join("<br>"),
+        target: "#btn-encounter-accept",
+        placement: "top",
+        advance: "next"
     },
     inquiry: {
         title: "傍晚 · 询问阶段",
         body: [
-            "傍晚集结后，你可以与最多 <strong>2 名</strong>同伴单独交谈，获取口供与态度。",
-            "也可以直接跳过询问进入裁决。交谈次数会累积，某些人物图鉴线索也依赖反复交谈。",
-            "把他们当作嫌疑人来听：矛盾、回避、过度冷静，都可能是伪装的裂痕。"
-        ].join("<br><br>")
+            "<strong>看这里：</strong>同伴卡片与跳过按钮。",
+            "<strong>要做什么：</strong>最多与 <strong>2 名</strong>同伴交谈收集口供；也可直接跳过进入裁决。"
+        ].join("<br>"),
+        target: ["#inquiry-target-list", "#btn-inquiry-skip", "#modal-inquiry-select .modal-box"],
+        placement: "bottom",
+        advance: "next"
     },
     judgement: {
         title: "裁决时刻",
         body: [
-            "作为队长，你可以：",
-            "• <strong>禁锢今夜</strong>：限制对方夜间行动；若其为伪人，今晚往往无法动手。",
-            "• <strong>永久放逐</strong>：将其踢出队伍（无法挽回）。",
-            "• <strong>放弃裁决</strong>：今晚不做处分。",
-            "没有证据时可以放弃；有强烈嫌疑时，禁锢往往是更稳妥的试探。"
-        ].join("<br><br>")
+            "<strong>看这里：</strong>禁锢 / 放逐 / 放弃裁决。",
+            "<strong>要做什么：</strong>有嫌疑可先<strong>禁锢</strong>试探；没把握就放弃裁决，进入黑夜。"
+        ].join("<br>"),
+        target: ["#judgement-target-list", "#btn-judgement-pass", "#modal-judgement .modal-box"],
+        placement: "bottom",
+        advance: "next"
     },
     night: {
         title: "黑夜 · 身份行动",
         body: [
-            "你本关默认身份是<strong>魔镜</strong>：可在夜间查验一名同伴的真身——人类，或伪人。",
-            "若队伍中存在伪人，它们可能在夜间袭击某人；黎明时你将看到结果。",
-            "查验、守护、救赎……不同身份各有手段。善用夜晚，白天的裁决才会更清醒。"
-        ].join("<br><br>")
+            "<strong>看这里：</strong>夜间行动目标列表。",
+            "<strong>要做什么：</strong>你本关默认是<strong>魔镜</strong>——选一名同伴查验真身（人类或伪人）。"
+        ].join("<br>"),
+        target: ["#night-target-list", "#btn-night-skip", "#modal-night-action .modal-box"],
+        placement: "bottom",
+        advance: "next"
     }
 };
 
-/** 开场探索引导的顺序（进入 Q3 时连续弹出） */
+/** 开场探索引导顺序（进入 Q3 时连续弹出） */
 const Level1ExploreTutorialSequence = [
     "mimic_intro",
-    "explore_choice",
     "missions",
-    "logs"
+    "logs",
+    "stamina_choice",
+    "move_hint"
 ];
 
 
@@ -4934,11 +5117,15 @@ const Level1ExploreTutorialSequence = [
 
 
 
-// 全局立绘容错轮询处理器 (当优先候选文件不存在时，无缝尝试下一个格式/别名直至保底)
+// 全局立绘容错轮询处理器 (当优先候选文件不存在时，跳过已知失败项，无缝尝试下一个)
 if (typeof window !== "undefined") {
     window.handlePortraitError = function(img) {
         if (!img) return;
         try {
+            if (typeof CharacterRegistry !== "undefined" && CharacterRegistry.failedImages) {
+                const bad = img.getAttribute("data-current-url") || img.getAttribute("src");
+                if (bad) CharacterRegistry.failedImages.add(decodeURI(bad));
+            }
             let raw = img.getAttribute("data-candidates");
             if (raw) {
                 if (typeof raw === "string" && raw.includes("&quot;")) {
@@ -4946,10 +5133,20 @@ if (typeof window !== "undefined") {
                 }
                 const candidates = (typeof raw === "string") ? JSON.parse(raw) : raw;
                 let idx = parseInt(img.getAttribute("data-index") || "0", 10) + 1;
-                if (Array.isArray(candidates) && idx < candidates.length) {
-                    img.setAttribute("data-index", String(idx));
-                    img.src = candidates[idx];
-                    return;
+                if (Array.isArray(candidates)) {
+                    while (idx < candidates.length) {
+                        const next = candidates[idx];
+                        const failed = typeof CharacterRegistry !== "undefined"
+                            && CharacterRegistry.failedImages
+                            && CharacterRegistry.failedImages.has(next);
+                        if (next && !failed) {
+                            img.setAttribute("data-index", String(idx));
+                            img.setAttribute("data-current-url", next);
+                            img.src = encodeURI(next);
+                            return;
+                        }
+                        idx++;
+                    }
                 }
             }
         } catch (e) {
@@ -5180,7 +5377,7 @@ class DialogueUI {
                 ? CharacterRegistry.normalizeExpression(expression)
                 : (expression || "clam");
             
-            // 获取候选立绘队列
+            // 获取候选立绘队列，并优先选用已预热成功的 URL（避免手机上 onerror 连环探测）
             const candidates = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getCharacterImageCandidates)
                 ? CharacterRegistry.getCharacterImageCandidates(speaker, exp)
                 : [(speaker.expressions && speaker.expressions[exp]) || speaker.avatarUrl || ""];
@@ -5196,8 +5393,14 @@ class DialogueUI {
                 ? "0 0 24px rgba(239, 68, 68, 0.95), inset 0 0 16px rgba(239, 68, 68, 0.6)"
                 : `0 0 16px ${color}80, inset 0 0 12px ${color}40`;
 
-            const primaryUrl = candidates[0] || fallbackSvg;
+            const primaryUrl = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getBestPortraitUrl)
+                ? (CharacterRegistry.getBestPortraitUrl(speaker, exp) || candidates[0] || fallbackSvg)
+                : (candidates[0] || fallbackSvg);
+            const startIndex = Math.max(0, candidates.indexOf(primaryUrl));
             const candidatesAttr = JSON.stringify(candidates).replace(/"/g, '&quot;');
+            const safePrimary = primaryUrl && !String(primaryUrl).startsWith("data:")
+                ? encodeURI(primaryUrl)
+                : primaryUrl;
 
             // 优化 DOM 节点复用：同角色同表情连续发言时，完全保留已有 DOM 树，杜绝销毁重绘导致的白屏与解码延迟
             const speakerKey = `${speaker.id || speaker.name || 'char'}_${exp}`;
@@ -5205,11 +5408,12 @@ class DialogueUI {
                 this.currentSpeakerKey = speakerKey;
                 this.cornerAvatarElement.innerHTML = `
                     <div class="corner-avatar-frame ${isDead ? 'avatar-frame-dead' : ''}" style="border-color:${borderColor}; box-shadow:${shadowGlow};">
-                        <img src="${primaryUrl}"
+                        <img src="${safePrimary}"
                              loading="eager"
-                             decoding="sync"
+                             decoding="async"
                              data-candidates="${candidatesAttr}"
-                             data-index="0"
+                             data-index="${startIndex}"
+                             data-current-url="${primaryUrl || ""}"
                              data-fallback="${fallbackSvg}"
                              alt="${speaker.name}"
                              class="corner-portrait-img ${isDead ? 'dead-portrait-img' : ''}"
@@ -6428,7 +6632,8 @@ function drawRoomDecoration(ctx, node, x, y, boxSize, theme) {
             colt: "#f59e0b",
             barnes: "#84cc16",
             colt_barnes: "#f59e0b",
-            vivian_elena: "#a78bfa"
+            vivian_elena: "#a78bfa",
+            reactor_quartet: "#fb923c"
         };
         const roomColor = npcColors[targetNpcId] || "#4ade80";
         const s = boxSize;
@@ -7355,13 +7560,14 @@ class MapRenderer {
                 lph: "#38bdf8", kaze: "#38bdf8", kaluo: "#38bdf8", shaokexin: "#f43f5e", mode: "#a855f7",
                 prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
                 vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
-                colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b", vivian_elena: "#a78bfa"
+                colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b", vivian_elena: "#a78bfa", reactor_quartet: "#fb923c"
             };
             const ownerNames = {
                 lph: "指挥官", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
                 prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
                 vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
-                colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲"
+                colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲",
+                reactor_quartet: "反应堆四人组"
             };
             const strokeColor = isNpc ? (npcColors[npcOwnerId] || "#38bdf8") : "#ef4444";
             const ownerName = ownerNames[npcOwnerId] || "乘员";
@@ -7564,13 +7770,15 @@ class MapRenderer {
                     lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
                     prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
                     vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
-                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲"
+                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲",
+                    reactor_quartet: "反应堆四人组"
                 };
                 const ownerColors = {
                     lph: "#38bdf8", kaze: "#60a5fa", kaluo: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc",
                     prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
                     vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
-                    colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b", vivian_elena: "#a78bfa"
+                    colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b", vivian_elena: "#a78bfa",
+                    reactor_quartet: "#fb923c"
                 };
                 const roomNpcId = (node.event && node.event.type === "npc" && node.event.npcId) || node.npcId;
                 const isExitRoom = !!(node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit"))));
@@ -7628,13 +7836,15 @@ class MapRenderer {
                     lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
                     prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
                     vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
-                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲"
+                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲",
+                    reactor_quartet: "反应堆四人组"
                 };
                 const ownerColors = {
                     lph: "#38bdf8", kaze: "#60a5fa", kaluo: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc",
                     prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
                     vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
-                    colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b", vivian_elena: "#a78bfa"
+                    colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b", vivian_elena: "#a78bfa",
+                    reactor_quartet: "#fb923c"
                 };
                 const roomNpcId = (node.event && node.event.type === "npc" && node.event.npcId) || node.npcId;
                 const isExitRoom = !!(node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit"))));
@@ -8271,6 +8481,12 @@ class UnlockEvaluator {
                     break;
                 }
 
+                // 第十六关：主电站已合闸
+                case "level16_power_restored": {
+                    isSatisfied = !!context.level16PowerRestored;
+                    break;
+                }
+
                 default:
                     console.warn(`[UnlockEvaluator] 未知的解锁条件类型: ${condition.type}`);
                     isSatisfied = false;
@@ -8405,7 +8621,8 @@ class ExplorationEngine {
             (this.gameEngine?.currentLevel?.levelId === 2 && !this.gameEngine.level2PowerRestored) ||
             (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored) ||
             (this.gameEngine?.currentLevel?.levelId === 13 && !this.gameEngine.level13PowerRestored) ||
-            (this.gameEngine?.currentLevel?.levelId === 14 && !this.gameEngine.level14PowerRestored)
+            (this.gameEngine?.currentLevel?.levelId === 14 && !this.gameEngine.level14PowerRestored) ||
+            (this.gameEngine?.currentLevel?.levelId === 16 && !this.gameEngine.level16PowerRestored)
         );
         const isLevel5ColtBarnesPending = (
             this.gameEngine?.currentLevel?.levelId === 5 &&
@@ -8469,12 +8686,21 @@ class ExplorationEngine {
                 !this.gameEngine.getAliveTeamMembers().some(m => m.id === "mode")
             )
         );
+        const isLevel16Pending = (
+            this.gameEngine?.currentLevel?.levelId === 16 &&
+            (
+                !this.gameEngine.level16PowerRestored ||
+                this.gameEngine.getAliveNpcTeamMembers().length < 8 ||
+                !this.gameEngine.getAliveTeamMembers().some(m => m.id === "kaze") ||
+                !this.gameEngine.getAliveTeamMembers().some(m => m.id === "shaokexin")
+            )
+        );
         // 如果终点节点包含未救助的NPC（如第五关主反应堆的伊莲），不可提前视为最终脱出阻断，必须步入触发NPC救助
         const nextRoomNpcId = (nextNode.event && nextNode.event.type === "npc" && nextNode.event.npcId) || nextNode.npcId;
         const targetNpc = nextRoomNpcId ? this.gameEngine.getNpcById(nextRoomNpcId) : null;
         const hasUnmetNpc = targetNpc && targetNpc.status === "unmet" && !this.consumedEvents.has(`${nextNode.id}_event`);
 
-        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !isLevel8ColtPending && !isLevel9PatrolPending && !isLevel10Pending && !isLevel11Pending && !isLevel12Pending && !isLevel13Pending && !isLevel14Pending && !hasUnmetNpc;
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !isLevel8ColtPending && !isLevel9PatrolPending && !isLevel10Pending && !isLevel11Pending && !isLevel12Pending && !isLevel13Pending && !isLevel14Pending && !isLevel16Pending && !hasUnmetNpc;
         if (isEffectiveExit) {
             if (!isAlreadyExplored) {
                 this.choiceCount++;
@@ -8516,7 +8742,8 @@ class ExplorationEngine {
             ((this.gameEngine?.currentLevel?.levelId === 2 && !this.gameEngine.level2PowerRestored) ||
              (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored) ||
              (this.gameEngine?.currentLevel?.levelId === 13 && !this.gameEngine.level13PowerRestored) ||
-             (this.gameEngine?.currentLevel?.levelId === 14 && !this.gameEngine.level14PowerRestored)) &&
+             (this.gameEngine?.currentLevel?.levelId === 14 && !this.gameEngine.level14PowerRestored) ||
+             (this.gameEngine?.currentLevel?.levelId === 16 && !this.gameEngine.level16PowerRestored)) &&
             (node.id === "room_west_end" || node.isPowerOrigin)
         );
 
@@ -8567,13 +8794,18 @@ class ExplorationEngine {
                         if (typeof this.gameEngine.restoreLevel13YellowConnections === "function") {
                             this.gameEngine.restoreLevel13YellowConnections();
                         }
+                    } else if (this.gameEngine?.currentLevel?.levelId === 16) {
+                        this.gameEngine.level16PowerRestored = true;
+                        if (typeof this.gameEngine.restoreLevel16YellowConnections === "function") {
+                            this.gameEngine.restoreLevel16YellowConnections();
+                        }
                     }
                     this.gameEngine.logAction(`【电源修复】抵达全舰停电始发地 [${node.name}]！手动合上高压母线总断路器，逃生系统主电网供电成功恢复！`);
                     if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
                         Sound.playAlarmSound();
                     }
                     if (this.gameEngine.showStageToast) {
-                        const toastMsg = this.gameEngine?.currentLevel?.levelId === 13
+                        const toastMsg = (this.gameEngine?.currentLevel?.levelId === 13 || this.gameEngine?.currentLevel?.levelId === 16)
                             ? "⚡ [主电站] 主电网重合闸成功！黄色气闸封锁已解除！"
                             : "⚡ [停电始发地] 主电网重合闸成功！逃生舱气动锁已解除！";
                         this.gameEngine.showStageToast(toastMsg);
@@ -8615,16 +8847,17 @@ class ExplorationEngine {
                 (this.gameEngine?.currentLevel?.levelId === 2 && !this.gameEngine.level2PowerRestored) ||
                 (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored) ||
                 (this.gameEngine?.currentLevel?.levelId === 13 && !this.gameEngine.level13PowerRestored) ||
-                (this.gameEngine?.currentLevel?.levelId === 14 && !this.gameEngine.level14PowerRestored)
+                (this.gameEngine?.currentLevel?.levelId === 14 && !this.gameEngine.level14PowerRestored) ||
+                (this.gameEngine?.currentLevel?.levelId === 16 && !this.gameEngine.level16PowerRestored)
             );
             if (isPowerRestorationPending) {
-                const isL13Or14 = this.gameEngine?.currentLevel?.levelId === 13 || this.gameEngine?.currentLevel?.levelId === 14;
-                this.gameEngine.logAction(isL13Or14
+                const isMainStationLevel = [13, 14, 16].includes(this.gameEngine?.currentLevel?.levelId);
+                this.gameEngine.logAction(isMainStationLevel
                     ? `【主电站离线】主电网仍处于切断状态！请先前往【主配电值班舱】合闸修复电源！`
                     : `【气动锁未解压】逃生舱主电源处于切断状态！气动锁未解压，无法启动撤离程序。请先前往停电始发地修复电源！`);
                 this.gameEngine.dialogueUI?.say(
-                    { name: isL13Or14 ? "维生总控终端" : "逃生舱控制终端", themeColor: "#f43f5e" },
-                    isL13Or14
+                    { name: isMainStationLevel ? "维生总控终端" : "逃生舱控制终端", themeColor: "#f43f5e" },
+                    isMainStationLevel
                         ? "【警告：主能源离线】主电站尚未合闸，黄色气闸封锁未解除，维生总控无法启动撤离程序！请前往【主配电值班舱】修复电源后再来撤离！"
                         : "【警告：主能源离线】逃生舱主电源处于切断状态，舱门气动锁未解压，逃生折跃引擎无法启动！请前往【停电始发地】合上主电闸修复电源后再来撤离！"
                 );
@@ -8951,6 +9184,46 @@ class ExplorationEngine {
                 }
             }
 
+            // 第十六关专属通关校验：≥8名同伴 + 主电站已修 + 卡罗与邵可欣存活在队
+            if (this.gameEngine?.currentLevel?.levelId === 16) {
+                const aliveNpcs = this.gameEngine.getAliveNpcTeamMembers();
+                const aliveTeam = this.gameEngine.getAliveTeamMembers();
+                const hasKaze = aliveTeam.some(m => m.id === "kaze");
+                const hasShaokexin = aliveTeam.some(m => m.id === "shaokexin");
+
+                if (aliveNpcs.length < 8) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast(`⚠️ 撤离受阻！随行同伴不足 8 人（当前: ${aliveNpcs.length}/8）！`);
+                    }
+                    this.gameEngine.logAction(`【撤离受阻】队伍中存活同伴仅有 ${aliveNpcs.length}/8 人，必须找到至少八名同伴！`);
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "维生环境总控机房", themeColor: "#f43f5e" },
+                        `【搜救协议未闭环】当前随行同伴不足 8 人（当前: ${aliveNpcs.length}/8）。在完成全舰搜救配额之前，维生总控拒绝启动撤离程序！`
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+
+                if (!hasKaze || !hasShaokexin) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！必须带离卡罗与邵可欣一同撤离！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】卡罗与邵可欣未同时存活在队，维生总控引渡通道拒绝开启！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "维生环境总控机房", themeColor: "#fb923c" },
+                        "【双核引渡拦截】卡罗与邵可欣必须同时存活随行！缺少前锋哨兵与观测员的双重信标授权，维生总控无法开启终点撤离！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
             this.gameEngine.logAction(`【通关突破】全员成功抵达目的地 [${node.name}]！准备跳跃！`);
             this.gameEngine.triggerVictory(node);
             return;
@@ -9059,13 +9332,13 @@ class ExplorationEngine {
                 lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
                 prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
                 vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
-                colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲"
+                colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲", reactor_quartet: "反应堆四人组"
             };
             const ownerColors = {
                 lph: "#38bdf8", kaze: "#38bdf8", kaluo: "#38bdf8", shaokexin: "#f43f5e", mode: "#a855f7",
                 prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
                 vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
-                colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b", vivian_elena: "#a78bfa"
+                colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b", vivian_elena: "#a78bfa", reactor_quartet: "#fb923c"
             };
             const ownerName = ownerNames[node.npcOwnerId] || node.name;
             const ownerColor = ownerColors[node.npcOwnerId] || "#38bdf8";
@@ -9203,9 +9476,11 @@ class ExplorationEngine {
         // 弹出对话框并提示玩家选择：让其加入 / 不救助
         // 若选择救助入队，则标记该事件已消耗；若选择不救助/不理睬，则不标记消耗，允许之后再次踏入该区域时重新触发是否救助！
         this.gameEngine.showNpcEncounterModal(npc, node, (joined) => {
-            if (npcId === "vivian_elena" || (npcId === "colt_barnes" && this.gameEngine?.currentLevel?.levelId === 13)) {
-                // 双人站位：仅当两人皆已不再处于 unmet 时才消耗，便于漏救一人时回来补招
-                const ids = npcId === "vivian_elena" ? ["vivian", "elena"] : ["colt", "barnes"];
+            if (npcId === "vivian_elena" || npcId === "reactor_quartet" || (npcId === "colt_barnes" && this.gameEngine?.currentLevel?.levelId === 13)) {
+                // 双人/四人站位：仅当成员皆已不再处于 unmet 时才消耗，便于漏救时回来补招
+                const ids = npcId === "reactor_quartet"
+                    ? ["colt", "barnes", "vivian", "elena"]
+                    : (npcId === "vivian_elena" ? ["vivian", "elena"] : ["colt", "barnes"]);
                 const stillUnmet = ids.some(id => {
                     const n = this.gameEngine.allNpcMap.get(id);
                     return n && n.status === "unmet";
@@ -9500,12 +9775,24 @@ class GameEngine {
         this.personaCharTabs = document.getElementById("persona-char-tabs");
         this.personaCharDetail = document.getElementById("persona-char-detail");
 
-        // 第一关新手教程弹窗
+        // 第一关新手教程弹窗 + 可视化 Coach
         this.modalLevel1Tutorial = document.getElementById("modal-level1-tutorial");
         this.l1TutorialTitle = document.getElementById("l1-tutorial-title");
         this.l1TutorialBody = document.getElementById("l1-tutorial-body");
         this.l1TutorialProgress = document.getElementById("l1-tutorial-progress");
         this.btnL1TutorialNext = document.getElementById("btn-l1-tutorial-next");
+        this.coachOverlay = document.getElementById("coach-overlay");
+        this.coachSpotlight = document.getElementById("coach-spotlight");
+        this.coachFinger = document.getElementById("coach-finger");
+        this.coachTooltip = document.getElementById("coach-tooltip");
+        this.coachTitle = document.getElementById("coach-title");
+        this.coachBody = document.getElementById("coach-body");
+        this.coachProgress = document.getElementById("coach-progress");
+        this.btnCoachNext = document.getElementById("btn-coach-next");
+        this._coachState = null;
+        this._onCoachReposition = () => this.layoutCoachOverlay();
+        window.addEventListener("resize", this._onCoachReposition);
+        window.addEventListener("scroll", this._onCoachReposition, true);
 
         // 小地图战术微型雷达 DOM 引用
         this.hudMiniRadar = document.getElementById("hud-mini-radar");
@@ -9514,12 +9801,6 @@ class GameEngine {
         this.btnRadarToggle = document.getElementById("btn-radar-toggle");
         this.radarBodyWrap = document.getElementById("radar-body-wrap");
         this.radarPosTag = document.getElementById("radar-pos-tag");
-
-        // 移动端横屏引导与旋转控制器 DOM
-        this.screenOrientationHint = document.getElementById("screen-orientation-hint");
-        this.btnForceLandscape = document.getElementById("btn-force-landscape");
-        this.btnIgnoreOrientation = document.getElementById("btn-ignore-orientation");
-        this.btnToggleLandscape = document.getElementById("btn-toggle-landscape");
     }
 
     /**
@@ -9565,10 +9846,12 @@ class GameEngine {
                 shock: "震惊",
                 dead: "遇害"
             };
+            const seenCharIds = new Set();
             Object.values(CharacterRegistry.npcs).forEach(char => {
-                if (!char || !char.expressions) return;
-                // 去重，防止 morde 与 mode 重复添加
-                if (char.id === "morde") return;
+                if (!char || !char.expressions || !char.id) return;
+                // 去重：mode/morde、kaze/kaluo 等别名指向同一对象，避免重复预热
+                if (seenCharIds.has(char.id)) return;
+                seenCharIds.add(char.id);
                 Object.entries(char.expressions).forEach(([expKey, url]) => {
                     if (url) {
                         const cnExp = expNames[expKey] || expKey;
@@ -9977,77 +10260,21 @@ class GameEngine {
         // 检查存档并激活“加载存档”按钮
         this.updateMenuButtons();
 
-        // 移动端横屏自动检测与旋转控制
-        this.initOrientationManager();
-    }
-
-    initOrientationManager() {
-        const updateOrientationState = () => {
-            if (typeof window === "undefined") return;
-            const isPortrait = window.matchMedia && window.matchMedia("(orientation: portrait)").matches;
-            const isNarrow = window.innerWidth <= 820 || (window.screen && window.screen.width <= 820);
-            const isForceLandscape = document.body?.classList.contains("force-landscape");
-
-            // 如果处于原生横屏状态，或者玩家已经开启了强制横屏旋转，则隐藏提示层
-            if (!isPortrait || isForceLandscape) {
-                this.screenOrientationHint?.classList.add("hidden");
-            } else if (isPortrait && isNarrow) {
-                let ignored = false;
-                try {
-                    ignored = sessionStorage.getItem("gnosia_ignore_orientation_hint") === "1";
-                } catch (e) {}
-                if (!ignored) {
-                    this.screenOrientationHint?.classList.remove("hidden");
-                }
-            }
-        };
-
-        // 监听系统屏幕尺寸与旋转
+        // 窗口尺寸变化时重绘地图（不再做强制横屏/旋转引导）
         window.addEventListener("resize", () => {
-            updateOrientationState();
             if (this.currentLevelMap && this.mapRenderer) {
                 setTimeout(() => {
-                    this.mapRenderer.render(this.currentLevelMap, this.explorationEngine?.visitedNodes, this.explorationEngine?.currentNodeId);
+                    this.mapRenderer.render(
+                        this.currentLevelMap,
+                        this.explorationEngine?.visitedNodes,
+                        this.explorationEngine?.currentNodeId
+                    );
                 }, 50);
             }
-        });
-
-        window.addEventListener("orientationchange", () => {
-            setTimeout(updateOrientationState, 150);
-        });
-
-        // 提示层：强制横屏显示
-        this.btnForceLandscape?.addEventListener("click", () => {
-            document.body?.classList.add("force-landscape");
-            this.screenOrientationHint?.classList.add("hidden");
-            if (this.currentLevelMap && this.mapRenderer) {
-                setTimeout(() => {
-                    this.mapRenderer.render(this.currentLevelMap, this.explorationEngine?.visitedNodes, this.explorationEngine?.currentNodeId);
-                }, 100);
+            if (typeof this.layoutCoachOverlay === "function") {
+                this.layoutCoachOverlay();
             }
         });
-
-        // 提示层：保持竖屏直接玩
-        this.btnIgnoreOrientation?.addEventListener("click", () => {
-            this.screenOrientationHint?.classList.add("hidden");
-            try {
-                sessionStorage.setItem("gnosia_ignore_orientation_hint", "1");
-            } catch (e) {}
-        });
-
-        // 右上角浮动快捷旋转按钮：随时一键自由切换
-        this.btnToggleLandscape?.addEventListener("click", () => {
-            const nowForced = document.body?.classList.toggle("force-landscape");
-            this.screenOrientationHint?.classList.add("hidden");
-            if (this.currentLevelMap && this.mapRenderer) {
-                setTimeout(() => {
-                    this.mapRenderer.render(this.currentLevelMap, this.explorationEngine?.visitedNodes, this.explorationEngine?.currentNodeId);
-                }, 100);
-            }
-        });
-
-        // 首次加载检测
-        setTimeout(updateOrientationState, 80);
     }
 
     updateMenuButtons() {
@@ -10110,7 +10337,7 @@ class GameEngine {
             // 绝不预先透露解锁的是哪个具体关卡
             const taskReward = (rule.unlockLevelIds && rule.unlockLevelIds.length > 0)
                 ? "解构未知深层扇区 🔒???"
-                : (this.currentLevel?.levelId === 13 ? "通关标记本扇区完成 ✓" : "无额外扇区解锁");
+                : ([13, 14, 16].includes(this.currentLevel?.levelId) ? "通关标记本扇区完成 ✓" : "无额外扇区解锁");
 
             // 检查历史解锁/完成状态（无后续解锁时，以本关「已完成」为准）
             const unlockIds = rule.unlockLevelIds || [];
@@ -10246,6 +10473,14 @@ class GameEngine {
                     realtimeClass = "realtime-ready";
                 } else {
                     realtimeStatus = "⚡ 主电网断开（需伊莲或陆知行随行协助前往主配电值班舱修复）";
+                    realtimeClass = "realtime-waiting";
+                }
+            } else if (cond.type === "level16_power_restored") {
+                if (this.level16PowerRestored) {
+                    realtimeStatus = "🟢 主电站已合闸，黄色气闸已解除";
+                    realtimeClass = "realtime-ready";
+                } else {
+                    realtimeStatus = "⚡ 主电站离线中（需前往主配电值班舱合闸修复）";
                     realtimeClass = "realtime-waiting";
                 }
             } else {
@@ -10404,6 +10639,7 @@ class GameEngine {
         this.level3PowerRestored = false;
         this.level13PowerRestored = false;
         this.level14PowerRestored = false;
+        this.level16PowerRestored = false;
         this.level14RecruitedNpcIds = new Set();
         this.level4PatrolVisited = new Set();
         this.level9PatrolStep = 0;
@@ -10413,6 +10649,7 @@ class GameEngine {
         this.level1TutorialSeen = new Set();
         this._l1TutorialQueue = null;
         this._l1TutorialOnDone = null;
+        this.clearCoachOverlay(true);
         this.unlockedNpcRooms = new Set();
         this.mapAftermathLighting = false;
         this.modalEncounter?.classList.add("hidden");
@@ -10423,6 +10660,14 @@ class GameEngine {
         this.modalResult?.classList.add("hidden");
         this.modalLevel1Tutorial?.classList.add("hidden");
         this.screenLevel4Cutscene?.classList.add("hidden");
+
+        // 第一关专属：轻量“观测目标”指示卡默认处于收起/折叠状态，避免遮挡初见视野；其余关卡默认展开
+        if (levelConfig.levelId === 1) {
+            this.stageMissionCard?.classList.add("collapsed");
+        } else {
+            this.stageMissionCard?.classList.remove("collapsed");
+        }
+
         this.logAction(`【开始新循环】启动关卡：${levelConfig.title}。主角 L.P.H 身份：${WorldviewConfig.roleNames[this.protagonist.role].name}`);
 
         // 初始化地图
@@ -10611,10 +10856,10 @@ class GameEngine {
             }
         };
 
-        // 第一关：首次进入探索时连续弹出新手强引导（伪人 / 面临选择 / 任务 / 日志）
+        // 第一关：本局首次进入探索时弹出开场 Coach（一局内只触发一次，启动即标记防重入）
         if (this.currentLevel?.levelId === 1 && !this.level1TutorialSeen.has("explore_bundle")) {
+            this.level1TutorialSeen.add("explore_bundle");
             this.runLevel1TutorialSequence(Level1ExploreTutorialSequence, () => {
-                this.level1TutorialSeen.add("explore_bundle");
                 beginExploreHint();
             });
             return;
@@ -10624,7 +10869,7 @@ class GameEngine {
     }
 
     /**
-     * 第一关专用：弹出单页强引导教程框
+     * 第一关专用：弹出单页可视化 Coach（无目标时回退到旧弹窗）
      */
     showLevel1TutorialPage(pageId, onDone, progressText = "") {
         if (this.currentLevel?.levelId !== 1) {
@@ -10632,18 +10877,27 @@ class GameEngine {
             return;
         }
         const page = Level1TutorialPages[pageId];
-        if (!page || !this.modalLevel1Tutorial) {
+        if (!page) {
             if (onDone) onDone();
             return;
         }
 
+        // 同步旧弹窗文案（测试 / 无 Coach DOM 时回退）
         if (this.l1TutorialTitle) this.l1TutorialTitle.textContent = page.title;
         if (this.l1TutorialBody) this.l1TutorialBody.innerHTML = page.body;
         if (this.l1TutorialProgress) this.l1TutorialProgress.textContent = progressText || "";
 
+        if (this.coachOverlay) {
+            this.startCoachStep(pageId, onDone, progressText);
+            return;
+        }
+
+        if (!this.modalLevel1Tutorial) {
+            if (onDone) onDone();
+            return;
+        }
         this.modalLevel1Tutorial.classList.remove("hidden");
         if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
-
         if (this.btnL1TutorialNext) {
             this.btnL1TutorialNext.onclick = () => {
                 this.modalLevel1Tutorial.classList.add("hidden");
@@ -10651,6 +10905,237 @@ class GameEngine {
                 if (onDone) onDone();
             };
         }
+    }
+
+    /**
+     * 解析 Coach 目标元素
+     */
+    resolveCoachTarget(page) {
+        if (!page) return null;
+        const t = page.target;
+        if (typeof t === "function") {
+            try { return t(this) || null; } catch (_) { return null; }
+        }
+        const selectors = Array.isArray(t) ? t : (t ? [t] : []);
+        for (const sel of selectors) {
+            let el = null;
+            if (typeof sel !== "string") {
+                el = sel;
+            } else if (/^#[\w-]+$/.test(sel)) {
+                el = document.getElementById(sel.slice(1));
+            } else {
+                el = document.querySelector(sel);
+            }
+            if (!el) continue;
+            try {
+                const style = window.getComputedStyle?.(el);
+                if (style && (style.display === "none" || style.visibility === "hidden")) continue;
+            } catch (_) { /* mock env */ }
+            let rect = null;
+            try {
+                rect = el.getBoundingClientRect?.();
+            } catch (_) { /* mock env */ }
+            if (rect && rect.width < 2 && rect.height < 2) continue;
+            return el;
+        }
+        return null;
+    }
+
+    /**
+     * 启动一步 Coach Mark
+     */
+    startCoachStep(pageId, onDone = null, progressText = "") {
+        const page = Level1TutorialPages[pageId];
+        if (!page || !this.coachOverlay) {
+            if (onDone) onDone();
+            return;
+        }
+
+        this.clearCoachOverlay(false);
+
+        const targetEl = this.resolveCoachTarget(page);
+        const advance = page.advance || "next";
+
+        if (this.coachTitle) this.coachTitle.textContent = page.title;
+        if (this.coachBody) this.coachBody.innerHTML = page.body;
+        if (this.coachProgress) this.coachProgress.textContent = progressText || "";
+        if (this.l1TutorialTitle) this.l1TutorialTitle.textContent = page.title;
+
+        this._coachState = {
+            pageId,
+            page,
+            targetEl,
+            advance,
+            onDone,
+            progressText
+        };
+
+        this.coachOverlay.classList.remove("hidden");
+        this.coachOverlay.classList.toggle("coach-blocking", advance !== "click-target");
+        this.coachOverlay.classList.toggle("coach-click-target", advance === "click-target");
+
+        if (targetEl) {
+            targetEl.classList.add("coach-target-live");
+        }
+
+        this.layoutCoachOverlay();
+
+        if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
+
+        if (this.btnCoachNext) {
+            this.btnCoachNext.onclick = () => {
+                if (this._coachState?.advance === "click-target") return;
+                this.finishCoachStep();
+            };
+        }
+        // 旧弹窗按钮同步推进（测试兼容）
+        if (this.btnL1TutorialNext) {
+            this.btnL1TutorialNext.onclick = () => {
+                if (this._coachState?.advance === "click-target") {
+                    // 测试环境：允许强制跳过 click-target
+                    this.finishCoachStep();
+                    return;
+                }
+                this.finishCoachStep();
+            };
+        }
+
+        if (advance === "click-target" && targetEl) {
+            this._coachTargetHandler = () => {
+                setTimeout(() => this.finishCoachStep(), 0);
+            };
+            this._coachOutsideGuard = (e) => {
+                const tip = this.coachTooltip;
+                if (targetEl.contains(e.target) || targetEl === e.target) return;
+                if (tip && (tip.contains(e.target) || tip === e.target)) return;
+                e.preventDefault();
+                e.stopPropagation();
+            };
+            targetEl.addEventListener("click", this._coachTargetHandler, true);
+            document.addEventListener("click", this._coachOutsideGuard, true);
+            document.addEventListener("pointerdown", this._coachOutsideGuard, true);
+        }
+    }
+
+    layoutCoachOverlay() {
+        if (!this._coachState || !this.coachOverlay || this.coachOverlay.classList.contains("hidden")) return;
+        const { targetEl, page } = this._coachState;
+        const pad = 8;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+
+        let rect;
+        if (targetEl) {
+            rect = targetEl.getBoundingClientRect();
+        } else {
+            const w = Math.min(320, vw * 0.7);
+            const h = 120;
+            rect = {
+                left: (vw - w) / 2,
+                top: (vh - h) / 2,
+                width: w,
+                height: h,
+                right: (vw + w) / 2,
+                bottom: (vh + h) / 2
+            };
+        }
+
+        if (this.coachSpotlight) {
+            this.coachSpotlight.style.left = `${Math.max(4, rect.left - pad)}px`;
+            this.coachSpotlight.style.top = `${Math.max(4, rect.top - pad)}px`;
+            this.coachSpotlight.style.width = `${Math.min(vw - 8, rect.width + pad * 2)}px`;
+            this.coachSpotlight.style.height = `${Math.min(vh - 8, rect.height + pad * 2)}px`;
+        }
+
+        if (this.coachFinger) {
+            const fx = rect.left + rect.width / 2 - 18;
+            const fy = Math.max(8, rect.top - 40);
+            this.coachFinger.style.left = `${fx}px`;
+            this.coachFinger.style.top = `${fy}px`;
+            this.coachFinger.style.display = targetEl ? "flex" : "none";
+        }
+
+        if (this.coachTooltip) {
+            const tip = this.coachTooltip;
+            tip.style.visibility = "hidden";
+            tip.style.display = "block";
+            const tipW = tip.offsetWidth || 360;
+            const tipH = tip.offsetHeight || 160;
+            const placement = page?.placement || "bottom";
+            const gap = 16;
+            let left = rect.left;
+            let top = rect.bottom + gap;
+
+            if (placement === "top") {
+                top = rect.top - tipH - gap;
+                left = rect.left + rect.width / 2 - tipW / 2;
+            } else if (placement === "bottom") {
+                top = rect.bottom + gap;
+                left = rect.left + rect.width / 2 - tipW / 2;
+            } else if (placement === "left") {
+                top = rect.top + rect.height / 2 - tipH / 2;
+                left = rect.left - tipW - gap;
+            } else if (placement === "right") {
+                top = rect.top + rect.height / 2 - tipH / 2;
+                left = rect.right + gap;
+            }
+
+            left = Math.max(10, Math.min(left, vw - tipW - 10));
+            top = Math.max(10, Math.min(top, vh - tipH - 10));
+
+            // 若与目标严重重叠，改放到下方安全区
+            if (targetEl) {
+                const overlaps = !(
+                    left + tipW < rect.left - 4 ||
+                    left > rect.right + 4 ||
+                    top + tipH < rect.top - 4 ||
+                    top > rect.bottom + 4
+                );
+                if (overlaps) {
+                    top = Math.min(vh - tipH - 10, rect.bottom + gap);
+                    if (top + tipH > vh - 8) {
+                        top = Math.max(10, rect.top - tipH - gap);
+                    }
+                    left = Math.max(10, Math.min(rect.left + rect.width / 2 - tipW / 2, vw - tipW - 10));
+                }
+            }
+
+            tip.style.left = `${left}px`;
+            tip.style.top = `${top}px`;
+            tip.style.visibility = "visible";
+        }
+    }
+
+    finishCoachStep() {
+        const state = this._coachState;
+        const onDone = state?.onDone;
+        this.clearCoachOverlay(true);
+        if (onDone) onDone();
+    }
+
+    clearCoachOverlay(hide = true) {
+        if (this._coachState?.targetEl) {
+            this._coachState.targetEl.classList.remove("coach-target-live");
+            if (this._coachTargetHandler) {
+                this._coachState.targetEl.removeEventListener("click", this._coachTargetHandler, true);
+            }
+        }
+        if (this._coachOutsideGuard) {
+            document.removeEventListener("click", this._coachOutsideGuard, true);
+            document.removeEventListener("pointerdown", this._coachOutsideGuard, true);
+        }
+        this._coachTargetHandler = null;
+        this._coachOutsideGuard = null;
+        this._coachState = null;
+
+        if (this.btnCoachNext) this.btnCoachNext.onclick = null;
+        if (this.btnL1TutorialNext) this.btnL1TutorialNext.onclick = null;
+
+        if (hide && this.coachOverlay) {
+            this.coachOverlay.classList.add("hidden");
+            this.coachOverlay.classList.remove("coach-blocking", "coach-click-target");
+        }
+        this.modalLevel1Tutorial?.classList.add("hidden");
     }
 
     /**
@@ -10764,12 +11249,25 @@ class GameEngine {
             }
         }
 
-        // 第一关：首次遭遇 NPC 时强提示鼓励收纳（以便体验询问/裁决循环）
-        if (this.currentLevel?.levelId === 1 && !this.level1TutorialSeen.has("npc_recruit")) {
-            return this.maybeShowLevel1TutorialOnce("npc_recruit", () => {
-                this.showNpcEncounterModal(npc, node, onHandled);
-            });
+        // 第十六关：主反应堆四人组（柯尔特→巴恩斯→薇薇安→伊莲）依次招募
+        if (npc && npc.id === "reactor_quartet") {
+            const order = ["colt", "barnes", "vivian", "elena"];
+            const runNext = (idx) => {
+                if (idx >= order.length) {
+                    if (onHandled) onHandled(true);
+                    return;
+                }
+                const member = this.allNpcMap.get(order[idx]);
+                if (member && member.status === "unmet") {
+                    return this.showNpcEncounterModal(member, node, () => runNext(idx + 1));
+                }
+                return runNext(idx + 1);
+            };
+            return runNext(0);
         }
+
+        // 第一关：遭遇弹窗打开后再叠 Coach（高亮「救助加入」）
+        // （教程前置逻辑已移到弹窗展示之后）
 
         const titleElem = document.getElementById("encounter-npc-name");
         const avatarElem = document.getElementById("encounter-npc-avatar");
@@ -10784,8 +11282,15 @@ class GameEngine {
         const exp = firstLineParsed.expression || "clam";
         const candidates = CharacterRegistry.getCharacterImageCandidates(npc, exp);
         const fallbackSvg = CharacterRegistry.getAvatarSvg(npc, exp);
+        const primaryUrl = (CharacterRegistry.getBestPortraitUrl
+            ? CharacterRegistry.getBestPortraitUrl(npc, exp)
+            : null) || candidates[0] || fallbackSvg;
+        const startIndex = Math.max(0, candidates.indexOf(primaryUrl));
         const candidatesAttr = JSON.stringify(candidates).replace(/"/g, '&quot;');
-        avatarElem.innerHTML = `<img src="${candidates[0] || fallbackSvg}" data-candidates="${candidatesAttr}" data-index="0" data-fallback="${fallbackSvg}" alt="${npc.name}" onerror="window.handlePortraitError && window.handlePortraitError(this)">`;
+        const safePrimary = primaryUrl && !String(primaryUrl).startsWith("data:")
+            ? encodeURI(primaryUrl)
+            : primaryUrl;
+        avatarElem.innerHTML = `<img src="${safePrimary}" loading="eager" decoding="async" data-candidates="${candidatesAttr}" data-index="${startIndex}" data-current-url="${primaryUrl || ""}" data-fallback="${fallbackSvg}" alt="${npc.name}" onerror="window.handlePortraitError && window.handlePortraitError(this)">`;
         avatarElem.style.filter = `drop-shadow(0 0 12px ${npc.themeColor}80)`;
 
         descElem.textContent = firstLineParsed.text || "发现一名失去知觉的乘员倒在此处。";
@@ -10899,6 +11404,13 @@ class GameEngine {
                 }
             );
         };
+
+        // 第一关：弹窗已打开后再叠 Coach，高亮「救助加入」
+        if (this.currentLevel?.levelId === 1 && !this.level1TutorialSeen.has("npc_recruit")) {
+            requestAnimationFrame(() => {
+                this.maybeShowLevel1TutorialOnce("npc_recruit", () => {});
+            });
+        }
     }
 
     /**
@@ -11049,11 +11561,6 @@ class GameEngine {
     }
 
     showInquiryModal() {
-        // 第一关：首次进入询问阶段时弹出强引导
-        if (this.currentLevel?.levelId === 1 && !this.level1TutorialSeen.has("inquiry")) {
-            return this.maybeShowLevel1TutorialOnce("inquiry", () => this.showInquiryModal());
-        }
-
         const aliveNpcs = this.getAliveNpcTeamMembers();
         const listContainer = document.getElementById("inquiry-target-list");
         const btnSkip = document.getElementById("btn-inquiry-skip");
@@ -11095,6 +11602,12 @@ class GameEngine {
         };
 
         this.modalInquiry.classList.remove("hidden");
+
+        if (this.currentLevel?.levelId === 1 && !this.level1TutorialSeen.has("inquiry")) {
+            requestAnimationFrame(() => {
+                this.maybeShowLevel1TutorialOnce("inquiry", () => {});
+            });
+        }
     }
 
     executeInquiryDialogue(npc) {
@@ -11160,11 +11673,6 @@ class GameEngine {
     }
 
     showJudgementModal() {
-        // 第一关：首次进入裁决时刻时弹出强引导
-        if (this.currentLevel?.levelId === 1 && !this.level1TutorialSeen.has("judgement")) {
-            return this.maybeShowLevel1TutorialOnce("judgement", () => this.showJudgementModal());
-        }
-
         const aliveNpcs = this.getAliveNpcTeamMembers();
         const container = document.getElementById("judgement-target-list");
         const btnPass = document.getElementById("btn-judgement-pass");
@@ -11218,6 +11726,12 @@ class GameEngine {
         };
 
         this.modalJudgement.classList.remove("hidden");
+
+        if (this.currentLevel?.levelId === 1 && !this.level1TutorialSeen.has("judgement")) {
+            requestAnimationFrame(() => {
+                this.maybeShowLevel1TutorialOnce("judgement", () => {});
+            });
+        }
     }
 
     executeConfine(npc) {
@@ -11336,11 +11850,6 @@ class GameEngine {
     }
 
     showNightActionModal() {
-        // 第一关：首次进入黑夜身份行动时弹出强引导（介绍伪人查验）
-        if (this.currentLevel?.levelId === 1 && !this.level1TutorialSeen.has("night")) {
-            return this.maybeShowLevel1TutorialOnce("night", () => this.showNightActionModal());
-        }
-
         const role = this.protagonist.role;
         const titleElem = document.getElementById("night-modal-title");
         const descElem = document.getElementById("night-modal-desc");
@@ -11415,6 +11924,12 @@ class GameEngine {
         };
 
         this.modalNight.classList.remove("hidden");
+
+        if (this.currentLevel?.levelId === 1 && !this.level1TutorialSeen.has("night")) {
+            requestAnimationFrame(() => {
+                this.maybeShowLevel1TutorialOnce("night", () => {});
+            });
+        }
     }
 
     executeSeerInspect(npc) {
@@ -11528,6 +12043,10 @@ class GameEngine {
             const fallbackSvg = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getAvatarSvg)
                 ? CharacterRegistry.getAvatarSvg(victim, exp)
                 : "";
+            const primaryUrl = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getBestPortraitUrl)
+                ? (CharacterRegistry.getBestPortraitUrl(victim, exp) || candidates[0] || fallbackSvg)
+                : (candidates[0] || fallbackSvg);
+            const startIndex = Math.max(0, candidates.indexOf(primaryUrl));
             if (img) {
                 img.onerror = () => {
                     if (window.handlePortraitError) {
@@ -11535,9 +12054,12 @@ class GameEngine {
                     }
                 };
                 img.setAttribute("data-candidates", JSON.stringify(candidates));
-                img.setAttribute("data-index", "0");
+                img.setAttribute("data-index", String(startIndex));
+                img.setAttribute("data-current-url", primaryUrl || "");
                 img.setAttribute("data-fallback", fallbackSvg);
-                img.src = candidates[0] || fallbackSvg;
+                img.src = primaryUrl && !String(primaryUrl).startsWith("data:")
+                    ? encodeURI(primaryUrl)
+                    : primaryUrl;
             }
         } else {
             // 平安夜无人员遇害模式
@@ -11878,16 +12400,23 @@ class GameEngine {
             level10KeyEntered: !!this.level10KeyEntered,
             level11LifeSupportVisited: !!this.level11LifeSupportVisited,
             level13PowerRestored: !!this.level13PowerRestored,
-            level14PowerRestored: !!this.level14PowerRestored
+            level14PowerRestored: !!this.level14PowerRestored,
+            level16PowerRestored: !!this.level16PowerRestored
         };
 
         // 检定非线性关卡解锁规则
         const unlockResult = UnlockEvaluator.evaluate(this.currentLevel?.unlockRules || [], evalContext);
         const newlyUnlocked = this.saveSystem.unlockLevels(unlockResult.unlockedLevelIds);
 
-        // 第十三关：不解锁后续关卡，仅持久化「已完成」标记
+        // 第十三/十四/十六关：不解锁后续关卡，仅持久化「已完成」标记
         if (this.currentLevel?.levelId === 13) {
             this.saveSystem.markLevelCompleted(13);
+        }
+        if (this.currentLevel?.levelId === 14) {
+            this.saveSystem.markLevelCompleted(14);
+        }
+        if (this.currentLevel?.levelId === 16) {
+            this.saveSystem.markLevelCompleted(16);
         }
 
         // 检定同伴撤离深度档案解构 (带领卡罗/邵可欣/莫德撤离)
@@ -12151,6 +12680,7 @@ class GameEngine {
             level3PowerRestored: !!this.level3PowerRestored,
             level13PowerRestored: !!this.level13PowerRestored,
             level14PowerRestored: !!this.level14PowerRestored,
+            level16PowerRestored: !!this.level16PowerRestored,
             level14RecruitedNpcIds: Array.from(this.level14RecruitedNpcIds || []),
             level4PatrolVisited: Array.from(this.level4PatrolVisited || []),
             level9PatrolStep: this.level9PatrolStep || 0,
@@ -12186,6 +12716,7 @@ class GameEngine {
         this.level3PowerRestored = !!data.level3PowerRestored;
         this.level13PowerRestored = !!data.level13PowerRestored;
         this.level14PowerRestored = !!data.level14PowerRestored;
+        this.level16PowerRestored = !!data.level16PowerRestored;
         this.level14RecruitedNpcIds = new Set(data.level14RecruitedNpcIds || []);
         this.level4PatrolVisited = new Set(data.level4PatrolVisited || []);
         this.level9PatrolStep = data.level9PatrolStep || 0;
@@ -12240,16 +12771,20 @@ class GameEngine {
         this.level3PowerRestored = !!data.level3PowerRestored;
         this.level13PowerRestored = !!data.level13PowerRestored;
         this.level14PowerRestored = !!data.level14PowerRestored;
+        this.level16PowerRestored = !!data.level16PowerRestored;
         this.level14RecruitedNpcIds = new Set(data.level14RecruitedNpcIds || []);
         this.level4PatrolVisited = new Set(data.level4PatrolVisited || []);
         this.checkAndUnlockNpcRooms();
 
-        // 第十三关/第十四关读档：若已合闸，需重连黄色气闸
+        // 第十三关/第十四关/第十六关读档：若已合闸，需重连黄色气闸
         if (this.currentLevel?.levelId === 13 && this.level13PowerRestored) {
             this.restoreLevel13YellowConnections();
         }
         if (this.currentLevel?.levelId === 14 && this.level14PowerRestored) {
             this.restoreLevel14YellowConnections();
+        }
+        if (this.currentLevel?.levelId === 16 && this.level16PowerRestored) {
+            this.restoreLevel16YellowConnections();
         }
 
         this.screenMenu.classList.add("hidden");
@@ -12319,6 +12854,28 @@ class GameEngine {
             } else if (elena) {
                 return elena;
             }
+        }
+        if (id === "reactor_quartet") {
+            const ids = ["colt", "barnes", "vivian", "elena"];
+            const members = ids.map(mid => this.allNpcMap.get(mid)).filter(Boolean);
+            if (members.length === 0) return undefined;
+            const anyUnmet = members.some(m => m.status === "unmet");
+            const allDead = members.every(m => m.status === "dead");
+            const allActive = members.every(m => m.status === "active");
+            const lead = members[0];
+            return {
+                id: "reactor_quartet",
+                name: "柯尔特 · 巴恩斯 · 薇薇安 · 伊莲",
+                gender: "多人",
+                themeColor: lead.themeColor || "#fb923c",
+                boxBorderColor: lead.boxBorderColor,
+                boxBgGlow: lead.boxBgGlow,
+                folder: lead.folder,
+                avatarUrl: lead.avatarUrl,
+                expressions: lead.expressions,
+                status: allActive ? "active" : (allDead ? "dead" : (anyUnmet ? "unmet" : "active")),
+                introDialogue: lead.introDialogue || []
+            };
         }
         return this.allNpcMap.get(id);
     }
@@ -12570,7 +13127,8 @@ class GameEngine {
         const isPowerRestorationPending = (
             (this.currentLevel?.levelId === 2 && !this.level2PowerRestored) ||
             (this.currentLevel?.levelId === 3 && !this.level3PowerRestored) ||
-            (this.currentLevel?.levelId === 13 && !this.level13PowerRestored)
+            (this.currentLevel?.levelId === 13 && !this.level13PowerRestored) ||
+            (this.currentLevel?.levelId === 16 && !this.level16PowerRestored)
         );
         const isLevel5ColtBarnesPending = (
             this.currentLevel?.levelId === 5 &&
@@ -12870,6 +13428,48 @@ class GameEngine {
     }
 
     /**
+     * 第十六关：主电站合闸后重连三处黄色气闸通道
+     */
+    restoreLevel16YellowConnections() {
+        if (!this.currentLevel?.map?.nodes) return;
+        const pairs = (
+            LEVEL_SECTOR_SPECS?.[16]?.yellowSeveredPairs
+        ) || [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ];
+        const nodes = this.currentLevel.map.nodes;
+        pairs.forEach(([a, b]) => {
+            const nodeA = nodes[a];
+            const nodeB = nodes[b];
+            if (!nodeA || !nodeB || !nodeA.coord || !nodeB.coord) return;
+            const dirAtoB = getRelativeDirection(nodeA.coord, nodeB.coord);
+            const dirBtoA = getRelativeDirection(nodeB.coord, nodeA.coord);
+            if (!nodeA.connections) nodeA.connections = {};
+            if (!nodeB.connections) nodeB.connections = {};
+            nodeA.connections[dirAtoB] = b;
+            nodeB.connections[dirBtoA] = a;
+        });
+        this.logAction("【气闸解除】主电网恢复后，三处黄色防爆气闸已重新贯通！");
+    }
+
+    /**
+     * 第十六关：判断两舱是否为尚未通电的黄色气闸对
+     */
+    isLevel16YellowBlockedPair(idA, idB) {
+        if (this.currentLevel?.levelId !== 16 || this.level16PowerRestored) return false;
+        const pairs = LEVEL_SECTOR_SPECS?.[16]?.yellowSeveredPairs || [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ];
+        return pairs.some(([a, b]) =>
+            (a === idA && b === idB) || (a === idB && b === idA)
+        );
+    }
+
+    /**
      * 第十四关：主电站合闸后重连三处黄色气闸通道并解除黄色锁闭区域
      */
     restoreLevel14YellowConnections() {
@@ -13073,10 +13673,18 @@ class GameEngine {
             return;
         }
 
-        // 第十三关：点击被黄色气闸切断的相邻舱室时，提示气闸锁死（通电后可通行）
+        // 第十三关/第十六关：点击被黄色气闸切断的相邻舱室时，提示气闸锁死（通电后可通行）
         if (this.currentLevel?.levelId === 13 && !this.level13PowerRestored) {
             const curId = currentNode.id;
             if (this.isLevel13YellowBlockedPair(curId, node.id)) {
+                this.showStageToast(`🔒 [${node.name}] 防爆安全气闸锁死 · 供电切断`);
+                if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
+                return;
+            }
+        }
+        if (this.currentLevel?.levelId === 16 && !this.level16PowerRestored) {
+            const curId = currentNode.id;
+            if (this.isLevel16YellowBlockedPair(curId, node.id)) {
                 this.showStageToast(`🔒 [${node.name}] 防爆安全气闸锁死 · 供电切断`);
                 if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
                 return;

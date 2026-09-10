@@ -716,7 +716,8 @@ function drawRoomDecoration(ctx, node, x, y, boxSize, theme) {
             colt: "#f59e0b",
             barnes: "#84cc16",
             colt_barnes: "#f59e0b",
-            vivian_elena: "#a78bfa"
+            vivian_elena: "#a78bfa",
+            reactor_quartet: "#fb923c"
         };
         const roomColor = npcColors[targetNpcId] || "#4ade80";
         const s = boxSize;
@@ -1643,13 +1644,14 @@ export class MapRenderer {
                 lph: "#38bdf8", kaze: "#38bdf8", kaluo: "#38bdf8", shaokexin: "#f43f5e", mode: "#a855f7",
                 prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
                 vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
-                colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b", vivian_elena: "#a78bfa"
+                colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b", vivian_elena: "#a78bfa", reactor_quartet: "#fb923c"
             };
             const ownerNames = {
                 lph: "指挥官", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
                 prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
                 vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
-                colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲"
+                colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲",
+                reactor_quartet: "反应堆四人组"
             };
             const strokeColor = isNpc ? (npcColors[npcOwnerId] || "#38bdf8") : "#ef4444";
             const ownerName = ownerNames[npcOwnerId] || "乘员";
@@ -1852,13 +1854,15 @@ export class MapRenderer {
                     lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
                     prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
                     vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
-                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲"
+                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲",
+                    reactor_quartet: "反应堆四人组"
                 };
                 const ownerColors = {
                     lph: "#38bdf8", kaze: "#60a5fa", kaluo: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc",
                     prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
                     vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
-                    colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b", vivian_elena: "#a78bfa"
+                    colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b", vivian_elena: "#a78bfa",
+                    reactor_quartet: "#fb923c"
                 };
                 const roomNpcId = (node.event && node.event.type === "npc" && node.event.npcId) || node.npcId;
                 const isExitRoom = !!(node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit"))));
@@ -1916,13 +1920,15 @@ export class MapRenderer {
                     lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
                     prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
                     vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
-                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲"
+                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲",
+                    reactor_quartet: "反应堆四人组"
                 };
                 const ownerColors = {
                     lph: "#38bdf8", kaze: "#60a5fa", kaluo: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc",
                     prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
                     vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
-                    colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b", vivian_elena: "#a78bfa"
+                    colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b", vivian_elena: "#a78bfa",
+                    reactor_quartet: "#fb923c"
                 };
                 const roomNpcId = (node.event && node.event.type === "npc" && node.event.npcId) || node.npcId;
                 const isExitRoom = !!(node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit"))));

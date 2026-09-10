@@ -346,14 +346,14 @@ class SoundEngine {
 
     // 8. 物资获取/食物发现专属音效 (支持自定义 物资获取.wav + Web Audio 能量充能铃音保底)
     playFoodSound(customUrl = null) {
-        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.foodSoundUrl) || "assets/audio/物资获取.wav";
+        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.foodSoundUrl) || "assets/audio/food.wav";
         const volume = (typeof AudioConfig !== 'undefined' && AudioConfig.foodSoundVolume !== undefined) ? AudioConfig.foodSoundVolume : 0.80;
         this.playAudioFile(soundUrl, volume, this.synthesizeFoodChime, "物资获取音效");
     }
 
     // 9. 广播警报/危险警告专属音效 (支持自定义 警告.wav + Web Audio 红警蜂鸣双音保底)
     playAlarmSound(customUrl = null) {
-        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.alarmSoundUrl) || "assets/audio/警告.wav";
+        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.alarmSoundUrl) || "assets/audio/alarm.wav";
         const volume = (typeof AudioConfig !== 'undefined' && AudioConfig.alarmSoundVolume !== undefined) ? AudioConfig.alarmSoundVolume : 0.85;
         this.playAudioFile(soundUrl, volume, this.synthesizeAlarmKlaxon, "广播警报音效");
     }
@@ -364,7 +364,7 @@ class SoundEngine {
         if (this.lastMoveSoundTime && now - this.lastMoveSoundTime < 120) return;
         this.lastMoveSoundTime = now;
 
-        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.moveSoundUrl) || "assets/audio/移动.wav";
+        const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.moveSoundUrl) || "assets/audio/move.wav";
         const volume = (typeof AudioConfig !== 'undefined' && AudioConfig.moveSoundVolume !== undefined) ? AudioConfig.moveSoundVolume : 0.65;
         this.playAudioFile(soundUrl, volume, this.synthesizeMoveStep, "移动音效");
     }

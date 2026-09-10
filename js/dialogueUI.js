@@ -11,11 +11,15 @@
 import { CharacterRegistry } from "./characters.js";
 import { Sound } from "./audio.js";
 
-// 全局立绘容错轮询处理器 (当优先候选文件不存在时，无缝尝试下一个格式/别名直至保底)
+// 全局立绘容错轮询处理器 (当优先候选文件不存在时，跳过已知失败项，无缝尝试下一个)
 if (typeof window !== "undefined") {
     window.handlePortraitError = function(img) {
         if (!img) return;
         try {
+            if (typeof CharacterRegistry !== "undefined" && CharacterRegistry.failedImages) {
+                const bad = img.getAttribute("data-current-url") || img.getAttribute("src");
+                if (bad) CharacterRegistry.failedImages.add(decodeURI(bad));
+            }
             let raw = img.getAttribute("data-candidates");
             if (raw) {
                 if (typeof raw === "string" && raw.includes("&quot;")) {
@@ -23,10 +27,20 @@ if (typeof window !== "undefined") {
                 }
                 const candidates = (typeof raw === "string") ? JSON.parse(raw) : raw;
                 let idx = parseInt(img.getAttribute("data-index") || "0", 10) + 1;
-                if (Array.isArray(candidates) && idx < candidates.length) {
-                    img.setAttribute("data-index", String(idx));
-                    img.src = candidates[idx];
-                    return;
+                if (Array.isArray(candidates)) {
+                    while (idx < candidates.length) {
+                        const next = candidates[idx];
+                        const failed = typeof CharacterRegistry !== "undefined"
+                            && CharacterRegistry.failedImages
+                            && CharacterRegistry.failedImages.has(next);
+                        if (next && !failed) {
+                            img.setAttribute("data-index", String(idx));
+                            img.setAttribute("data-current-url", next);
+                            img.src = encodeURI(next);
+                            return;
+                        }
+                        idx++;
+                    }
                 }
             }
         } catch (e) {
@@ -257,7 +271,7 @@ export class DialogueUI {
                 ? CharacterRegistry.normalizeExpression(expression)
                 : (expression || "clam");
             
-            // 获取候选立绘队列
+            // 获取候选立绘队列，并优先选用已预热成功的 URL（避免手机上 onerror 连环探测）
             const candidates = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getCharacterImageCandidates)
                 ? CharacterRegistry.getCharacterImageCandidates(speaker, exp)
                 : [(speaker.expressions && speaker.expressions[exp]) || speaker.avatarUrl || ""];
@@ -273,8 +287,14 @@ export class DialogueUI {
                 ? "0 0 24px rgba(239, 68, 68, 0.95), inset 0 0 16px rgba(239, 68, 68, 0.6)"
                 : `0 0 16px ${color}80, inset 0 0 12px ${color}40`;
 
-            const primaryUrl = candidates[0] || fallbackSvg;
+            const primaryUrl = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getBestPortraitUrl)
+                ? (CharacterRegistry.getBestPortraitUrl(speaker, exp) || candidates[0] || fallbackSvg)
+                : (candidates[0] || fallbackSvg);
+            const startIndex = Math.max(0, candidates.indexOf(primaryUrl));
             const candidatesAttr = JSON.stringify(candidates).replace(/"/g, '&quot;');
+            const safePrimary = primaryUrl && !String(primaryUrl).startsWith("data:")
+                ? encodeURI(primaryUrl)
+                : primaryUrl;
 
             // 优化 DOM 节点复用：同角色同表情连续发言时，完全保留已有 DOM 树，杜绝销毁重绘导致的白屏与解码延迟
             const speakerKey = `${speaker.id || speaker.name || 'char'}_${exp}`;
@@ -282,11 +302,12 @@ export class DialogueUI {
                 this.currentSpeakerKey = speakerKey;
                 this.cornerAvatarElement.innerHTML = `
                     <div class="corner-avatar-frame ${isDead ? 'avatar-frame-dead' : ''}" style="border-color:${borderColor}; box-shadow:${shadowGlow};">
-                        <img src="${primaryUrl}"
+                        <img src="${safePrimary}"
                              loading="eager"
-                             decoding="sync"
+                             decoding="async"
                              data-candidates="${candidatesAttr}"
-                             data-index="0"
+                             data-index="${startIndex}"
+                             data-current-url="${primaryUrl || ""}"
                              data-fallback="${fallbackSvg}"
                              alt="${speaker.name}"
                              class="corner-portrait-img ${isDead ? 'dead-portrait-img' : ''}"

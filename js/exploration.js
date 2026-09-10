@@ -169,12 +169,21 @@ export class ExplorationEngine {
                 !this.gameEngine.getAliveTeamMembers().some(m => m.id === "mode")
             )
         );
+        const isLevel16Pending = (
+            this.gameEngine?.currentLevel?.levelId === 16 &&
+            (
+                !this.gameEngine.level16PowerRestored ||
+                this.gameEngine.getAliveNpcTeamMembers().length < 8 ||
+                !this.gameEngine.getAliveTeamMembers().some(m => m.id === "kaze") ||
+                !this.gameEngine.getAliveTeamMembers().some(m => m.id === "shaokexin")
+            )
+        );
         // 如果终点节点包含未救助的NPC（如第五关主反应堆的伊莲），不可提前视为最终脱出阻断，必须步入触发NPC救助
         const nextRoomNpcId = (nextNode.event && nextNode.event.type === "npc" && nextNode.event.npcId) || nextNode.npcId;
         const targetNpc = nextRoomNpcId ? this.gameEngine.getNpcById(nextRoomNpcId) : null;
         const hasUnmetNpc = targetNpc && targetNpc.status === "unmet" && !this.consumedEvents.has(`${nextNode.id}_event`);
 
-        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !isLevel8ColtPending && !isLevel9PatrolPending && !isLevel10Pending && !isLevel11Pending && !isLevel12Pending && !isLevel13Pending && !isLevel14Pending && !hasUnmetNpc;
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !isLevel8ColtPending && !isLevel9PatrolPending && !isLevel10Pending && !isLevel11Pending && !isLevel12Pending && !isLevel13Pending && !isLevel14Pending && !isLevel16Pending && !hasUnmetNpc;
         if (isEffectiveExit) {
             if (!isAlreadyExplored) {
                 this.choiceCount++;
@@ -216,7 +225,8 @@ export class ExplorationEngine {
             ((this.gameEngine?.currentLevel?.levelId === 2 && !this.gameEngine.level2PowerRestored) ||
              (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored) ||
              (this.gameEngine?.currentLevel?.levelId === 13 && !this.gameEngine.level13PowerRestored) ||
-             (this.gameEngine?.currentLevel?.levelId === 14 && !this.gameEngine.level14PowerRestored)) &&
+             (this.gameEngine?.currentLevel?.levelId === 14 && !this.gameEngine.level14PowerRestored) ||
+             (this.gameEngine?.currentLevel?.levelId === 16 && !this.gameEngine.level16PowerRestored)) &&
             (node.id === "room_west_end" || node.isPowerOrigin)
         );
 
@@ -267,13 +277,18 @@ export class ExplorationEngine {
                         if (typeof this.gameEngine.restoreLevel13YellowConnections === "function") {
                             this.gameEngine.restoreLevel13YellowConnections();
                         }
+                    } else if (this.gameEngine?.currentLevel?.levelId === 16) {
+                        this.gameEngine.level16PowerRestored = true;
+                        if (typeof this.gameEngine.restoreLevel16YellowConnections === "function") {
+                            this.gameEngine.restoreLevel16YellowConnections();
+                        }
                     }
                     this.gameEngine.logAction(`【电源修复】抵达全舰停电始发地 [${node.name}]！手动合上高压母线总断路器，逃生系统主电网供电成功恢复！`);
                     if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
                         Sound.playAlarmSound();
                     }
                     if (this.gameEngine.showStageToast) {
-                        const toastMsg = this.gameEngine?.currentLevel?.levelId === 13
+                        const toastMsg = (this.gameEngine?.currentLevel?.levelId === 13 || this.gameEngine?.currentLevel?.levelId === 16)
                             ? "⚡ [主电站] 主电网重合闸成功！黄色气闸封锁已解除！"
                             : "⚡ [停电始发地] 主电网重合闸成功！逃生舱气动锁已解除！";
                         this.gameEngine.showStageToast(toastMsg);
@@ -315,16 +330,17 @@ export class ExplorationEngine {
                 (this.gameEngine?.currentLevel?.levelId === 2 && !this.gameEngine.level2PowerRestored) ||
                 (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored) ||
                 (this.gameEngine?.currentLevel?.levelId === 13 && !this.gameEngine.level13PowerRestored) ||
-                (this.gameEngine?.currentLevel?.levelId === 14 && !this.gameEngine.level14PowerRestored)
+                (this.gameEngine?.currentLevel?.levelId === 14 && !this.gameEngine.level14PowerRestored) ||
+                (this.gameEngine?.currentLevel?.levelId === 16 && !this.gameEngine.level16PowerRestored)
             );
             if (isPowerRestorationPending) {
-                const isL13Or14 = this.gameEngine?.currentLevel?.levelId === 13 || this.gameEngine?.currentLevel?.levelId === 14;
-                this.gameEngine.logAction(isL13Or14
+                const isMainStationLevel = [13, 14, 16].includes(this.gameEngine?.currentLevel?.levelId);
+                this.gameEngine.logAction(isMainStationLevel
                     ? `【主电站离线】主电网仍处于切断状态！请先前往【主配电值班舱】合闸修复电源！`
                     : `【气动锁未解压】逃生舱主电源处于切断状态！气动锁未解压，无法启动撤离程序。请先前往停电始发地修复电源！`);
                 this.gameEngine.dialogueUI?.say(
-                    { name: isL13Or14 ? "维生总控终端" : "逃生舱控制终端", themeColor: "#f43f5e" },
-                    isL13Or14
+                    { name: isMainStationLevel ? "维生总控终端" : "逃生舱控制终端", themeColor: "#f43f5e" },
+                    isMainStationLevel
                         ? "【警告：主能源离线】主电站尚未合闸，黄色气闸封锁未解除，维生总控无法启动撤离程序！请前往【主配电值班舱】修复电源后再来撤离！"
                         : "【警告：主能源离线】逃生舱主电源处于切断状态，舱门气动锁未解压，逃生折跃引擎无法启动！请前往【停电始发地】合上主电闸修复电源后再来撤离！"
                 );
@@ -651,6 +667,46 @@ export class ExplorationEngine {
                 }
             }
 
+            // 第十六关专属通关校验：≥8名同伴 + 主电站已修 + 卡罗与邵可欣存活在队
+            if (this.gameEngine?.currentLevel?.levelId === 16) {
+                const aliveNpcs = this.gameEngine.getAliveNpcTeamMembers();
+                const aliveTeam = this.gameEngine.getAliveTeamMembers();
+                const hasKaze = aliveTeam.some(m => m.id === "kaze");
+                const hasShaokexin = aliveTeam.some(m => m.id === "shaokexin");
+
+                if (aliveNpcs.length < 8) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast(`⚠️ 撤离受阻！随行同伴不足 8 人（当前: ${aliveNpcs.length}/8）！`);
+                    }
+                    this.gameEngine.logAction(`【撤离受阻】队伍中存活同伴仅有 ${aliveNpcs.length}/8 人，必须找到至少八名同伴！`);
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "维生环境总控机房", themeColor: "#f43f5e" },
+                        `【搜救协议未闭环】当前随行同伴不足 8 人（当前: ${aliveNpcs.length}/8）。在完成全舰搜救配额之前，维生总控拒绝启动撤离程序！`
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+
+                if (!hasKaze || !hasShaokexin) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！必须带离卡罗与邵可欣一同撤离！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】卡罗与邵可欣未同时存活在队，维生总控引渡通道拒绝开启！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "维生环境总控机房", themeColor: "#fb923c" },
+                        "【双核引渡拦截】卡罗与邵可欣必须同时存活随行！缺少前锋哨兵与观测员的双重信标授权，维生总控无法开启终点撤离！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
             this.gameEngine.logAction(`【通关突破】全员成功抵达目的地 [${node.name}]！准备跳跃！`);
             this.gameEngine.triggerVictory(node);
             return;
@@ -759,13 +815,13 @@ export class ExplorationEngine {
                 lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
                 prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
                 vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
-                colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲"
+                colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲", reactor_quartet: "反应堆四人组"
             };
             const ownerColors = {
                 lph: "#38bdf8", kaze: "#38bdf8", kaluo: "#38bdf8", shaokexin: "#f43f5e", mode: "#a855f7",
                 prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
                 vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
-                colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b", vivian_elena: "#a78bfa"
+                colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b", vivian_elena: "#a78bfa", reactor_quartet: "#fb923c"
             };
             const ownerName = ownerNames[node.npcOwnerId] || node.name;
             const ownerColor = ownerColors[node.npcOwnerId] || "#38bdf8";
@@ -903,9 +959,11 @@ export class ExplorationEngine {
         // 弹出对话框并提示玩家选择：让其加入 / 不救助
         // 若选择救助入队，则标记该事件已消耗；若选择不救助/不理睬，则不标记消耗，允许之后再次踏入该区域时重新触发是否救助！
         this.gameEngine.showNpcEncounterModal(npc, node, (joined) => {
-            if (npcId === "vivian_elena" || (npcId === "colt_barnes" && this.gameEngine?.currentLevel?.levelId === 13)) {
-                // 双人站位：仅当两人皆已不再处于 unmet 时才消耗，便于漏救一人时回来补招
-                const ids = npcId === "vivian_elena" ? ["vivian", "elena"] : ["colt", "barnes"];
+            if (npcId === "vivian_elena" || npcId === "reactor_quartet" || (npcId === "colt_barnes" && this.gameEngine?.currentLevel?.levelId === 13)) {
+                // 双人/四人站位：仅当成员皆已不再处于 unmet 时才消耗，便于漏救时回来补招
+                const ids = npcId === "reactor_quartet"
+                    ? ["colt", "barnes", "vivian", "elena"]
+                    : (npcId === "vivian_elena" ? ["vivian", "elena"] : ["colt", "barnes"]);
                 const stillUnmet = ids.some(id => {
                     const n = this.gameEngine.allNpcMap.get(id);
                     return n && n.status === "unmet";

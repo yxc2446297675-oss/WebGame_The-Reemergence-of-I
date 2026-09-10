@@ -20,25 +20,25 @@ export const CharacterRegistry = {
 
     // 候选NPC角色库 (采用 kaze/, shaokexin/, mode/ 独立文件夹管理)
     npcs: {
-        // NPC 1：卡罗 (男，文字框蓝色，文件夹 kaze)
+        // NPC 1：卡罗 (男，文字框蓝色，磁盘文件夹 kaluo)
         kaze: {
             id: "kaze",
-            folder: "kaze",
+            folder: "kaluo",
             name: "卡罗",
             gender: "男",
             themeColor: "#38bdf8", // 科技明蓝
             boxBorderColor: "rgba(56, 189, 248, 0.9)",
             boxBgGlow: "rgba(56, 189, 248, 0.25)",
-            avatarUrl: "assets/characters/kaze/clam.webp",
+            avatarUrl: "assets/characters/kaluo/clam.webp",
             expressions: {
-                clam: "assets/characters/kaze/clam.webp",     // 平静 (无指示时的默认照片，极速 WebP)
-                happy: "assets/characters/kaze/happy.webp",   // 开心 / 微笑
-                sad: "assets/characters/kaze/sad.webp",       // 悲伤 / 沮丧
-                normal: "assets/characters/kaze/normal.webp", // 正常
-                angry: "assets/characters/kaze/angry.webp",   // 生气 / 质问
-                doubt: "assets/characters/kaze/doubt.webp",   // 疑惑 / 审视
-                shock: "assets/characters/kaze/shock.webp",   // 震惊 / 错愕
-                dead: "assets/characters/kaze/dead.webp"      // 遇害 / 死亡
+                clam: "assets/characters/kaluo/clam.webp",
+                happy: "assets/characters/kaluo/happy.webp",
+                sad: "assets/characters/kaluo/sad.webp",
+                normal: "assets/characters/kaluo/normal.webp",
+                angry: "assets/characters/kaluo/angry.webp",
+                doubt: "assets/characters/kaluo/doubt.webp",
+                shock: "assets/characters/kaluo/shock.webp",
+                dead: "assets/characters/kaluo/dead.webp"
             },
             introDialogue: [
                 { text: "（一名穿着破损战术服的年轻男子捂着手臂，眼神凌厉而冷漠地抬起头）", expression: "clam" },
@@ -496,22 +496,22 @@ export const CharacterRegistry = {
             }
         },
 
-        // NPC 7：陆知行 (男，首席科学官，文件夹 Prof. Lu)
+        // NPC 7：陆知行 (男，首席科学官，文件夹 Prof_Lu)
         prof_lu: {
             id: "prof_lu",
-            folder: "Prof. Lu",
+            folder: "Prof_Lu",
             name: "陆知行",
             gender: "男",
             themeColor: "#10b981",
             boxBorderColor: "rgba(16, 185, 129, 0.9)",
             boxBgGlow: "rgba(16, 185, 129, 0.25)",
-            avatarUrl: "assets/characters/Prof. Lu/calm.png",
+            avatarUrl: "assets/characters/Prof_Lu/calm.png",
             expressions: {
-                clam: "assets/characters/Prof. Lu/calm.png",
-                calm: "assets/characters/Prof. Lu/calm.png",
-                normal: "assets/characters/Prof. Lu/calm.png",
-                angry: "assets/characters/Prof. Lu/angry.png",
-                dead: "assets/characters/Prof. Lu/dead.jpg"
+                clam: "assets/characters/Prof_Lu/calm.png",
+                calm: "assets/characters/Prof_Lu/calm.png",
+                normal: "assets/characters/Prof_Lu/calm.png",
+                angry: "assets/characters/Prof_Lu/angry.png",
+                dead: "assets/characters/Prof_Lu/dead.jpg"
             },
             introDialogue: [
                 { text: "（推了推反光的单片测镜，全神贯注凝视着真空试管内的异质晶体）别打扰我……", expression: "clam" },
@@ -551,22 +551,22 @@ export const CharacterRegistry = {
             }
         },
 
-        // NPC 8：艾尔莎 (女，主治军医，文件夹 Dr. Elsa)
+        // NPC 8：艾尔莎 (女，主治军医，文件夹 Dr_Elsa)
         elsa: {
             id: "elsa",
-            folder: "Dr. Elsa",
+            folder: "Dr_Elsa",
             name: "艾尔莎",
             gender: "女",
             themeColor: "#06b6d4",
             boxBorderColor: "rgba(6, 182, 212, 0.9)",
             boxBgGlow: "rgba(6, 182, 212, 0.25)",
-            avatarUrl: "assets/characters/Dr. Elsa/calm.jpg",
+            avatarUrl: "assets/characters/Dr_Elsa/calm.jpg",
             expressions: {
-                clam: "assets/characters/Dr. Elsa/calm.jpg",
-                calm: "assets/characters/Dr. Elsa/calm.jpg",
-                normal: "assets/characters/Dr. Elsa/calm.jpg",
-                angry: "assets/characters/Dr. Elsa/angry.jpg",
-                dead: "assets/characters/Dr. Elsa/dead.jpg"
+                clam: "assets/characters/Dr_Elsa/calm.jpg",
+                calm: "assets/characters/Dr_Elsa/calm.jpg",
+                normal: "assets/characters/Dr_Elsa/calm.jpg",
+                angry: "assets/characters/Dr_Elsa/angry.jpg",
+                dead: "assets/characters/Dr_Elsa/dead.jpg"
             },
             introDialogue: [
                 { text: "（戴着沾有荧光消毒凝胶的手套，神情清冷甚至有些严酷）心率138，血压偏低。", expression: "clam" },
@@ -883,6 +883,10 @@ export const CharacterRegistry = {
         if (folder === "morde") folders.push("mode");
         if (folder === "kaze") folders.push("kaluo", "caro", "kalo");
         if (["kaluo", "caro", "kalo"].includes(folder)) folders.push("kaze");
+        if (folder === "Prof_Lu") folders.push("Prof. Lu");
+        if (folder === "Prof. Lu") folders.push("Prof_Lu");
+        if (folder === "Dr_Elsa") folders.push("Dr. Elsa");
+        if (folder === "Dr. Elsa") folders.push("Dr_Elsa");
         if (character.name && !folders.includes(character.name)) {
             folders.push(character.name);
         }
@@ -1037,36 +1041,85 @@ export const CharacterRegistry = {
         return Object.values(this.npcs);
     },
 
-    // 资源极低成本静默预加载系统 (零主线程消耗、即点即现)
+    // 资源预加载：仅缓存真正加载成功的图片；失败 URL 进黑名单，避免局内反复 404
     preloadedImages: new Set(),
+    failedImages: new Set(),
     imageCache: (typeof Map !== "undefined") ? new Map() : null,
+
+    isImageReady(img) {
+        return !!(img && img.complete && img.naturalWidth > 0);
+    },
 
     preloadImage(url) {
         if (!url || typeof Image === "undefined") return Promise.resolve(null);
-        if (this.imageCache && this.imageCache.has(url)) {
-            return Promise.resolve(this.imageCache.get(url));
-        }
-        if (this.preloadedImages.has(url)) return Promise.resolve(null);
+        if (this.failedImages.has(url)) return Promise.resolve(null);
         this.preloadedImages.add(url);
+        if (this.imageCache && this.imageCache.has(url)) {
+            const cached = this.imageCache.get(url);
+            if (this.isImageReady(cached)) return Promise.resolve(cached);
+            this.imageCache.delete(url);
+        }
 
         return new Promise((resolve) => {
+            let settled = false;
+            const finish = (imgOrNull) => {
+                if (settled) return;
+                settled = true;
+                resolve(imgOrNull);
+            };
             try {
                 const img = new Image();
+                const markOk = () => {
+                    if (this.isImageReady(img)) {
+                        if (this.imageCache) this.imageCache.set(url, img);
+                        this.preloadedImages.add(url);
+                        finish(img);
+                    } else {
+                        this.preloadedImages.delete(url);
+                        this.failedImages.add(url);
+                        finish(null);
+                    }
+                };
+                const markFail = () => {
+                    this.preloadedImages.delete(url);
+                    this.failedImages.add(url);
+                    if (this.imageCache) this.imageCache.delete(url);
+                    finish(null);
+                };
+                img.onload = markOk;
+                img.onerror = markFail;
                 img.src = encodeURI(url);
-                if (this.imageCache) {
-                    this.imageCache.set(url, img);
-                }
-                // 现代浏览器支持异步离线解码，彻底避免首次渲染的主线程掉帧卡顿
                 if (typeof img.decode === "function") {
-                    img.decode().then(() => resolve(img)).catch(() => resolve(img));
-                } else {
-                    img.onload = () => resolve(img);
-                    img.onerror = () => resolve(img);
+                    img.decode().then(markOk).catch(() => {
+                        if (img.complete) markOk();
+                    });
                 }
             } catch (e) {
-                resolve(null);
+                this.failedImages.add(url);
+                finish(null);
             }
         });
+    },
+
+    /**
+     * 返回当前表情最可能立刻显示的立绘 URL：
+     * 优先已成功预热缓存 → 跳过已知失败 → 再回落候选队列
+     */
+    getBestPortraitUrl(character, expression = "clam") {
+        const candidates = this.getCharacterImageCandidates(character, expression) || [];
+        for (const url of candidates) {
+            if (!url || this.failedImages.has(url)) continue;
+            const cached = this.imageCache && this.imageCache.get(url);
+            if (this.isImageReady(cached)) return url;
+        }
+        for (const url of candidates) {
+            if (!url || this.failedImages.has(url)) continue;
+            if (this.preloadedImages.has(url)) return url;
+        }
+        for (const url of candidates) {
+            if (url && !this.failedImages.has(url)) return url;
+        }
+        return candidates[0] || "";
     },
 
     preloadCharacter(character) {
@@ -1080,14 +1133,18 @@ export const CharacterRegistry = {
                 }
             });
         }
+        // 额外预热候选探测前几项（兼容别名路径），减少局内 onerror 轮询
+        ["clam", "happy", "angry", "dead"].forEach(exp => {
+            const candidates = this.getCharacterImageCandidates(character, exp) || [];
+            candidates.slice(0, 6).forEach(url => {
+                if (url) promises.push(this.preloadImage(url));
+            });
+        });
         return Promise.all(promises);
     },
 
     preloadForLevel(levelConfig) {
-        // 1. 预加载关卡手绘地图
         this.preloadImage("assets/level1_sketch.jpg");
-
-        // 2. 预加载本关卡候选NPC全套表情
         const candidates = (levelConfig && levelConfig.candidateNPCs) || [];
         if (candidates.length > 0) {
             candidates.forEach(c => {

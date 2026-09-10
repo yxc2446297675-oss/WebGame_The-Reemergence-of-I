@@ -10,7 +10,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>潜伏危机：循环伪装体 (视觉小说·肉鸽探索·AI伪人杀)</title>
-    <link rel="stylesheet" href="./style.css?v=1789028007478">
+    <link rel="stylesheet" href="./style.css?v=1789032471126">
 </head>
 <body>
 
@@ -150,7 +150,7 @@
                     <span id="header-current-location" class="location-name">【正门】入口大厅</span>
                 </div>
                 
-                <div class="status-box stamina-box" title="每次移动探索消耗8点体力">
+                <div id="header-stamina-box" class="status-box stamina-box" title="每次移动探索消耗8点体力">
                     <span class="status-icon">⚡</span>
                     <span class="stamina-label">体力:</span>
                     <div class="stamina-track">
@@ -608,26 +608,6 @@
         </div>
     </div>
 
-    <!-- 移动端横屏引导提示层 (Landscape Orientation Prompt) -->
-    <div id="screen-orientation-hint" class="orientation-hint-overlay">
-        <div class="orientation-hint-content">
-            <div class="orientation-phone-icon">📱</div>
-            <div class="orientation-title">建议横屏游玩</div>
-            <div class="orientation-desc">为了获得完整的太空星舰星图、角色立绘与战术推演视野<br>请旋转手机至横屏体验</div>
-            <div class="orientation-actions">
-                <button id="btn-force-landscape" class="btn-force-rotate">
-                    <span>🔄 强制横屏显示 (Force Rotate)</span>
-                </button>
-                <button id="btn-ignore-orientation" class="btn-ignore-hint">
-                    <span>保持竖屏继续</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 悬浮横屏旋转快捷切换按钮 (仅在移动端显示，随时可按) -->
-    <button id="btn-toggle-landscape" class="btn-float-rotate" title="旋转屏幕方向">🔄</button>
-
     <!-- NPC 日记翻页阅读弹窗 (Diary Reading Modal) -->
     <div id="modal-npc-diary" class="modal-backdrop hidden">
         <div class="modal-box diary-modal-box">
@@ -651,7 +631,7 @@
         </div>
     </div>
 
-    <!-- 第一关新手强引导教程弹窗 (仅 Level 1) -->
+    <!-- 第一关新手强引导教程弹窗 (仅 Level 1 · 兼容旧测试 / 无目标时回退) -->
     <div id="modal-level1-tutorial" class="modal-backdrop tutorial-backdrop hidden">
         <div class="modal-box tutorial-modal-box">
             <div class="modal-header tutorial-header">
@@ -668,8 +648,23 @@
         </div>
     </div>
 
+    <!-- 第一关可视化 Coach Mark（聚光灯 + 旁白气泡） -->
+    <div id="coach-overlay" class="coach-overlay hidden" aria-live="polite">
+        <div id="coach-spotlight" class="coach-spotlight"></div>
+        <div id="coach-finger" class="coach-finger" aria-hidden="true">▼</div>
+        <div id="coach-tooltip" class="coach-tooltip">
+            <div class="coach-tooltip-badge">TUTORIAL · LV.01</div>
+            <h3 id="coach-title">新手指引</h3>
+            <div id="coach-body" class="coach-body"></div>
+            <div class="coach-tooltip-footer">
+                <span id="coach-progress" class="coach-progress"></span>
+                <button id="btn-coach-next" class="choice-btn primary coach-next-btn">下一步</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 游戏启动引导脚本 (单文件普通JS，彻底规避file://协议CORS限制，双击即可直接畅玩) -->
-    <script src="js/app.bundle.js?v=1789028007478"></script>
+    <script src="js/app.bundle.js?v=1789032471126"></script>
 </body>
 </html>
 

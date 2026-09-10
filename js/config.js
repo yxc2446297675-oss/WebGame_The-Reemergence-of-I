@@ -117,15 +117,15 @@ export const AudioConfig = {
     deathSoundVolume: 0.85,
 
     // 2. 物资获取/食物发现时的音效文件路径
-    foodSoundUrl: "assets/audio/物资获取.wav",
+    foodSoundUrl: "assets/audio/food.wav",
     foodSoundVolume: 0.80,
 
     // 3. 广播发出警报/警告时的音效文件路径
-    alarmSoundUrl: "assets/audio/警告.wav",
+    alarmSoundUrl: "assets/audio/alarm.wav",
     alarmSoundVolume: 0.85,
 
     // 4. 移动探索时的脚步/位移音效文件路径
-    moveSoundUrl: "assets/audio/移动.wav",
+    moveSoundUrl: "assets/audio/move.wav",
     moveSoundVolume: 0.65,
 
     // 5. 第四关专属通关异象音效 (放入 assets/audio/ 文件夹即可自动播放，支持 mp3/wav/ogg)

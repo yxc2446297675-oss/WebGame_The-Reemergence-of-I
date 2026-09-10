@@ -1,80 +1,122 @@
 /**
- * 第一关新手教程文案与步骤表 (仅 levelId === 1 使用)
- * 强引导：关键节点弹出可点击关闭的教程框
+ * 第一关新手可视化 Coach Mark 步骤表 (仅 levelId === 1)
+ * advance: "next" = 点旁白「下一步」；"click-target" = 必须点击高亮的真实控件
+ * target: CSS 选择器 | 选择器数组 | (engine) => HTMLElement
+ * placement: top | bottom | left | right（旁白相对目标的偏好位置）
  */
 
 export const Level1TutorialPages = {
     mimic_intro: {
         title: "核心规则 · 伪人",
         body: [
-            "这片星舰里混入了<strong>伪人</strong>——外表与人类无异，却会在夜间悄然袭击同伴。",
-            "你的主线不是单纯逃命：要<strong>搜救同伴、辨别真伪、在裁决中做选择</strong>，再抵达终点。",
-            "记住：队伍越热闹，越可能藏着伪装体；独自一人则跳过询问与裁决，但也更难获得线索。"
-        ].join("<br><br>")
-    },
-    explore_choice: {
-        title: "探索 · 面临选择",
-        body: [
-            "使用方向键踏入相邻舱室。进入<strong>未知舱室</strong>会消耗体力，并累加一次「面临选择」。",
-            "折返已探明区域<strong>不耗体力、不计入面临选择</strong>。面临选择累积后，傍晚时分会概率到来。",
-            "傍晚意味着：询问线索 → 裁决处分 → 黑夜行动 → 黎明继续探索。"
-        ].join("<br><br>")
+            "<strong>看这里：</strong>星舰里混入了外表正常的<strong>伪人</strong>，会在夜间袭击同伴。",
+            "<strong>要做什么：</strong>搜救、辨别真伪、在裁决中做选择，再抵达终点。"
+        ].join("<br>"),
+        target: "#stage-mission-card",
+        placement: "right",
+        advance: "next"
     },
     missions: {
         title: "界面 · 任务",
         body: [
-            "点击顶部 <strong>🎯 任务</strong>，或查看左上角「观测目标」，可随时核对本关目标。",
-            "任务一：抵达终点即可解锁下一扇区。",
-            "任务二：若带离指定同伴（如邵可欣），可能额外解锁隐藏扇区——报酬在通关前不会剧透。"
-        ].join("<br><br>")
+            "<strong>看这里：</strong>顶部「🎯 任务」与左上角观测目标卡。",
+            "<strong>要做什么：</strong>随时点开核对通关条件；带离指定同伴可能解锁隐藏扇区。"
+        ].join("<br>"),
+        target: ["#btn-view-missions", "#stage-mission-card"],
+        placement: "bottom",
+        advance: "next"
     },
     logs: {
         title: "界面 · 日志",
         body: [
-            "左侧（或移动端「日志」按钮）是<strong>行动日志</strong>：移动、营救、询问、裁决与夜间结果都会记录在此。",
-            "推理伪人时，请多回顾日志里的发言与处分结果——线索往往藏在字里行间。"
-        ].join("<br><br>")
+            "<strong>看这里：</strong>「📜 日志」按钮与左侧行动记录。",
+            "<strong>要做什么：</strong>移动、营救、询问、裁决都会记在这里——推理时请常回来翻。"
+        ].join("<br>"),
+        target: ["#btn-toggle-log-drawer", "#action-log-sidebar"],
+        placement: "bottom",
+        advance: "next"
+    },
+    stamina_choice: {
+        title: "探索 · 体力与面临选择",
+        body: [
+            "<strong>看这里：</strong>顶部体力条。踏入<strong>未知舱室</strong>会扣体力，并累加「面临选择」。",
+            "<strong>要做什么：</strong>折返已探明区域不耗体力；面临选择累积后，傍晚会概率到来。"
+        ].join("<br>"),
+        target: "#header-stamina-box",
+        placement: "bottom",
+        advance: "next"
+    },
+    move_hint: {
+        title: "开始行动",
+        body: [
+            "<strong>看这里：</strong>高亮的方向键。",
+            "<strong>要做什么：</strong>现在点击它，踏入相邻舱室开始探索！"
+        ].join("<br>"),
+        target: (engine) => {
+            const dirMap = {
+                forward: "btn-move-forward",
+                backward: "btn-move-backward",
+                left: "btn-move-left",
+                right: "btn-move-right"
+            };
+            const available = engine?.explorationEngine?.getAvailableDirections?.() || [];
+            for (const d of available) {
+                const el = document.getElementById(dirMap[d]);
+                if (el && !el.disabled) return el;
+            }
+            return document.getElementById("btn-move-forward")
+                || document.getElementById("compass-center-hub");
+        },
+        placement: "top",
+        advance: "click-target"
     },
     npc_recruit: {
         title: "遭遇 · 是否收纳",
         body: [
-            "你遇到了昏迷的同伴。选择<strong>救助加入</strong>，对方会进入队伍；选择忽略，之后仍可回来。",
-            "<strong>建议：新手请先收纳至少一人。</strong>只有队伍中有同伴时，你才会体验完整的「询问 → 裁决 → 黑夜」主循环。",
-            "注意：被收纳的同伴也可能是伪人。收纳不是终点，而是推理的开始。"
-        ].join("<br><br>")
+            "<strong>看这里：</strong>救助加入 / 不理睬。",
+            "<strong>要做什么：</strong>新手请先<strong>救助加入</strong>至少一人，才能体验完整的询问 → 裁决 → 黑夜循环。"
+        ].join("<br>"),
+        target: "#btn-encounter-accept",
+        placement: "top",
+        advance: "next"
     },
     inquiry: {
         title: "傍晚 · 询问阶段",
         body: [
-            "傍晚集结后，你可以与最多 <strong>2 名</strong>同伴单独交谈，获取口供与态度。",
-            "也可以直接跳过询问进入裁决。交谈次数会累积，某些人物图鉴线索也依赖反复交谈。",
-            "把他们当作嫌疑人来听：矛盾、回避、过度冷静，都可能是伪装的裂痕。"
-        ].join("<br><br>")
+            "<strong>看这里：</strong>同伴卡片与跳过按钮。",
+            "<strong>要做什么：</strong>最多与 <strong>2 名</strong>同伴交谈收集口供；也可直接跳过进入裁决。"
+        ].join("<br>"),
+        target: ["#inquiry-target-list", "#btn-inquiry-skip", "#modal-inquiry-select .modal-box"],
+        placement: "bottom",
+        advance: "next"
     },
     judgement: {
         title: "裁决时刻",
         body: [
-            "作为队长，你可以：",
-            "• <strong>禁锢今夜</strong>：限制对方夜间行动；若其为伪人，今晚往往无法动手。",
-            "• <strong>永久放逐</strong>：将其踢出队伍（无法挽回）。",
-            "• <strong>放弃裁决</strong>：今晚不做处分。",
-            "没有证据时可以放弃；有强烈嫌疑时，禁锢往往是更稳妥的试探。"
-        ].join("<br><br>")
+            "<strong>看这里：</strong>禁锢 / 放逐 / 放弃裁决。",
+            "<strong>要做什么：</strong>有嫌疑可先<strong>禁锢</strong>试探；没把握就放弃裁决，进入黑夜。"
+        ].join("<br>"),
+        target: ["#judgement-target-list", "#btn-judgement-pass", "#modal-judgement .modal-box"],
+        placement: "bottom",
+        advance: "next"
     },
     night: {
         title: "黑夜 · 身份行动",
         body: [
-            "你本关默认身份是<strong>魔镜</strong>：可在夜间查验一名同伴的真身——人类，或伪人。",
-            "若队伍中存在伪人，它们可能在夜间袭击某人；黎明时你将看到结果。",
-            "查验、守护、救赎……不同身份各有手段。善用夜晚，白天的裁决才会更清醒。"
-        ].join("<br><br>")
+            "<strong>看这里：</strong>夜间行动目标列表。",
+            "<strong>要做什么：</strong>你本关默认是<strong>魔镜</strong>——选一名同伴查验真身（人类或伪人）。"
+        ].join("<br>"),
+        target: ["#night-target-list", "#btn-night-skip", "#modal-night-action .modal-box"],
+        placement: "bottom",
+        advance: "next"
     }
 };
 
-/** 开场探索引导的顺序（进入 Q3 时连续弹出） */
+/** 开场探索引导顺序（进入 Q3 时连续弹出） */
 export const Level1ExploreTutorialSequence = [
     "mimic_intro",
-    "explore_choice",
     "missions",
-    "logs"
+    "logs",
+    "stamina_choice",
+    "move_hint"
 ];
