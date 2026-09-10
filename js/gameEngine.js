@@ -13,12 +13,16 @@ import { SaveSystem } from "./saveSystem.js";
 import { MapRenderer } from "./mapRenderer.js";
 import { UnlockEvaluator } from "./unlockEvaluator.js";
 import { DiaryUI } from "./diaryUI.js";
+import { TalentSystem, TalentCurrency, TalentTreeConfig } from "./talentTree.js";
 import { getNpcRoomDefs, getRelativeDirection, buildSpaceshipLevelMap, LEVEL_SECTOR_SPECS } from "./spaceshipMasterMap.js";
 import { Level1TutorialPages, Level1ExploreTutorialSequence } from "./level1Tutorial.js";
 
 export class GameEngine {
     constructor() {
         this.saveSystem = new SaveSystem();
+        if (typeof TalentSystem !== "undefined" && TalentSystem.bindSaveSystem) {
+            TalentSystem.bindSaveSystem(this.saveSystem);
+        }
         this.dialogueUI = new DialogueUI();
         this.diaryUI = new DiaryUI();
         this.explorationEngine = new ExplorationEngine(this);
@@ -43,7 +47,8 @@ export class GameEngine {
         // 傍晚与夜间暂存数据
         this.eveningInquiryCount = 0; // 当前傍晚已询问人数 (0, 1, 2)
         this.eveningTargetNpc = null;
-        this.confinedNpcId = null; // 今晚被禁锢的角色ID
+        this.confinedNpcIds = []; // 今晚被禁锢的角色ID列表（科技树可扩至2人）
+        this.confinedNpcId = null; // 兼容旧逻辑：等同 confinedNpcIds[0]
         this.exiledNpcId = null;   // 今晚被放逐的角色ID
         this.nightProtectedNpcId = null; // 护卫守护目标
         this.nightTargetVictimId = null; // 伪人预定袭击目标
@@ -138,6 +143,11 @@ export class GameEngine {
         // 人物特征/秘密图鉴 DOM 引用
         this.btnMenuPersonaLog = document.getElementById("btn-menu-persona-log");
         this.modalPersonaLog = document.getElementById("modal-persona-log");
+        this.btnMenuTalentTree = document.getElementById("btn-menu-talent-tree");
+        this.modalTalentTree = document.getElementById("modal-talent-tree");
+        this.btnCloseTalentTree = document.getElementById("btn-close-talent-tree");
+        this.talentTreeRoot = document.getElementById("talent-tree-root");
+        this.talentPointsText = document.getElementById("talent-points-text");
         this.btnClosePersonaLog = document.getElementById("btn-close-persona-log");
         this.personaCharTabs = document.getElementById("persona-char-tabs");
         this.personaCharDetail = document.getElementById("persona-char-detail");
@@ -408,6 +418,14 @@ export class GameEngine {
             this.modalPersonaLog?.classList.add("hidden");
         });
 
+        // 主菜单：定锚科技树入口
+        this.btnMenuTalentTree?.addEventListener("click", () => {
+            this.showTalentTreeModal();
+        });
+        this.btnCloseTalentTree?.addEventListener("click", () => {
+            this.modalTalentTree?.classList.add("hidden");
+        });
+
         // 小地图战术微型雷达快捷交互
         this.btnRadarExpand?.addEventListener("click", () => {
             this.showMapModal();
@@ -594,8 +612,7 @@ export class GameEngine {
         });
 
         document.getElementById("btn-exit-to-menu")?.addEventListener("click", () => {
-            if (confirm("确定要保存并返回主菜单吗？")) {
-                this.saveGameProgress();
+            if (confirm("确定要返回主菜单吗？\n（已通关关卡记录保持有效，当前未完成的局内探索进度将重置）")) {
                 this.showMenu();
             }
         });
@@ -662,6 +679,7 @@ export class GameEngine {
         this.modalLevelSelect?.classList.add("hidden");
         this.modalMissions?.classList.add("hidden");
         this.modalPersonaLog?.classList.add("hidden");
+        this.modalTalentTree?.classList.add("hidden");
         this.modalEncounter?.classList.add("hidden");
         this.modalPowerRestore?.classList.add("hidden");
         this.modalInquiry?.classList.add("hidden");
@@ -670,6 +688,100 @@ export class GameEngine {
         this.modalResult?.classList.add("hidden");
         this.hudMiniRadar?.classList.add("hidden");
         this.updateMenuButtons();
+    }
+
+    // =========================================================================
+    // 定锚科技树 · 禁锢辅助
+    // =========================================================================
+    clearConfinedNpc() {
+        this.confinedNpcIds = [];
+        this.confinedNpcId = null;
+    }
+
+    syncConfinedCompat() {
+        this.confinedNpcId = this.confinedNpcIds.length > 0 ? this.confinedNpcIds[0] : null;
+    }
+
+    isNpcConfined(npcId) {
+        if (!npcId) return false;
+        return Array.isArray(this.confinedNpcIds) && this.confinedNpcIds.includes(npcId);
+    }
+
+    getMaxConfineSlots() {
+        return (typeof TalentSystem !== "undefined" && TalentSystem.getMaxConfineSlots)
+            ? TalentSystem.getMaxConfineSlots()
+            : 1;
+    }
+
+    getActiveWolvesTonight() {
+        const wolvesInTeam = this.getAliveTeamMembers().filter(m => m.role === "wolf");
+        return wolvesInTeam.filter(w => !this.isNpcConfined(w.id));
+    }
+
+    showTalentTreeModal() {
+        if (!this.modalTalentTree) return;
+        this.renderTalentTreeUI();
+        this.modalTalentTree.classList.remove("hidden");
+    }
+
+    renderTalentTreeUI() {
+        const points = (typeof TalentSystem !== "undefined") ? TalentSystem.getPoints() : 0;
+        const currencyName = (typeof TalentCurrency !== "undefined") ? TalentCurrency.name : "定锚点";
+        if (this.talentPointsText) {
+            this.talentPointsText.textContent = `${points} ${currencyName}`;
+        }
+        if (!this.talentTreeRoot || typeof TalentTreeConfig === "undefined") return;
+
+        this.talentTreeRoot.innerHTML = "";
+        TalentTreeConfig.branches.forEach(branch => {
+            const col = document.createElement("div");
+            col.className = "talent-branch";
+            col.style.setProperty("--talent-accent", branch.accent || "#38bdf8");
+            col.innerHTML = `
+                <div class="talent-branch-head">
+                    <span class="talent-branch-icon">${branch.icon || ""}</span>
+                    <div>
+                        <div class="talent-branch-name">${branch.name}</div>
+                        <div class="talent-branch-blurb">${branch.blurb || ""}</div>
+                    </div>
+                </div>
+                <div class="talent-branch-rail"></div>
+            `;
+            const rail = col.querySelector(".talent-branch-rail");
+            // 王国保卫战式：底部低阶 → 顶部高阶（视觉上倒序渲染，底层在下）
+            const nodesBottomUp = branch.nodes.slice().sort((a, b) => b.tier - a.tier);
+            nodesBottomUp.forEach((node, visualIdx) => {
+                const unlocked = TalentSystem.has(node.id);
+                const check = TalentSystem.canUnlock(node.id);
+                const prereqMet = (node.requires || []).every(id => TalentSystem.has(id));
+                const card = document.createElement("button");
+                card.type = "button";
+                card.className = `talent-node ${unlocked ? "talent-unlocked" : ""} ${(!unlocked && check.ok) ? "talent-available" : ""} ${(!unlocked && !prereqMet) ? "talent-locked" : ""}`;
+                card.innerHTML = `
+                    <div class="talent-node-cost">${node.cost}<span>${currencyName}</span></div>
+                    <div class="talent-node-title">${node.name}</div>
+                    <div class="talent-node-desc">${node.desc}</div>
+                    <div class="talent-node-status">${unlocked ? "已点亮" : (check.ok ? "可解锁" : check.reason)}</div>
+                `;
+                card.disabled = unlocked || !check.ok;
+                card.onclick = () => {
+                    const result = TalentSystem.unlock(node.id);
+                    if (result.success) {
+                        this.logAction(`【定锚科技】${result.message}`);
+                        this.renderTalentTreeUI();
+                    } else {
+                        alert(result.message || "无法解锁");
+                    }
+                };
+                rail.appendChild(card);
+                if (visualIdx < nodesBottomUp.length - 1) {
+                    const link = document.createElement("div");
+                    link.className = `talent-link ${TalentSystem.has(nodesBottomUp[visualIdx + 1].id) ? "talent-link-on" : ""}`;
+                    rail.appendChild(link);
+                }
+            });
+            this.talentTreeRoot.appendChild(col);
+        });
     }
 
     /**
@@ -1019,6 +1131,10 @@ export class GameEngine {
         this.clearCoachOverlay(true);
         this.unlockedNpcRooms = new Set();
         this.mapAftermathLighting = false;
+        this.clearConfinedNpc();
+        if (typeof TalentSystem !== "undefined" && TalentSystem.resetRunFlags) {
+            TalentSystem.resetRunFlags();
+        }
         this.modalEncounter?.classList.add("hidden");
         this.modalPowerRestore?.classList.add("hidden");
         this.modalInquiry?.classList.add("hidden");
@@ -1898,7 +2014,7 @@ export class GameEngine {
         // 核心优化：当队伍里没有NPC时，直接跳过到夜晚时刻，再直接进入死寂降临动画界面
         if (this.getAliveNpcTeamMembers().length === 0) {
             this.logAction(`【孤身前行】当前队伍中只有你一人，直接度过傍晚与黑夜……`);
-            this.confinedNpcId = null;
+            this.clearConfinedNpc();
             this.nightProtectedNpcId = null;
             this.witchSaved = false;
             this.nightTargetVictimId = null;
@@ -2028,11 +2144,12 @@ export class GameEngine {
     enterQ5Judgement() {
         this.phase = "q5_judgement";
         this.modalInquiry.classList.add("hidden");
+        this.clearConfinedNpc();
         this.renderStageMap();
 
         this.dialogueUI.say(
             { name: "全员审决", themeColor: "#ef4444" },
-            `进入裁决阶段。作为队长，你可以选择【禁锢一人】限制其夜间行动、或【放逐一人】永久除名，亦可【放弃裁决】。`,
+            `进入裁决阶段。作为队长，你可以选择【禁锢】限制其夜间行动、或【放逐一人】永久除名，亦可【放弃裁决】${this.getMaxConfineSlots() > 1 ? "（当前定锚科技允许最多禁锢两人）" : ""}。`,
             () => {
                 this.showJudgementModal();
             }
@@ -2043,33 +2160,47 @@ export class GameEngine {
         const aliveNpcs = this.getAliveNpcTeamMembers();
         const container = document.getElementById("judgement-target-list");
         const btnPass = document.getElementById("btn-judgement-pass");
+        const maxSlots = this.getMaxConfineSlots();
+
+        if (!Array.isArray(this.confinedNpcIds)) this.confinedNpcIds = [];
+        this.confinedNpcIds = this.confinedNpcIds.filter(id => aliveNpcs.some(n => n.id === id));
+        this.syncConfinedCompat();
 
         container.innerHTML = "";
 
+        const hint = document.createElement("div");
+        hint.className = "judgement-confine-hint";
+        hint.textContent = maxSlots > 1
+            ? `🔒 禁锢舱位：${this.confinedNpcIds.length} / ${maxSlots}（可点选多名，确认后进入黑夜）`
+            : `🔒 禁锢舱位：最多 1 人`;
+        container.appendChild(hint);
+
         if (aliveNpcs.length === 0) {
-            container.innerHTML = `<div style="color:#94a3b8; text-align:center; padding:15px;">暂无其他同伴可裁决。</div>`;
+            const empty = document.createElement("div");
+            empty.style.cssText = "color:#94a3b8; text-align:center; padding:15px;";
+            empty.textContent = "暂无其他同伴可裁决。";
+            container.appendChild(empty);
         } else {
             aliveNpcs.forEach(npc => {
                 const item = document.createElement("div");
                 item.className = "judgement-item";
                 item.style.borderColor = npc.themeColor;
+                const isConfined = this.isNpcConfined(npc.id);
                 item.innerHTML = `
                     <div class="judgement-info">
                         <span class="judgement-name" style="color:${npc.themeColor}">${npc.name}</span>
-                        <span class="judgement-role-hint">嫌疑观测中</span>
+                        <span class="judgement-role-hint">${isConfined ? "已编入今夜禁锢名单" : "嫌疑观测中"}</span>
                     </div>
                     <div class="judgement-actions">
-                        <button class="judge-btn btn-confine" title="限制其夜间活动，若其为伪人则今晚无法袭击">🔒 禁锢今夜</button>
+                        <button class="judge-btn btn-confine" title="限制其夜间活动，若其为伪人则今晚无法袭击">${isConfined ? "🔓 取消禁锢" : "🔒 禁锢今夜"}</button>
                         <button class="judge-btn btn-exile" title="将其永久驱逐出队伍">🚪 永久放逐</button>
                     </div>
                 `;
 
-                // 禁锢按钮
                 item.querySelector(".btn-confine").onclick = () => {
-                    this.executeConfine(npc);
+                    this.toggleConfineSelection(npc);
                 };
 
-                // 放逐按钮
                 item.querySelector(".btn-exile").onclick = () => {
                     this.executeExile(npc);
                 };
@@ -2078,10 +2209,31 @@ export class GameEngine {
             });
         }
 
+        // 多禁锢确认入口
+        let btnConfirm = document.getElementById("btn-judgement-confirm-confine");
+        if (!btnConfirm && btnPass && btnPass.parentElement) {
+            btnConfirm = document.createElement("button");
+            btnConfirm.id = "btn-judgement-confirm-confine";
+            btnConfirm.className = "choice-btn primary";
+            btnConfirm.style.width = "100%";
+            btnConfirm.style.marginBottom = "8px";
+            btnPass.parentElement.insertBefore(btnConfirm, btnPass);
+        }
+        if (btnConfirm) {
+            if (this.confinedNpcIds.length > 0) {
+                btnConfirm.classList.remove("hidden");
+                btnConfirm.textContent = `✅ 确认禁锢 ${this.confinedNpcIds.length} 人并进入黑夜`;
+                btnConfirm.onclick = () => this.confirmConfineAndEnterNight();
+            } else {
+                btnConfirm.classList.add("hidden");
+                btnConfirm.onclick = null;
+            }
+        }
+
         // 放弃裁决
         btnPass.onclick = () => {
             this.modalJudgement.classList.add("hidden");
-            this.confinedNpcId = null;
+            this.clearConfinedNpc();
             this.logAction(`【放弃裁决】出于信任与谨慎，你决定今晚不处分任何同伴。`);
             this.dialogueUI.say(
                 this.protagonist,
@@ -2101,29 +2253,84 @@ export class GameEngine {
         }
     }
 
-    executeConfine(npc) {
+    toggleConfineSelection(npc) {
+        if (!npc) return;
+        if (!Array.isArray(this.confinedNpcIds)) this.confinedNpcIds = [];
+        const maxSlots = this.getMaxConfineSlots();
+        const idx = this.confinedNpcIds.indexOf(npc.id);
+
+        if (idx >= 0) {
+            this.confinedNpcIds.splice(idx, 1);
+            this.syncConfinedCompat();
+            this.showJudgementModal();
+            return;
+        }
+
+        if (this.confinedNpcIds.length >= maxSlots) {
+            if (maxSlots <= 1) {
+                // 单槽：直接覆盖并进入黑夜（保持旧手感）
+                this.confinedNpcIds = [npc.id];
+                this.syncConfinedCompat();
+                this.confirmConfineAndEnterNight();
+                return;
+            }
+            alert(`禁锢舱位已满（最多 ${maxSlots} 人）。请先取消一名，或确认进入黑夜。`);
+            return;
+        }
+
+        this.confinedNpcIds.push(npc.id);
+        this.syncConfinedCompat();
+
+        if (maxSlots <= 1) {
+            this.confirmConfineAndEnterNight();
+            return;
+        }
+
+        // 双舱：停留在裁决界面继续点选 / 确认
+        this.showJudgementModal();
+    }
+
+    confirmConfineAndEnterNight() {
+        if (!this.confinedNpcIds.length) return;
         this.modalJudgement.classList.add("hidden");
-        this.confinedNpcId = npc.id;
+        this.syncConfinedCompat();
 
-        const isWolf = (npc.role === "wolf");
-        this.logAction(`【执行禁锢】将同伴 [${npc.name}] 锁入隔离舱禁闭，限制其夜间行动。`);
+        const names = this.confinedNpcIds.map(id => {
+            const n = this.getNpcById(id);
+            return n ? n.name : id;
+        });
+        this.logAction(`【执行禁锢】将同伴 [${names.join("、")}] 锁入隔离舱禁闭，限制其夜间行动。`);
 
-        // 触发受难历练检定 (如卡罗/莫德被禁锢)
-        this.checkPersonaSecretUnlocks("suffer_fate", { charId: npc.id, type: "confined" });
+        this.confinedNpcIds.forEach(id => {
+            this.checkPersonaSecretUnlocks("suffer_fate", { charId: id, type: "confined" });
+        });
 
-        this.dialogueUI.playSequence([
+        const first = this.getNpcById(this.confinedNpcIds[0]);
+        const seq = [
             {
                 speaker: this.protagonist,
-                text: `[${npc.name}]，为了大家的安全，今夜请在封锁舱中度过。`
-            },
-            {
-                speaker: npc,
+                text: names.length > 1
+                    ? `[${names.join("]、[")}]，为了大家的安全，今夜请在封锁舱中度过。`
+                    : `[${names[0]}]，为了大家的安全，今夜请在封锁舱中度过。`
+            }
+        ];
+        if (first) {
+            const isWolf = first.role === "wolf";
+            seq.push({
+                speaker: first,
                 text: isWolf ? `……（眼神中闪过一丝阴鸷的冷光，顺从地走进了禁闭室）` : `既然是队长的决定，我遵守安排……但请一定要小心！`,
                 expression: isWolf ? "happy" : "sad"
-            }
-        ], () => {
+            });
+        }
+
+        this.dialogueUI.playSequence(seq, () => {
             this.enterQ6Night();
         });
+    }
+
+    executeConfine(npc) {
+        // 兼容旧调用：转为点选流程
+        this.toggleConfineSelection(npc);
     }
 
     executeExile(npc) {
@@ -2183,7 +2390,6 @@ export class GameEngine {
         this.nightTargetVictimId = null;
 
         // 核心规则：队伍里有伪人才能刀人！
-        // 1. 检查队伍中存活的伪人
         const wolvesInTeam = this.getAliveTeamMembers().filter(m => m.role === "wolf");
         if (wolvesInTeam.length === 0) {
             console.log("[夜间伪人行动] 当前队伍中没有伪人，平安无事，绝不刀人。");
@@ -2191,22 +2397,19 @@ export class GameEngine {
         }
 
         // 2. 检查队伍中的伪人是否全部被禁锢
-        const activeWolvesInTeam = wolvesInTeam.filter(w => w.id !== this.confinedNpcId);
+        const activeWolvesInTeam = this.getActiveWolvesTonight();
         if (activeWolvesInTeam.length === 0) {
             console.log("[夜间伪人行动] 队伍中的伪人今晚已被禁锢，无法行动。");
             return;
         }
 
         // 3. 队伍中有具备行动能力的伪人：必定自主猎杀队伍内的同伴（100% 刀人，绝不漏刀）
-        // 目标优先级：
-        // 优先 1：队伍中存活的普通人类同伴（非伪人、非主角）
         const teamHumanCandidates = this.getAliveNpcTeamMembers().filter(m => m.role !== "wolf");
         
         let target = null;
         if (teamHumanCandidates.length > 0) {
             target = teamHumanCandidates[Math.floor(Math.random() * teamHumanCandidates.length)];
         } else {
-            // 优先 2：若当前队伍除伪人外已无其他同伴，伪人直接猎杀主角！
             target = this.protagonist;
         }
 
@@ -2456,6 +2659,12 @@ export class GameEngine {
             } else if (survivedReason === "confined") {
                 title = "【行动受制 · 平安无事】";
                 desc = "昨夜被禁锢的目标无法自由行动，舱内整夜未发生任何冲突与伤亡。<br>全员安然迎来晨曦。";
+            } else if (survivedReason === "talent_confine_guard") {
+                title = "【隔离护盾 · 禁锢生还】";
+                desc = "禁锢舱内发生了袭击痕迹，但定锚隔离护盾挡住了致命一击——目标安然无恙。<br>全员迎来晨曦。";
+            } else if (survivedReason === "talent_death_ward") {
+                title = "【定锚残响 · 死里逃生】";
+                desc = "你清晰感知到昨夜有抹杀意图锁定了你，但定锚残响将其弹开。<br>本循环内的一次死亡免疫已消耗。";
             }
 
             if (titleElem) {
@@ -2569,11 +2778,11 @@ export class GameEngine {
 
         // 结算夜晚袭击
         let victimName = null;
-        let survivedReason = null; // "confined", "guarded", "witch_saved", "no_attack"
+        let survivedReason = null; // "confined", "guarded", "witch_saved", "no_attack", ...
 
         // 核心规则：队伍里有伪人才能刀人！
         const wolvesInTeam = this.getAliveTeamMembers().filter(m => m.role === "wolf");
-        const activeWolvesInTeam = wolvesInTeam.filter(w => w.id !== this.confinedNpcId);
+        const activeWolvesInTeam = this.getActiveWolvesTonight();
 
         if (wolvesInTeam.length === 0) {
             survivedReason = "no_attack"; // 队伍里没有伪人，全员安全度过黑夜
@@ -2595,6 +2804,25 @@ export class GameEngine {
             } else if (this.nightTargetVictimId === this.protagonist.id && this.getAliveNpcTeamMembers().some(m => m.id === "mode") && this.saveSystem.isCharacterPassiveUnlocked("mode")) {
                 survivedReason = "mode_shield"; // 莫德【防爆坚守】挺身格挡！
                 this.logAction("【防爆坚守】潜伏伪装体企图暗算队长！莫德以重装防爆盾死死扼守住舱门，替队长挡下了致命抹杀！");
+            } else if (
+                this.isNpcConfined(this.nightTargetVictimId)
+                && typeof TalentSystem !== "undefined"
+                && TalentSystem.hasConfineGuard
+                && TalentSystem.hasConfineGuard()
+            ) {
+                // 保身类·隔离护盾：禁锢目标被刀也不会死
+                survivedReason = "talent_confine_guard";
+                const shielded = this.getNpcById(this.nightTargetVictimId);
+                this.logAction(`【隔离护盾】禁锢舱内的 [${shielded ? shielded.name : "同伴"}] 遭遇伪人袭击，但定锚护盾将其完整挡下！`);
+            } else if (
+                this.nightTargetVictimId === this.protagonist.id
+                && typeof TalentSystem !== "undefined"
+                && TalentSystem.canUseDeathWard
+                && TalentSystem.canUseDeathWard()
+            ) {
+                TalentSystem.consumeDeathWard();
+                survivedReason = "talent_death_ward";
+                this.logAction("【定锚残响】你清晰感知到伪人的致命抹杀被定锚残响拦下——本循环内的一次死亡免疫已消耗。");
             } else {
                 // 遇害离场
                 if (this.nightTargetVictimId === this.protagonist.id) {
@@ -2616,7 +2844,7 @@ export class GameEngine {
 
         // 清空当晚临时状态
         const prevReason = survivedReason;
-        this.confinedNpcId = null;
+        this.clearConfinedNpc();
         this.nightProtectedNpcId = null;
         this.witchSaved = false;
         this.nightTargetVictimId = null;
@@ -2688,6 +2916,10 @@ export class GameEngine {
                 reasonText = "昨夜暗影突袭被防区特战本能挫败，平安度过！";
             } else if (prevReason === "mode_shield") {
                 reasonText = "重装防爆力场彻底拦截了暗夜突袭，平安度过！";
+            } else if (prevReason === "talent_confine_guard") {
+                reasonText = "禁锢舱遭遇袭击，但隔离护盾挡住了致命抹杀！";
+            } else if (prevReason === "talent_death_ward") {
+                reasonText = "定锚残响拦截了对你的致命抹杀——你感知到了这次袭击。";
             }
 
             const lines = [
@@ -2715,6 +2947,12 @@ export class GameEngine {
                         text: "队长，昨晚那帮拟态杂碎摸到你舱门前了。老子把防爆盾砸它脸上，给老子夹着尾巴滚了！"
                     });
                 }
+            } else if (prevReason === "talent_death_ward") {
+                lines.push({
+                    speaker: this.protagonist,
+                    expression: "shock",
+                    text: "……刚才那一下，不是幻觉。有什么东西想抹杀我，但定锚残响把它挡了回去。"
+                });
             }
 
             this.logAction(`【黎明公布】第 ${this.dayCount} 天：${reasonText}`);
@@ -2786,6 +3024,19 @@ export class GameEngine {
             this.saveSystem.markLevelCompleted(16);
         }
 
+        // 任意关卡通关：写入完成标记，并首次奖励 1 定锚点
+        const clearedLevelId = this.currentLevel?.levelId;
+        if (clearedLevelId) {
+            this.saveSystem.markLevelCompleted(clearedLevelId);
+        }
+        let talentAward = { awarded: false, pointsGained: 0, total: 0 };
+        if (typeof TalentSystem !== "undefined" && TalentSystem.awardForLevelClear && clearedLevelId) {
+            talentAward = TalentSystem.awardForLevelClear(clearedLevelId);
+            if (talentAward.awarded) {
+                this.logAction(`【定锚凝结】扇区观测完成，获得 1 ${(typeof TalentCurrency !== "undefined") ? TalentCurrency.name : "定锚点"}（当前持有 ${talentAward.total}）。`);
+            }
+        }
+
         // 检定同伴撤离深度档案解构 (带领卡罗/邵可欣/莫德撤离)
         this.checkPersonaSecretUnlocks("evacuate_with", { evacuatedNpcIds });
 
@@ -2796,7 +3047,7 @@ export class GameEngine {
             msg = "气闸开启，门外仍是起点长廊。抓痕未愈，时钟倒流——观测者，你从未逃脱循环。";
         }
 
-        this.showResultModal("🌀 奇点坍缩 · 循环重置 (OBSERVATION)", msg, true, { unlockResult, newlyUnlocked });
+        this.showResultModal("🌀 奇点坍缩 · 循环重置 (OBSERVATION)", msg, true, { unlockResult, newlyUnlocked, talentAward });
     }
 
     /**
@@ -2947,14 +3198,22 @@ export class GameEngine {
 
         const unlockNoticeElem = document.getElementById("result-unlock-notice");
         if (unlockNoticeElem) {
+            let htmlParts = [];
+            if (isVictory && unlockData.talentAward && unlockData.talentAward.awarded) {
+                const cName = (typeof TalentCurrency !== "undefined") ? TalentCurrency.name : "定锚点";
+                htmlParts.push(`<div style="font-weight:bold;margin-bottom:6px;color:#fbbf24;">⚓ 回溯稳定性提升 · 凝结 ${unlockData.talentAward.pointsGained} ${cName}</div>`);
+                htmlParts.push(`<div style="margin:2px 0;color:#fde68a;">当前持有 ${unlockData.talentAward.total} ${cName} —— 可在主菜单「定锚科技树」中强化观测者能力。</div>`);
+            }
             if (isVictory && unlockData.unlockResult && unlockData.unlockResult.triggeredRules && unlockData.unlockResult.triggeredRules.length > 0) {
-                unlockNoticeElem.classList.remove("hidden");
-                let html = `<div style="font-weight: bold; margin-bottom: 6px; color: #38bdf8;">🌌 扇区拓扑解析 · 观测网络重构</div>`;
+                htmlParts.push(`<div style="font-weight: bold; margin-bottom: 6px; margin-top: 8px; color: #38bdf8;">🌌 扇区拓扑解析 · 观测网络重构</div>`);
                 unlockData.unlockResult.triggeredRules.forEach(rule => {
                     const isNew = (rule.unlockLevelIds || []).some(id => newlyUnlocked.includes(id));
-                    html += `<div style="margin: 2px 0;">✦ ${rule.title || "扇区信标"}：${rule.toast || "信标激活"} ${isNew ? '<span style="color: #4ade80; font-weight: bold;">【✨ 新解锁】</span>' : '<span style="color: #94a3b8;">【已探明】</span>'}</div>`;
+                    htmlParts.push(`<div style="margin: 2px 0;">✦ ${rule.title || "扇区信标"}：${rule.toast || "信标激活"} ${isNew ? '<span style="color: #4ade80; font-weight: bold;">【✨ 新解锁】</span>' : '<span style="color: #94a3b8;">【已探明】</span>'}</div>`);
                 });
-                unlockNoticeElem.innerHTML = html;
+            }
+            if (htmlParts.length > 0) {
+                unlockNoticeElem.classList.remove("hidden");
+                unlockNoticeElem.innerHTML = htmlParts.join("");
             } else {
                 unlockNoticeElem.classList.add("hidden");
                 unlockNoticeElem.innerHTML = "";
@@ -3020,149 +3279,42 @@ export class GameEngine {
     }
 
     // =========================================================================
-    // 存档与读档实现
+    // 存档与读档实现 (现在只记录通过的关卡，不记录局内游戏状态)
     // =========================================================================
     saveGameProgress() {
-        const state = {
-            levelId: this.currentLevel ? this.currentLevel.levelId : 1,
-            phase: this.phase,
-            dayCount: this.dayCount,
-            stamina: this.stamina,
-            choiceCount: this.explorationEngine.choiceCount,
-            currentNodeId: this.explorationEngine.currentNodeId,
-            visitedNodes: Array.from(this.explorationEngine.visitedNodes),
-            consumedEvents: Array.from(this.explorationEngine.consumedEvents),
-            actionLogs: this.actionLogs,
-            protagonistRole: this.protagonist.role,
-            teamNpcIds: this.teamMembers.filter(m => !m.isProtagonist).map(m => m.id),
-            npcs: Array.from(this.allNpcMap.values()).map(npc => ({
-                id: npc.id,
-                role: npc.role,
-                status: npc.status,
-                inquiryCount: npc.inquiryCount
-            })),
-            unlockedNpcRooms: Array.from(this.unlockedNpcRooms || []),
-            mapAftermathLighting: !!this.mapAftermathLighting,
-            level2PowerRestored: !!this.level2PowerRestored,
-            level3PowerRestored: !!this.level3PowerRestored,
-            level13PowerRestored: !!this.level13PowerRestored,
-            level14PowerRestored: !!this.level14PowerRestored,
-            level16PowerRestored: !!this.level16PowerRestored,
-            level14RecruitedNpcIds: Array.from(this.level14RecruitedNpcIds || []),
-            level4PatrolVisited: Array.from(this.level4PatrolVisited || []),
-            level9PatrolStep: this.level9PatrolStep || 0,
-            level10KazeNightKilled: !!this.level10KazeNightKilled,
-            level10KeyEntered: !!this.level10KeyEntered,
-            level11LifeSupportVisited: !!this.level11LifeSupportVisited
-        };
-
-        const success = this.saveSystem.saveGame(state);
-        if (success) {
-            alert("进度已成功保存在本地存储中！");
-            this.logAction(`【系统存档】游戏进度与当前状态保存成功。`);
+        const completedLevels = this.saveSystem.getCompletedLevels();
+        const unlockedLevels = this.saveSystem.getUnlockedLevels();
+        const tip = completedLevels.length > 0
+            ? `已通关 [${completedLevels.join(", ")}] 关（共解锁 ${unlockedLevels.length} 个扇区）`
+            : "尚未通关任何关卡";
+        const msg = `【系统通知】关卡通过记录已在结算时自动持久化保存在本地（当前：${tip}）。本游戏不记录局内临时游戏状态。`;
+        this.logAction(msg);
+        if (typeof this.showStageToast === "function") {
+            this.showStageToast("💾 通关记录已自动归档（局内不保存临时状态）");
         } else {
-            alert("存档保存失败，请检查浏览器存储权限。");
+            alert(msg);
         }
     }
 
     loadGameProgress() {
         const data = this.saveSystem.loadGame();
         if (!data) {
-            alert("未找到可用的历史存档记录。");
+            alert("未找到已通关的关卡记录，请点击【关卡选择】或从第 1 关开始探索。");
             return;
         }
 
-        const levelConfig = LevelRegistry.find(l => l.levelId === data.levelId) || LevelRegistry[0];
-        this.currentLevel = levelConfig;
-        this.dayCount = data.dayCount;
-        this.stamina = data.stamina;
-        this.phase = data.phase;
-        this.unlockedNpcRooms = new Set(data.unlockedNpcRooms || []);
-        this.mapAftermathLighting = !!data.mapAftermathLighting;
-        this.level2PowerRestored = !!data.level2PowerRestored;
-        this.level3PowerRestored = !!data.level3PowerRestored;
-        this.level13PowerRestored = !!data.level13PowerRestored;
-        this.level14PowerRestored = !!data.level14PowerRestored;
-        this.level16PowerRestored = !!data.level16PowerRestored;
-        this.level14RecruitedNpcIds = new Set(data.level14RecruitedNpcIds || []);
-        this.level4PatrolVisited = new Set(data.level4PatrolVisited || []);
-        this.level9PatrolStep = data.level9PatrolStep || 0;
-        this.level10KazeNightKilled = !!data.level10KazeNightKilled;
-        this.level10KeyEntered = !!data.level10KeyEntered;
-        this.level11LifeSupportVisited = !!data.level11LifeSupportVisited;
+        const targetLevelId = data.targetLevelId || 1;
+        const targetConfig = LevelRegistry.find(l => l.levelId === targetLevelId) || LevelRegistry[0];
 
-        // 恢复主角
-        this.protagonist = {
-            ...CharacterRegistry.protagonist,
-            role: data.protagonistRole || "seer",
-            inquiryCount: 0,
-            status: "active",
-            fallbackSvg: CharacterRegistry.getAvatarSvg(CharacterRegistry.protagonist)
-        };
+        this.modalResult?.classList.add("hidden");
+        this.screenMenu?.classList.add("hidden");
 
-        // 恢复NPC
-        this.allNpcMap.clear();
-        this.teamMembers = [this.protagonist];
-
-        (data.npcs || []).forEach(item => {
-            const rawChar = CharacterRegistry.npcs[item.id];
-            if (!rawChar) return;
-            const npcObj = {
-                ...rawChar,
-                role: item.role,
-                status: item.status,
-                inquiryCount: item.inquiryCount || 0,
-                svgAvatar: CharacterRegistry.getAvatarSvg(rawChar),
-                fallbackSvg: CharacterRegistry.getAvatarSvg(rawChar)
-            };
-            this.allNpcMap.set(npcObj.id, npcObj);
-
-            if (npcObj.status === "active") {
-                this.teamMembers.push(npcObj);
-            }
-        });
-
-        // 恢复数值
-        this.stamina = data.stamina;
-        this.dayCount = data.dayCount;
-        this.actionLogs = data.actionLogs || [];
-
-        // 恢复地图状态
-        this.explorationEngine.initLevelMap(levelConfig.map);
-        this.explorationEngine.currentNodeId = data.currentNodeId;
-        this.explorationEngine.choiceCount = data.choiceCount || 0;
-        this.explorationEngine.visitedNodes = new Set(data.visitedNodes || []);
-        this.explorationEngine.consumedEvents = new Set(data.consumedEvents || []);
-        this.unlockedNpcRooms = new Set(data.unlockedNpcRooms || []);
-        this.level2PowerRestored = !!data.level2PowerRestored;
-        this.level3PowerRestored = !!data.level3PowerRestored;
-        this.level13PowerRestored = !!data.level13PowerRestored;
-        this.level14PowerRestored = !!data.level14PowerRestored;
-        this.level16PowerRestored = !!data.level16PowerRestored;
-        this.level14RecruitedNpcIds = new Set(data.level14RecruitedNpcIds || []);
-        this.level4PatrolVisited = new Set(data.level4PatrolVisited || []);
-        this.checkAndUnlockNpcRooms();
-
-        // 第十三关/第十四关/第十六关读档：若已合闸，需重连黄色气闸
-        if (this.currentLevel?.levelId === 13 && this.level13PowerRestored) {
-            this.restoreLevel13YellowConnections();
+        // 重新以全新初始状态启动该目标关卡（绝不恢复局内临时数据）
+        this.startNewGame(targetLevelId);
+        if (typeof this.showStageToast === "function") {
+            this.showStageToast(`💾 已载入通关进度：当前推进至【${targetConfig.title}】（已通关 ${data.completedLevels.length} 关）`);
         }
-        if (this.currentLevel?.levelId === 14 && this.level14PowerRestored) {
-            this.restoreLevel14YellowConnections();
-        }
-        if (this.currentLevel?.levelId === 16 && this.level16PowerRestored) {
-            this.restoreLevel16YellowConnections();
-        }
-
-        this.screenMenu.classList.add("hidden");
-        this.screenBlack.classList.add("hidden");
-        this.screenEveningBlack?.classList.add("hidden");
-        this.screenDeathBlack?.classList.add("hidden");
-        this.screenGame.classList.remove("hidden");
-
-        this.logAction(`【读档成功】恢复至第 ${this.dayCount} 天，当前位置：${this.explorationEngine.getCurrentNode()?.name || "未知"}`);
-
-        this.enterQ3Exploration();
+        this.logAction(`【读档成功】已载入通关进度（已通关 ${data.completedLevels.length} 关），进入关卡：${targetConfig.title}`);
     }
 
     // =========================================================================

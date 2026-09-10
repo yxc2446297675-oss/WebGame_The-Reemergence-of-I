@@ -16,6 +16,7 @@ const files = [
     'dialogueUI.js',
     'diaryUI.js',
     'saveSystem.js',
+    'talentTree.js',
     'mapRenderer.js',
     'unlockEvaluator.js',
     'exploration.js',

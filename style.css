@@ -4334,3 +4334,225 @@ html, body {
 
 
 
+
+/* ==========================================================================
+   定锚科技树 (Talent Tech Tree · Kingdom-Rush style)
+   ========================================================================== */
+.talent-menu-btn {
+    position: relative;
+}
+
+.talent-modal-box {
+    max-width: 980px;
+    width: 96%;
+    max-height: 92vh;
+    max-height: 92dvh;
+    background: rgba(8, 12, 24, 0.98);
+    border: 1px solid rgba(251, 191, 36, 0.45);
+    box-shadow: 0 0 36px rgba(251, 191, 36, 0.18), 0 12px 40px rgba(0, 0, 0, 0.75);
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.talent-points-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    background: linear-gradient(90deg, rgba(251, 191, 36, 0.14), rgba(14, 165, 233, 0.1));
+    border: 1px solid rgba(251, 191, 36, 0.35);
+    flex-shrink: 0;
+}
+
+.talent-points-label {
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+.talent-points-value {
+    color: #fde68a;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.04em;
+    font-family: var(--font-hud), Orbitron, monospace;
+}
+
+.talent-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+}
+
+.talent-tree-root {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    align-items: stretch;
+}
+
+.talent-branch {
+    --talent-accent: #38bdf8;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid color-mix(in srgb, var(--talent-accent) 45%, transparent);
+    box-shadow: inset 0 0 20px color-mix(in srgb, var(--talent-accent) 10%, transparent);
+}
+
+.talent-branch-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.talent-branch-icon {
+    font-size: 1.4rem;
+}
+
+.talent-branch-name {
+    font-weight: 700;
+    color: #f8fafc;
+    font-size: 1rem;
+}
+
+.talent-branch-blurb {
+    font-size: 0.74rem;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+.talent-branch-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    margin-top: 4px;
+}
+
+.talent-node {
+    text-align: left;
+    padding: 12px 12px 10px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(148, 163, 184, 0.28);
+    background: rgba(2, 6, 23, 0.72);
+    color: #e2e8f0;
+    cursor: pointer;
+    transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s, background 0.18s;
+    font-family: inherit;
+}
+
+.talent-node:hover:not(:disabled) {
+    transform: translateY(-2px);
+    border-color: var(--talent-accent);
+    box-shadow: 0 0 16px color-mix(in srgb, var(--talent-accent) 35%, transparent);
+}
+
+.talent-node:disabled {
+    cursor: default;
+    opacity: 0.92;
+}
+
+.talent-node.talent-unlocked {
+    border-color: var(--talent-accent);
+    background: linear-gradient(160deg, color-mix(in srgb, var(--talent-accent) 28%, #0b1220), rgba(2, 6, 23, 0.9));
+    box-shadow: 0 0 18px color-mix(in srgb, var(--talent-accent) 28%, transparent);
+}
+
+.talent-node.talent-available {
+    border-color: #fbbf24;
+    box-shadow: 0 0 14px rgba(251, 191, 36, 0.25);
+}
+
+.talent-node.talent-locked {
+    opacity: 0.55;
+    filter: grayscale(0.35);
+}
+
+.talent-node-cost {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    font-size: 0.78rem;
+    color: #fbbf24;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.talent-node-cost span {
+    font-size: 0.68rem;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.talent-node-title {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 4px;
+}
+
+.talent-node-desc {
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: #94a3b8;
+}
+
+.talent-node-status {
+    margin-top: 8px;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    color: #64748b;
+}
+
+.talent-node.talent-unlocked .talent-node-status {
+    color: #4ade80;
+}
+
+.talent-node.talent-available .talent-node-status {
+    color: #fbbf24;
+}
+
+.talent-link {
+    width: 3px;
+    height: 16px;
+    margin: 2px auto;
+    border-radius: 2px;
+    background: rgba(148, 163, 184, 0.28);
+}
+
+.talent-link.talent-link-on {
+    background: var(--talent-accent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--talent-accent) 55%, transparent);
+}
+
+.talent-footer-hint {
+    margin: 4px 0 0;
+    font-size: 0.78rem;
+    color: #64748b;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.judgement-confine-hint {
+    font-size: 0.82rem;
+    color: #fbbf24;
+    text-align: center;
+    padding: 6px 8px 10px;
+    border-bottom: 1px solid rgba(251, 191, 36, 0.2);
+    margin-bottom: 8px;
+}
+
+@media (max-width: 860px) {
+    .talent-tree-root {
+        grid-template-columns: 1fr;
+    }
+}

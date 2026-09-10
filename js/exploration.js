@@ -57,8 +57,11 @@ export class ExplorationEngine {
 
         const isAlreadyExplored = this.visitedNodes.has(nextNodeId);
 
-        // 1. 体力消耗规则：移动到已探索区域免除体力消耗；移动到未知区域消耗 8 点体力
-        const cost = isAlreadyExplored ? 0 : StaminaConfig.stepCost;
+        // 1. 体力消耗规则：移动到已探索区域免除体力消耗；未知区域按定锚科技树结算步耗
+        const stepCost = (typeof TalentSystem !== "undefined" && TalentSystem.getStepCost)
+            ? TalentSystem.getStepCost()
+            : StaminaConfig.stepCost;
+        const cost = isAlreadyExplored ? 0 : stepCost;
         if (cost > 0) {
             this.gameEngine.stamina -= cost;
             if (this.gameEngine.stamina < 0) this.gameEngine.stamina = 0;
@@ -872,9 +875,12 @@ export class ExplorationEngine {
     handleFoodEvent(node, eventKey, afterCallback = null) {
         this.consumedEvents.add(eventKey);
         
-        // 根据当前存活的队伍人数结算回复量
+        // 根据当前存活的队伍人数结算回复量（救助类天赋可额外 +10）
         const teamCount = this.gameEngine.getAliveTeamMembers().length;
-        const recoveryAmount = StaminaConfig.getFoodRecovery(teamCount);
+        const foodBonus = (typeof TalentSystem !== "undefined" && TalentSystem.getFoodBonus)
+            ? TalentSystem.getFoodBonus()
+            : 0;
+        const recoveryAmount = StaminaConfig.getFoodRecovery(teamCount) + foodBonus;
         const oldStamina = this.gameEngine.stamina;
         this.gameEngine.stamina = Math.min(StaminaConfig.maxStamina, this.gameEngine.stamina + recoveryAmount);
         const actualRecovered = this.gameEngine.stamina - oldStamina;
@@ -895,7 +901,7 @@ export class ExplorationEngine {
         }
 
         this.gameEngine.logAction(
-            `【发现食物】在 [${node.name}] 找到了 [${node.event.name || "高能给养"}]！队伍共 ${teamCount} 人，体力恢复了 +${actualRecovered} 点（当前: ${this.gameEngine.stamina}）`
+            `【发现食物】在 [${node.name}] 找到了 [${node.event.name || "高能给养"}]！队伍共 ${teamCount} 人，体力恢复了 +${actualRecovered} 点${foodBonus > 0 ? `（含定锚·高效补给 +${foodBonus}）` : ""}（当前: ${this.gameEngine.stamina}）`
         );
 
         // 播放视觉小说对白反馈
@@ -994,7 +1000,9 @@ export class ExplorationEngine {
             return;
         }
 
-        const chance = EveningTriggerConfig.getChance(this.choiceCount);
+        const chance = (typeof TalentSystem !== "undefined" && TalentSystem.getEveningChance)
+            ? TalentSystem.getEveningChance(this.choiceCount)
+            : EveningTriggerConfig.getChance(this.choiceCount);
         const roll = Math.random();
 
         console.log(`[探索步数计数]: ${this.choiceCount} 次, 傍晚触发概率: ${(chance * 100).toFixed(0)}%, 摇点: ${(roll * 100).toFixed(0)}%`);

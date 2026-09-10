@@ -4552,10 +4552,73 @@ console.log('\n52. 验证第一关轻量观测目标卡默认折叠机制与跨�
     if (!missionCard.classList.contains('collapsed')) {
         throw new Error('重新切回第一关时，观测目标卡应再次恢复默认收起状态！');
     }
-    console.log('   【已验证】重返第一关观测目标卡自动重新默认收起，机制严格隔离！');
 }
 
-console.log('\n====== [TEST PASSED] 全部 52 项核心流程、全关卡专属定制与第一关观测目标默认折叠测试 100% 成功！ ======');
+// =============================================================================
+// 53. 验证存档功能逻辑更改：只记录通过的关卡，不记录局内游戏状态
+// =============================================================================
+console.log('\n53. 验证存档功能逻辑更改：只记录通过的关卡，不记录局内游戏状态...');
+{
+    // 1. 重置关卡解锁与通关记录：初始状态下没有存档，hasSave 必须为 false
+    app.saveSystem.resetUnlockedLevels();
+    app.saveSystem.memoryStore[app.saveSystem.completedKey] = JSON.stringify([]);
+    app.saveSystem.clearSave();
+
+    if (app.saveSystem.hasSave()) {
+        throw new Error('未通关任何关卡且未解锁后续关卡时，hasSave 应返回 false！');
+    }
+    app.updateMenuButtons();
+    const btnLoad = global.document.getElementById('btn-menu-load-game');
+    if (btnLoad && !btnLoad.disabled) {
+        throw new Error('无存档时，主菜单【加载存档】按钮应为 disabled 禁用状态！');
+    }
+    console.log('   【已验证】无通关关卡时 hasSave() 返回 false，主菜单加载按钮正确禁用！');
+
+    // 2. 模拟第一关通关：标记通过关卡 1 并解锁关卡 2
+    app.saveSystem.markLevelCompleted(1);
+    app.saveSystem.unlockLevels([2]);
+
+    if (!app.saveSystem.hasSave()) {
+        throw new Error('通关第 1 关后，hasSave() 应返回 true！');
+    }
+    app.updateMenuButtons();
+    if (btnLoad && btnLoad.disabled) {
+        throw new Error('有已通关关卡时，主菜单【加载存档】按钮应解除禁用！');
+    }
+    console.log('   【已验证】通关第 1 关后，成功记录已通关关卡并激活加载存档功能！');
+
+    // 3. 局内保存测试：调用 saveGameProgress() 绝不在存储中写入局内瞬时快照
+    app.startNewGame(2);
+    app.stamina = 42; // 修改局内临时变量
+    app.saveGameProgress();
+
+    // 验证 saveKey 对应数据为空或未存储任何局内对象
+    const rawMidGame = app.saveSystem.memoryStore[app.saveSystem.saveKey];
+    if (rawMidGame && rawMidGame !== '{}' && rawMidGame !== 'null') {
+        throw new Error('存档中依然发现了局内游戏快照，违反了“不记录局内游戏状态”规则！内容: ' + rawMidGame);
+    }
+    console.log('   【已验证】调用 saveGameProgress() 严格不记录局内临时游戏状态！');
+
+    // 4. 读取存档测试：loadGameProgress() 必须重新初始化关卡，绝不读取旧局内脏数据
+    app.loadGameProgress();
+    if (app.currentLevel.levelId !== 2) {
+        throw new Error('读取存档应自动推进至已解锁未通关的第 2 关，实际: ' + app.currentLevel.levelId);
+    }
+    // 体力应为第二关初始体力，而非刚才残留的 42
+    if (app.stamina === 42) {
+        throw new Error('读档时恢复了旧局内体力值，违反了局内状态不存档规则！');
+    }
+    console.log('   【已验证】读档自动从最新推进关卡全新开始，体力与角色状态完全纯净！');
+
+    // 5. 关卡选择网格联动：已通关关卡显示已完成标记
+    const completedList = app.saveSystem.getCompletedLevels();
+    if (!completedList.includes(1)) {
+        throw new Error('已通关关卡列表中必须包含第 1 关！实际: ' + JSON.stringify(completedList));
+    }
+    console.log('   【已验证】已通关关卡列表准确记录: ' + JSON.stringify(completedList));
+}
+
+console.log('\n====== [TEST PASSED] 全部 53 项核心流程、全关卡专属定制与纯关卡存档新逻辑测试 100% 成功！ ======');
 
 
 

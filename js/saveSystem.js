@@ -4,13 +4,17 @@
  */
 
 export class SaveSystem {
-    constructor(saveKey = "DOPPELGANGER_ROGUE_SAVE_V1", unlockedKey = "DOPPELGANGER_UNLOCKED_LEVELS_V1", personaKey = "DOPPELGANGER_PERSONA_SECRETS_V1", completedKey = "DOPPELGANGER_COMPLETED_LEVELS_V1") {
+    constructor(saveKey = "DOPPELGANGER_ROGUE_SAVE_V1", unlockedKey = "DOPPELGANGER_UNLOCKED_LEVELS_V1", personaKey = "DOPPELGANGER_PERSONA_SECRETS_V1", completedKey = "DOPPELGANGER_COMPLETED_LEVELS_V1", talentKey = "DOPPELGANGER_TALENT_TREE_V1") {
         this.saveKey = saveKey;
         this.unlockedKey = unlockedKey;
         this.personaKey = personaKey;
         this.completedKey = completedKey;
+        this.talentKey = talentKey;
         this.memoryStore = {};
         this.isLocalStorageAvailable = this.checkLocalStorage();
+
+        // 存档逻辑更改：清除旧版残留的局内快照，严格贯彻“只记录通过关卡，不记录局内状态”
+        this.clearSave();
     }
 
     checkLocalStorage() {
@@ -26,45 +30,44 @@ export class SaveSystem {
     }
 
     hasSave() {
-        if (this.isLocalStorageAvailable) {
-            try {
-                return !!window.localStorage.getItem(this.saveKey);
-            } catch (e) {
-                return !!this.memoryStore[this.saveKey];
-            }
+        // 存档逻辑更改：判定依据为是否具有通过的关卡记录（或已推进解锁非初始关卡）
+        const completed = this.getCompletedLevels();
+        if (Array.isArray(completed) && completed.length > 0) {
+            return true;
         }
-        return !!this.memoryStore[this.saveKey];
+        const unlocked = this.getUnlockedLevels();
+        return Array.isArray(unlocked) && unlocked.length > 1;
     }
 
     saveGame(gameState) {
-        try {
-            const serialized = JSON.stringify(gameState);
-            this.memoryStore[this.saveKey] = serialized;
-            if (this.isLocalStorageAvailable) {
-                window.localStorage.setItem(this.saveKey, serialized);
-            }
-            return true;
-        } catch (e) {
-            console.error("[SaveSystem] 存档失败:", e);
-            return false;
+        // 存档逻辑更改：现在只记录通过的关卡，不记录局内游戏状态
+        this.clearSave();
+        if (typeof gameState === "number" && gameState > 0) {
+            return this.markLevelCompleted(gameState);
         }
+        if (gameState && typeof gameState.levelId === "number" && gameState.levelId > 0 && gameState.isVictory) {
+            return this.markLevelCompleted(gameState.levelId);
+        }
+        return true;
     }
 
     loadGame() {
-        try {
-            let data = null;
-            if (this.isLocalStorageAvailable) {
-                data = window.localStorage.getItem(this.saveKey);
-            }
-            if (!data) {
-                data = this.memoryStore[this.saveKey];
-            }
-            if (!data) return null;
-            return JSON.parse(data);
-        } catch (e) {
-            console.error("[SaveSystem] 读档失败:", e);
+        // 存档逻辑更改：仅返回通关进度信息与推荐推进关卡，不返回局内临时状态
+        const completedLevels = this.getCompletedLevels();
+        const unlockedLevels = this.getUnlockedLevels();
+        if ((!completedLevels || completedLevels.length === 0) && (!unlockedLevels || unlockedLevels.length <= 1)) {
             return null;
         }
+        const uncompleted = unlockedLevels.filter(id => !completedLevels.includes(id));
+        const targetLevelId = uncompleted.length > 0
+            ? Math.max(...uncompleted)
+            : (completedLevels.length > 0 ? Math.max(...completedLevels) : 1);
+
+        return {
+            completedLevels,
+            unlockedLevels,
+            targetLevelId
+        };
     }
 
     clearSave() {
@@ -275,5 +278,53 @@ export class SaveSystem {
             }
         }
         return {};
+    }
+
+    // =========================================================================
+    // 定锚科技树持久化 (Anchor Talent Tree)
+    // =========================================================================
+    getTalentState() {
+        try {
+            let raw = null;
+            if (this.isLocalStorageAvailable) {
+                raw = window.localStorage.getItem(this.talentKey);
+            }
+            if (!raw) {
+                raw = this.memoryStore[this.talentKey];
+            }
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                return {
+                    points: Math.max(0, Number(parsed.points) || 0),
+                    unlocked: Array.isArray(parsed.unlocked) ? parsed.unlocked.filter(Boolean) : [],
+                    awardedLevels: Array.isArray(parsed.awardedLevels)
+                        ? parsed.awardedLevels.map(n => Number(n)).filter(n => !isNaN(n) && n > 0)
+                        : []
+                };
+            }
+        } catch (e) {
+            console.error("[SaveSystem] 读取定锚科技树失败:", e);
+        }
+        return { points: 0, unlocked: [], awardedLevels: [] };
+    }
+
+    setTalentState(state) {
+        const normalized = {
+            points: Math.max(0, Number(state && state.points) || 0),
+            unlocked: Array.isArray(state && state.unlocked) ? state.unlocked.filter(Boolean) : [],
+            awardedLevels: Array.isArray(state && state.awardedLevels)
+                ? Array.from(new Set(state.awardedLevels.map(n => Number(n)).filter(n => !isNaN(n) && n > 0)))
+                : []
+        };
+        const serialized = JSON.stringify(normalized);
+        this.memoryStore[this.talentKey] = serialized;
+        if (this.isLocalStorageAvailable) {
+            try {
+                window.localStorage.setItem(this.talentKey, serialized);
+            } catch (e) {
+                console.error("[SaveSystem] 存储定锚科技树失败:", e);
+            }
+        }
+        return normalized;
     }
 }
