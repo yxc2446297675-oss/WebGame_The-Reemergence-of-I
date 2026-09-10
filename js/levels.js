@@ -641,6 +641,212 @@ export const BaseLevels = [
                 toast: "成功携行 3 名同伴脱出绿光生态舱！开放【第二十四关】！"
             }
         ]
+    },
+    {
+        levelId: 13,
+        title: "第十三关：拟人茧房 · 拟态繁殖工坊",
+        subtitle: "苏醒密封厅出发 · 全舰搜救并修复主电站后撤离",
+
+        blackScreenText: [
+            "……爆炸余波还在耳膜里回响。你在冰冷甲板苏醒，身边空无一人。",
+            "左肩与肋侧传来灼痛——爆炸碎片割开了防护服，鲜血正慢慢浸透内衬。",
+            "失散的同伴昏迷在各处舱室——但其中，可能已经混入了伪人。",
+            "伪人与人类无异，却会在黑夜中袭击同伴。你必须带伤搜救、倾听、裁决，再抵达终点。",
+            "本关目标：找到至少七名同伴，修复主电站，并携卡罗与邵可欣共同撤离。",
+            "——触摸屏幕，开始行动。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量：随机 3~6 人
+        wolfCountRange: [3, 6],
+        candidateNPCs: [
+            { id: "kaze", assignedRole: null },
+            { id: "shaokexin", assignedRole: null },
+            { id: "mode", assignedRole: null },
+            { id: "prof_lu", assignedRole: null },
+            { id: "noah", assignedRole: null },
+            { id: "colt", assignedRole: null },
+            { id: "barnes", assignedRole: null },
+            { id: "elsa", assignedRole: null },
+            { id: "sophia", assignedRole: null },
+            { id: "vivian", assignedRole: null },
+            { id: "elena", assignedRole: null }
+        ],
+
+        mapImageUrl: null,
+        map: buildSpaceshipLevelMap(13),
+
+        // 不解锁任何后续关卡；通关仅写入「已完成」标记
+        unlockRules: [
+            {
+                id: "l13_find_7_npcs",
+                condition: { type: "require_npc_count", count: 7 },
+                unlockLevelIds: [],
+                taskName: "任务一：找到至少 7 名同伴",
+                taskObjective: "在全舰搜救并唤醒至少 7 名同伴加入队伍",
+                title: "搜救闭环",
+                toast: "第十三关 · 任务一已达成！"
+            },
+            {
+                id: "l13_power_restore",
+                condition: { type: "level13_power_restored" },
+                unlockLevelIds: [],
+                taskName: "任务二：找到并修复主电站",
+                taskObjective: "前往【主配电值班舱】合闸恢复主电网，解除黄色气闸封锁",
+                title: "主电站重合闸",
+                toast: "第十三关 · 任务二已达成！"
+            },
+            {
+                id: "l13_escort_kaze_shaokexin",
+                condition: { type: "require_npcs", npcIds: ["kaze", "shaokexin"] },
+                unlockLevelIds: [],
+                taskName: "任务三：带离卡罗、邵可欣一起撤离",
+                taskObjective: "确保卡罗与邵可欣存活在队，一同抵达维生环境总控机房脱出",
+                title: "双核引渡",
+                toast: "第十三关 · 任务三已达成！"
+            }
+        ]
+    },
+    {
+        levelId: 14,
+        title: "第十四关：创伤回响 · 覆写共鸣",
+        subtitle: "医护角落苏醒 · 修复全舰电网携同伴撤离",
+
+        blackScreenText: [
+            "轰鸣……刺耳的金属撕裂声伴随着剧烈爆炸在回廊尽头轰然炸响！",
+            "冲击波将你狠狠掀翻在地，滚烫的破片划过手臂，剧痛与眩晕瞬间剥夺了视野……",
+            "冷白的光线闪烁后彻底熄灭，黑暗如重压般毫无预兆地吞没了整片合金长廊。",
+            "剧痛与恐惧之下，你捂着伤口不由得缩在医护角落里，警惕着阴影中迫近的脚步声……",
+            "大家……都怎么样了？主配电网已被摧毁，必须找到同伴、修复供电，然后撤离！",
+            "——触摸屏幕，带伤前行。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量：随机 3~6 人
+        wolfCountRange: [3, 6],
+        candidateNPCs: [
+            { id: "prof_lu", assignedRole: null },    // 陆知行 · 跃迁前厅
+            { id: "noah", assignedRole: null },       // 诺亚 · 重力发生核
+            { id: "colt", assignedRole: null },       // 柯尔特 · 防爆通道
+            { id: "barnes", assignedRole: null },     // 巴恩斯 · 防爆通道
+            { id: "elsa", assignedRole: null },       // 艾尔莎 · 最高指挥殿堂
+            { id: "vivian", assignedRole: null },     // 薇薇安 · 重核聚变主反应堆
+            { id: "elena", assignedRole: null },      // 伊莲 · 重核聚变主反应堆
+            { id: "kaze", assignedRole: null },       // 卡罗 · 动力操作台
+            { id: "mode", assignedRole: null },       // 莫德 · 安全避难室
+            { id: "sophia", assignedRole: null }      // 索菲亚 · 绿光生态舱
+        ],
+
+        mapImageUrl: null,
+        map: buildSpaceshipLevelMap(14),
+
+        // 通关不解锁新关卡；在选择关卡界面保存标记此关卡完成
+        unlockRules: [
+            {
+                id: "l14_find_7_npcs",
+                condition: { type: "require_npc_count", count: 7 },
+                unlockLevelIds: [],
+                taskName: "任务一：找到至少 7 名同伴",
+                taskObjective: "在全舰搜救并唤醒至少 7 名同伴加入队伍",
+                title: "全员集结",
+                toast: "第十四关 · 任务一已达成！"
+            },
+            {
+                id: "l14_power_restore",
+                condition: { type: "level14_power_restored" },
+                unlockLevelIds: [],
+                taskName: "任务二：找到并修复主电站",
+                taskObjective: "由伊莲或陆知行随行协助，在【主配电值班舱】重合闸恢复全舰电网",
+                title: "主电站重合闸",
+                toast: "第十四关 · 任务二已达成！"
+            },
+            {
+                id: "l14_escort_kaze_mode",
+                condition: { type: "require_npcs", npcIds: ["kaze", "mode"] },
+                unlockLevelIds: [],
+                taskName: "任务三：带离卡罗、莫德一起撤离",
+                taskObjective: "确保卡罗与莫德存活在队，一同抵达维生环境总控机房脱出",
+                title: "战术与防爆引渡",
+                toast: "第十四关 · 任务三已达成！"
+            }
+        ]
+    },
+    {
+        levelId: 16,
+        title: "第十六关：因果律断 · 非定域纠缠",
+        subtitle: "动力操作台出发 · 全舰搜救并修复主电站后撤离",
+
+        // 第四关风味 + 被爆炸波及受伤
+        blackScreenText: [
+            "……一如既往的一天。换气格栅吐着微凉的气流。",
+            "忽然，远处传来刺耳的金属撕裂与爆炸轰鸣——冲击波将你掀翻在地。",
+            "滚烫破片划过防护服，剧痛与眩晕瞬间剥夺了视野……你又被爆炸波及了。",
+            "冷白指示灯逐一熄灭。舱壁依旧冰冷，你捂着伤口在黑暗中喘息。",
+            "失散的同伴仍在各处舱室。你必须带伤搜救至少八人、修复主电站，并携卡罗与邵可欣撤离。",
+            "——触摸屏幕，开始行动。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量：随机 4~6 人
+        wolfCountRange: [4, 6],
+        candidateNPCs: [
+            { id: "kaze", assignedRole: null },
+            { id: "shaokexin", assignedRole: null },
+            { id: "prof_lu", assignedRole: null },
+            { id: "noah", assignedRole: null },
+            { id: "colt", assignedRole: null },
+            { id: "barnes", assignedRole: null },
+            { id: "elsa", assignedRole: null },
+            { id: "sophia", assignedRole: null },
+            { id: "vivian", assignedRole: null },
+            { id: "elena", assignedRole: null }
+        ],
+
+        mapImageUrl: null,
+        map: buildSpaceshipLevelMap(16),
+
+        // 通关不解锁任何关卡；仅保存「已完成」标记
+        unlockRules: [
+            {
+                id: "l16_find_8_npcs",
+                condition: { type: "require_npc_count", count: 8 },
+                unlockLevelIds: [],
+                taskName: "任务一：找到至少 8 名同伴",
+                taskObjective: "在全舰搜救并唤醒至少 8 名同伴加入队伍",
+                title: "搜救闭环",
+                toast: "第十六关 · 任务一已达成！"
+            },
+            {
+                id: "l16_power_restore",
+                condition: { type: "level16_power_restored" },
+                unlockLevelIds: [],
+                taskName: "任务二：找到并修复主电站",
+                taskObjective: "前往【主配电值班舱】合闸恢复主电网，解除黄色气闸封锁",
+                title: "主电站重合闸",
+                toast: "第十六关 · 任务二已达成！"
+            },
+            {
+                id: "l16_escort_kaze_shaokexin",
+                condition: { type: "require_npcs", npcIds: ["kaze", "shaokexin"] },
+                unlockLevelIds: [],
+                taskName: "任务三：带离卡罗、邵可欣一起撤离",
+                taskObjective: "确保卡罗与邵可欣存活在队，一同抵达维生环境总控机房脱出",
+                title: "双核引渡",
+                toast: "第十六关 · 任务三已达成！"
+            }
+        ]
     }
 ];
 

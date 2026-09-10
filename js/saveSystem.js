@@ -4,10 +4,11 @@
  */
 
 export class SaveSystem {
-    constructor(saveKey = "DOPPELGANGER_ROGUE_SAVE_V1", unlockedKey = "DOPPELGANGER_UNLOCKED_LEVELS_V1", personaKey = "DOPPELGANGER_PERSONA_SECRETS_V1") {
+    constructor(saveKey = "DOPPELGANGER_ROGUE_SAVE_V1", unlockedKey = "DOPPELGANGER_UNLOCKED_LEVELS_V1", personaKey = "DOPPELGANGER_PERSONA_SECRETS_V1", completedKey = "DOPPELGANGER_COMPLETED_LEVELS_V1") {
         this.saveKey = saveKey;
         this.unlockedKey = unlockedKey;
         this.personaKey = personaKey;
+        this.completedKey = completedKey;
         this.memoryStore = {};
         this.isLocalStorageAvailable = this.checkLocalStorage();
     }
@@ -153,6 +154,55 @@ export class SaveSystem {
             }
         }
         return defaultList;
+    }
+
+    // =========================================================================
+    // 关卡完成标记（与解锁列表独立；例如第十三关通关不解锁后续，仅记完成）
+    // =========================================================================
+    getCompletedLevels() {
+        try {
+            let raw = null;
+            if (this.isLocalStorageAvailable) {
+                raw = window.localStorage.getItem(this.completedKey);
+            }
+            if (!raw) {
+                raw = this.memoryStore[this.completedKey];
+            }
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                    return Array.from(new Set(
+                        parsed.map(n => Number(n)).filter(n => !isNaN(n) && n > 0)
+                    )).sort((a, b) => a - b);
+                }
+            }
+        } catch (e) {
+            console.error("[SaveSystem] 获取已完成关卡失败:", e);
+        }
+        return [];
+    }
+
+    isLevelCompleted(levelId) {
+        return this.getCompletedLevels().includes(Number(levelId));
+    }
+
+    markLevelCompleted(levelId) {
+        const numId = Number(levelId);
+        if (isNaN(numId) || numId <= 0) return false;
+        const current = new Set(this.getCompletedLevels());
+        if (current.has(numId)) return false;
+        current.add(numId);
+        const updatedList = Array.from(current).sort((a, b) => a - b);
+        const serialized = JSON.stringify(updatedList);
+        this.memoryStore[this.completedKey] = serialized;
+        if (this.isLocalStorageAvailable) {
+            try {
+                window.localStorage.setItem(this.completedKey, serialized);
+            } catch (e) {
+                console.error("[SaveSystem] 存储完成关卡失败:", e);
+            }
+        }
+        return true;
     }
 
     // =========================================================================

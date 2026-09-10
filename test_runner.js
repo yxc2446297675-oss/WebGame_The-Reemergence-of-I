@@ -1214,6 +1214,10 @@ for (let lvlId = 1; lvlId <= 25; lvlId++) {
         ? { minRooms: 20, maxRooms: 24, tierName: '第十一关专设（截图22间舱室）' }
         : (lvlId === 12)
         ? { minRooms: 39, maxRooms: 41, tierName: '第十二关专设（截图39间舱室）' }
+        : (lvlId === 13)
+        ? { minRooms: 50, maxRooms: 59, tierName: '第十三关专设（全图58间舱室）' }
+        : (lvlId === 14)
+        ? { minRooms: 50, maxRooms: 59, tierName: '第十四关专设（全图58间舱室）' }
         : tierRules.find(r => lvlId >= r.minLvl && lvlId <= r.maxLvl);
 
     if (roomCount < rule.minRooms || roomCount > rule.maxRooms) {
@@ -1270,8 +1274,8 @@ for (let lvlId = 1; lvlId <= 25; lvlId++) {
     }
 
     // 验证每关拓扑互不相同 (指纹比对)
-    // 第8关基于剧情叙事复用第7关扇区双重视角；第11关复用东中区扇区但起终点与任务目标不同
-    if (lvlId !== 8 && lvlId !== 11) {
+    // 第8关基于剧情叙事复用第7关扇区双重视角；第11关复用东中区扇区；第13/14关母舰全图开放
+    if (lvlId !== 8 && lvlId !== 11 && lvlId !== 13 && lvlId !== 14) {
         const coordsStr = Object.values(nodes).map(n => `${n.coord.x},${n.coord.y}`).sort().join('|');
         const fp = `${roomCount}-${coordsStr}`;
         if (levelFingerprints.has(fp)) {
@@ -4175,7 +4179,253 @@ console.log('\n50. 验证全局诺亚站位一致性规则（出场必在体能�
     console.log(`   【已验证】扫描全部关卡，诺亚共在 ${noahAppearedCount} 个关卡作为NPC出场，全部严格位于【失重体能训练馆 · 体能维持舱】(room_recreation_gym)，绝无其他任何站位！`);
 }
 
-console.log('\n====== [TEST PASSED] 全部 50 项核心流程、全关卡专属定制与诺亚站位全局一致性测试 100% 成功！ ======');
+// =============================================================================
+// 51. 验证第十四关（创伤回响 · 覆写共鸣）：黑屏文案、全图58舱室、医护角落起点、维生机房终点、双轨阻断、8间黄线锁闭、
+// 3处切断气闸通道、10位NPC站位与双人链式招募、主配电舱指定人员(伊莲/陆知行)合闸解禁全图、三大任务通关检定
+// =============================================================================
+console.log('\n51. 验证第十四关（创伤回响 · 覆写共鸣）全流程专属定制机制...');
+{
+    const level14 = LevelRegistry.find(l => l.levelId === 14);
+    if (!level14) throw new Error('未找到第十四关配置！');
+    if (!level14.blackScreenText || level14.blackScreenText.length < 4) {
+        throw new Error('第十四关缺少前置黑屏文案！');
+    }
+    const hasInjuryWord = level14.blackScreenText.some(t => t.includes('伤') || t.includes('痛') || t.includes('爆炸'));
+    if (!hasInjuryWord) {
+        throw new Error('第十四关黑屏文案未包含受伤/爆炸剧情要素！实际: ' + JSON.stringify(level14.blackScreenText));
+    }
+    console.log('   【已验证】前置黑屏文案已配置并包含受伤与爆炸波及要素（' + level14.blackScreenText.length + '句）！');
+
+    if (!Array.isArray(level14.wolfCountRange) || level14.wolfCountRange[0] !== 3 || level14.wolfCountRange[1] !== 6) {
+        throw new Error('第十四关伪人数应为随机 3~6！');
+    }
+    const candIds14 = (level14.candidateNPCs || []).map(c => c.id);
+    if (candIds14.includes('shaokexin') || candIds14.includes('lph')) {
+        throw new Error('第十四关候选NPC不得包含邵可欣（本视角）或主角LPH！实际: ' + candIds14.join(', '));
+    }
+    if (candIds14.length !== 10) {
+        throw new Error(`第十四关候选NPC数量应为 10 人，实际: ${candIds14.length}`);
+    }
+    console.log('   【已验证】伪人数随机 3~6，候选NPC为10人，已剔除邵可欣与LPH！');
+
+    app.startNewGame(14);
+    if (!app.currentLevel || app.currentLevel.levelId !== 14) {
+        throw new Error('启动第十四关失败！');
+    }
+    const map14 = app.currentLevel.map;
+    if (map14.startNodeId !== 'room_npc2') {
+        throw new Error(`第十四关起点应为东侧备勤室 room_npc2，实际: ${map14.startNodeId}`);
+    }
+    if (map14.exitNodeId !== 'room_life_support' || !map14.nodes['room_life_support']?.isExit) {
+        throw new Error('第十四关终点未正确设在维生环境总控机房 room_life_support！');
+    }
+    const roomCount14 = Object.keys(map14.nodes).length;
+    // 包含 50 间初始开放公用舱室 + 指挥官私人舱室 (共 50~51 间)
+    if (roomCount14 < 50 || roomCount14 > 51) {
+        throw new Error(`第十四关开局开放舱室数应为 50~51，实际为: ${roomCount14}`);
+    }
+    console.log('   【已验证】起点东侧备勤室、终点维生环境总控机房，开局开放 50~51 间舱室！');
+
+    const master14 = map14.masterShip;
+    const yellowLockIds = [
+        "room_armory", "room_escape_pod_w", "room_ion_thruster_l",
+        "room_antimatter_tap", "room_singularity_gate", "room_matter_stream",
+        "room_ion_thruster_r", "room_escape_pod_e"
+    ];
+    for (const yId of yellowLockIds) {
+        const lockedNode = master14?.lockedRooms?.[yId] || master14?.fogRooms?.[yId];
+        if (!lockedNode) {
+            throw new Error(`黄色区域 [${yId}] 应在 lockedRooms 或 fogRooms 中！`);
+        }
+    }
+    // 相邻黄色气闸区域在 lockedRooms 中且理由包含防爆安全气闸锁死
+    for (const yId of ['room_armory', 'room_escape_pod_w', 'room_singularity_gate', 'room_escape_pod_e']) {
+        const lockedNode = master14?.lockedRooms?.[yId];
+        if (!lockedNode || !lockedNode.lockReason.includes('防爆安全气闸锁死')) {
+            throw new Error(`相邻黄色区域 [${yId}] 应在 lockedRooms 中且理由包含防爆安全气闸锁死！`);
+        }
+    }
+    // 未开放私人舱室阻断理由为专属舱室上锁
+    const privateRoom = master14?.lockedRooms?.['room_npc_kaze'];
+    if (!privateRoom || !privateRoom.lockReason.includes('专属舱室上锁')) {
+        throw new Error(`专属私人舱 [room_npc_kaze] 阻断理由应包含专属舱室上锁，实际: ${privateRoom?.lockReason}`);
+    }
+    console.log('   【已验证】8 间黄色气闸锁闭与专属私人舱双轨阻断配置正确！');
+
+    // 3处黄线切断气闸通道
+    const severedPairs14 = [
+        ['room_path_e', 'room_corner_ne'],
+        ['room_corridor_w1', 'room_sub_generator'],
+        ['room_start', 'room_hangar_deck']
+    ];
+    for (const [rA, rB] of severedPairs14) {
+        const nodeA = map14.nodes[rA];
+        const nodeB = map14.nodes[rB];
+        if (nodeA && nodeB) {
+            const hasAtoB = (nodeA.neighbors || []).includes(rB);
+            const hasBtoA = (nodeB.neighbors || []).includes(rA);
+            if (hasAtoB || hasBtoA) {
+                throw new Error(`切断通道 [${rA} <-> ${rB}] 依然存在连通！`);
+            }
+        }
+    }
+    console.log('   【已验证】3 处黄线切断气闸通道在主电站修复前完全阻断！');
+
+    // 10位NPC站位验证
+    if (map14.nodes['room_exit']?.npcId !== 'prof_lu') throw new Error('跃迁前厅未放置陆知行！');
+    if (map14.nodes['room_recreation_gym']?.npcId !== 'noah') throw new Error('失重体能训练馆未放置诺亚！');
+    if (map14.nodes['room_armored_corridor']?.npcId !== 'colt_barnes') throw new Error('防爆通道未放置柯尔特&巴恩斯！');
+    if (map14.nodes['room_bridge_main']?.npcId !== 'elsa') throw new Error('最高指挥殿堂未放置艾尔莎！');
+    if (map14.nodes['room_main_reactor']?.npcId !== 'vivian_elena') throw new Error('重核聚变主反应堆未放置薇薇安&伊莲！');
+    if (map14.nodes['room_npc1']?.npcId !== 'kaze') throw new Error('动力操作台未放置卡罗！');
+    if (map14.nodes['room_npc3']?.npcId !== 'mode') throw new Error('安全避难室未放置莫德！');
+    if (map14.nodes['room_hydro_garden']?.npcId !== 'sophia') throw new Error('绿光生态舱未放置索菲亚！');
+    console.log('   【已验证】10 位 NPC 精确就位于各自指定站位（含双人站位）！');
+
+    // 场景投放 6 处体力箱
+    const food14 = Object.values(map14.nodes).filter(n => n.event && n.event.type === 'food');
+    if (food14.length !== 6) {
+        throw new Error(`第十四关应投放 6 处体力箱，实际: ${food14.length}`);
+    }
+    console.log('   【已验证】场景随机投放 6 处体力箱！');
+
+    // 双人链式招募验证 (柯尔特 & 巴恩斯)
+    app.phase = 'q3_explore';
+    const fakeNodeColtBarnes = { id: 'room_armored_corridor', name: '防爆通道' };
+    const coltNpc = app.allNpcMap.get('colt');
+    const barnesNpc = app.allNpcMap.get('barnes');
+    coltNpc.status = 'unmet';
+    barnesNpc.status = 'unmet';
+    let coltBarnesFinished = false;
+    app.showNpcEncounterModal({ id: 'colt_barnes' }, fakeNodeColtBarnes, () => {
+        coltBarnesFinished = true;
+    });
+    // 模拟点击第一个（柯尔特）接受招募
+    const btnAccept = global.document.getElementById('btn-encounter-accept');
+    btnAccept.click();
+    if (app.dialogueUI && typeof app.dialogueUI.finishSequence === "function") {
+        app.dialogueUI.finishSequence();
+    }
+    // 此时应弹出第二个（巴恩斯）接受招募
+    btnAccept.click();
+    if (app.dialogueUI && typeof app.dialogueUI.finishSequence === "function") {
+        app.dialogueUI.finishSequence();
+    }
+    if (!app.level14RecruitedNpcIds.has('colt') || !app.level14RecruitedNpcIds.has('barnes')) {
+        throw new Error('双人链式招募未能将柯尔特与巴恩斯均记录入 level14RecruitedNpcIds！');
+    }
+    console.log('   【已验证】防爆通道柯尔特与巴恩斯双人链式招募工作正常！');
+
+    // 主电站修复检验：未带伊莲或陆知行时步入主配电值班舱被阻断
+    app.level14PowerRestored = false;
+    app.teamMembers = [app.protagonist]; // 只有主角
+    const westEndNode = map14.nodes['room_west_end'];
+    app.explorationEngine.handleNodeEvents(westEndNode, false);
+    if (app.level14PowerRestored) {
+        throw new Error('无伊莲或陆知行随行时主电站错误地修复了！');
+    }
+    console.log('   【已验证】无伊莲/陆知行随行时步入主配电值班舱修电被严格拦截！');
+
+    // 加入伊莲后再次步入主配电值班舱 -> 触发修电弹窗并合闸
+    const elenaNpc = app.allNpcMap.get('elena');
+    elenaNpc.status = 'active';
+    app.teamMembers.push(elenaNpc);
+    app.level14RecruitedNpcIds.add('elena');
+    let powerModalAccepted = false;
+    const origShowPower = app.showPowerRestoreModal;
+    app.showPowerRestoreModal = (node, onConfirm) => {
+        powerModalAccepted = true;
+        onConfirm();
+    };
+    app.explorationEngine.handleNodeEvents(westEndNode, false);
+    app.showPowerRestoreModal = origShowPower;
+
+    if (!powerModalAccepted || !app.level14PowerRestored) {
+        throw new Error('伊莲在队时步入主配电值班舱未能成功合闸修复主电站！');
+    }
+    // 验证黄色锁闭区域是否已解禁进入 nodes，总房间数达到 58~60 间（包含已解锁的私人舱室）
+    const updatedRoomCount = Object.keys(map14.nodes).length;
+    if (updatedRoomCount < 58 || updatedRoomCount > 62) {
+        throw new Error(`主电站修复后全舰房间数应增加至 58~60 间，实际: ${updatedRoomCount}`);
+    }
+    for (const yId of yellowLockIds) {
+        if (!map14.nodes[yId]) {
+            throw new Error(`主电站修复后黄色舱室 [${yId}] 未成功注入 map.nodes！`);
+        }
+    }
+    console.log('   【已验证】伊莲随行成功合闸修复主电站，8 间黄色锁闭舱室全面解禁（共 58~59 间）！');
+
+    // 终点撤离三大任务判定
+    const exit14 = map14.nodes['room_life_support'];
+
+    // 失败情况 1：招募人数不足 7 人
+    app.level14RecruitedNpcIds.clear();
+    app.level14RecruitedNpcIds.add('elena');
+    app.teamMembers = [app.protagonist, elenaNpc];
+    app.explorationEngine.handleNodeEvents(exit14, false);
+    if (app.phase === 'victory') {
+        throw new Error('招募同伴不足7人时踩终点错误触发了通关！');
+    }
+    console.log('   【已验证】累计招募不足 7 人时踩终点被严格拦截！');
+
+    // 失败情况 2：招募满7人，但主电站未修复
+    app.level14PowerRestored = false;
+    for (const id of ['colt', 'barnes', 'elsa', 'prof_lu', 'sophia', 'noah']) {
+        app.level14RecruitedNpcIds.add(id);
+    }
+    app.explorationEngine.handleNodeEvents(exit14, false);
+    if (app.phase === 'victory') {
+        throw new Error('主电站未修复时踩终点错误触发了通关！');
+    }
+    console.log('   【已验证】主电站未修复时踩终点被严格拦截！');
+
+    // 失败情况 3：招募满7人且主电站已修复，但随行队伍缺少卡罗或莫德
+    app.level14PowerRestored = true;
+    app.teamMembers = [app.protagonist, elenaNpc];
+    app.explorationEngine.handleNodeEvents(exit14, false);
+    if (app.phase === 'victory') {
+        throw new Error('随行队伍缺少卡罗与莫德时踩终点错误触发了通关！');
+    }
+    console.log('   【已验证】队伍缺少卡罗或莫德时踩终点被严格拦截！');
+
+    // 成功情况：三大任务全部达成（招募>=7人 + 主电站已修 + 卡罗与莫德存活在队）
+    const kazeNpc = app.allNpcMap.get('kaze');
+    const modeNpc = app.allNpcMap.get('mode');
+    kazeNpc.status = 'active';
+    modeNpc.status = 'active';
+    app.teamMembers = [app.protagonist, elenaNpc, kazeNpc, modeNpc];
+    app.explorationEngine.handleNodeEvents(exit14, false);
+    if (app.phase !== 'victory') {
+        throw new Error('三大任务全部达成后踩终点未能触发通关！');
+    }
+    console.log('   【已验证】三大任务全部达成，成功触发胜利过关！');
+
+    // 验证通关不解锁新关卡
+    const UnlockEvaluator = global.window.UnlockEvaluator;
+    const res = UnlockEvaluator.evaluate(level14.unlockRules || [], {
+        evacuatedNpcIds: ['kaze', 'mode'],
+        evacuatedNpcs: [{ id: 'kaze' }, { id: 'mode' }],
+        level14PowerRestored: true,
+        level14RecruitedCount: 7
+    });
+    if (res.unlockedLevelIds && res.unlockedLevelIds.length > 0) {
+        throw new Error(`第十四关通关不应解锁任何新关卡，实际解锁了: ${res.unlockedLevelIds.join(', ')}`);
+    }
+    console.log('   【已验证】第十四关通关不解锁新关卡，标记关卡完成！');
+
+    // 关卡独立隔离性
+    app.startNewGame(12);
+    if (app.currentLevel.levelId !== 12) throw new Error('第十二关启动异常！');
+    app.startNewGame(11);
+    if (app.currentLevel.levelId !== 11) throw new Error('第十一关启动异常！');
+    app.startNewGame(10);
+    if (app.currentLevel.levelId !== 10) throw new Error('第十关启动异常！');
+    app.startNewGame(1);
+    if (app.currentLevel.levelId !== 1) throw new Error('第一关启动异常！');
+    console.log('   【已验证】第十四关独立机制完全隔离，其余关卡正常运行！');
+}
+
+console.log('\n====== [TEST PASSED] 全部 51 项核心流程、全关卡专属定制与第十四关全流程测试 100% 成功！ ======');
 
 
 

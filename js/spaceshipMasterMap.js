@@ -1450,55 +1450,75 @@ export const LEVEL_SECTOR_SPECS = {
     },
     13: {
         title: "第十三关：拟人茧房 · 拟态繁殖工坊",
-        subtitle: "机库重载与反应堆走廊大范围侵蚀",
-        startNodeId: "room_salvage_bay",
-        exitNodeId: "room_singularity_gate",
-        openRoomIds: [
-            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck", "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler",
-            "room_shields_emitter", "room_sub_coolant", "room_reactor_control", "room_plasma_manifold", "room_main_reactor", "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor",
-            "room_escape_pod_w", "room_ion_thruster_l", "room_antimatter_tap", "room_singularity_gate", "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e",
-            "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se", "room_gravity_well", "room_armory", "room_hub_n1", "room_npc2", "room_living_quarter", "room_hydro_garden", "room_starboard_dock"
-        ],
+        subtitle: "苏醒密封厅出发 · 全舰搜救并修复主电站后撤离",
+        startNodeId: "room_start",           // 苏醒密封厅
+        exitNodeId: "room_life_support",     // 维生环境总控机房
+        // 全图开放（全部普通舱室）；专属私人舱仅随队乘员可开
+        openRoomIds: Object.keys(MASTER_ROOM_DEFS).filter(id => !MASTER_ROOM_DEFS[id].isNpcRoom),
         npcPlacements: {
-            "room_reactor_control": "kaze",
-            "room_npc2": "shaokexin",
-            "room_shields_emitter": "mode"
+            "room_npc1": "kaze",                 // 卡罗 · 动力操作台（停电站位）
+            "room_npc2": "shaokexin",            // 邵可欣 · 医护角落（停电站位）
+            "room_npc3": "mode",                 // 莫德 · 西北隔离舱（停电站位）
+            "room_corner_ne": "prof_lu",         // 陆知行 · 跃迁前厅（本关改位）
+            "room_recreation_gym": "noah",       // 诺亚 · 失重体能训练馆 · 体能维持舱（停电站位）
+            "room_armored_corridor": "colt_barnes", // 柯尔特 & 巴恩斯 · 防爆甬道（双人依次招募）
+            "room_bridge_main": "elsa",          // 艾尔莎 · 最高指挥殿堂（本关改位）
+            "room_hydro_garden": "sophia",       // 索菲亚 · 立体水培温室（停电站位）
+            "room_main_reactor": "vivian_elena"  // 薇薇安 & 伊莲 · 重核聚变主反应堆（双人依次招募）
         },
-        foodPlacements: ["room_west_end", "room_water_purify", "room_coolant_tank"]
+        randomFoodCount: 6, // 场景随机投放六处体力箱
+        // 原图三处黄色气闸：断电时切断；主电站合闸后恢复通行
+        severedConnections: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        yellowSeveredPairs: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ]
     },
     14: {
-        title: "第十四关：异构核心 · 同构破缺",
-        subtitle: "生物拟态变异舱室 · 隔离墙消融贯通",
-        startNodeId: "room_start",
-        exitNodeId: "room_singularity_gate",
-        mutations: {
-            "room_hydro_garden": {
-                name: "【异化拟态温室】真菌异构母巢",
-                desc: "原有水培架被暗紫色的有机质纤维全面缠绕覆盖，脉动的生物荧光散发着致命诱惑！",
-                equipment: "mimic_nest"
-            },
-            "room_hub_n1": {
-                name: "【贯通主枢纽】双向扩建中厅",
-                desc: "原本隔绝的防爆钢板在高温中熔断，形成宽敞的双向联通大厅！",
-                shape: "octagon"
-            }
-        },
-        openRoomIds: [
-            "room_start", "room_corridor_w1", "room_corner_se", "room_hub_n1", "room_storage_ne",
-            "room_npc1", "room_west_end", "room_junction_nw", "room_path_e", "room_corner_ne", "room_npc2",
-            "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_gravity_well", "room_armory",
-            "room_water_purify", "room_life_support", "room_machine_shop", "room_hangar_deck", "room_sub_generator",
-            "room_shields_emitter", "room_sub_coolant", "room_reactor_control", "room_plasma_manifold", "room_main_reactor",
-            "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_antimatter_tap", "room_singularity_gate",
-            "room_matter_stream", "room_ion_thruster_l", "room_ion_thruster_r", "room_escape_pod_w", "room_escape_pod_e",
-            "room_specimen_vault", "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_starboard_dock"
-        ],
+        title: "第十四关：创伤回响 · 覆写共鸣",
+        subtitle: "医护角落苏醒 · 修复全舰电网携同伴撤离",
+        startNodeId: "room_npc2",             // 东侧备勤室 · 医护角落 [4, 2] (邵可欣停电苏醒处)
+        exitNodeId: "room_life_support",      // 维生环境总控机房 [6, 4] (终点)
+        // 全图开放（50间初始公用舱室，8间黄色锁闭区待主电站合闸后解锁；专属私人舱需随队乘员授权解锁）
+        openRoomIds: Object.keys(MASTER_ROOM_DEFS).filter(id =>
+            !MASTER_ROOM_DEFS[id].isNpcRoom &&
+            !["room_armory", "room_escape_pod_w", "room_ion_thruster_l", "room_antimatter_tap", "room_singularity_gate", "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e"].includes(id)
+        ),
         npcPlacements: {
-            "room_npc1": "kaze",
-            "room_med_surgery": "shaokexin",
-            "room_reactor_control": "mode"
+            // 特殊改位 NPC
+            "room_exit": "prof_lu",             // 陆知行 · 跃迁前厅 [1, 1]
+            "room_recreation_gym": "noah",       // 诺亚 · 失重体能训练馆 · 体能维持舱 [7, 3]（出场必在体能维持舱）
+            "room_armored_corridor": "colt_barnes", // 柯尔特 & 巴恩斯 · 防爆通道 [7, 5] (双人站位，依次招募)
+            "room_bridge_main": "elsa",          // 艾尔莎 · 最高指挥殿堂 [4, 0]
+            "room_main_reactor": "vivian_elena", // 薇薇安 & 伊莲 · 重核聚变主反应堆 [4, 5] (双人站位，依次招募)
+            // 停电站位 NPC (剔除LPH与邵可欣)
+            "room_npc1": "kaze",                 // 卡罗 · 动力操作台 [1, 3]
+            "room_npc3": "mode",                 // 莫德 · 安全避难室 [0, 2]
+            "room_hydro_garden": "sophia"        // 索菲亚 · 绿光生态舱 [6, 2]
         },
-        foodPlacements: ["room_storage_ne", "room_mess_hall", "room_coolant_tank"]
+        randomFoodCount: 6, // 场景随机投放六处体力箱
+        // 原图黄色气闸：断电时切断；主电站合闸后恢复通行
+        severedConnections: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        yellowSeveredPairs: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [
+            "room_armory", "room_escape_pod_w", "room_ion_thruster_l",
+            "room_antimatter_tap", "room_singularity_gate", "room_matter_stream",
+            "room_ion_thruster_r", "room_escape_pod_e"
+        ]
     },
     15: {
         title: "第十五关：折叠维度 · 卡拉比-丘流形",
@@ -1523,23 +1543,35 @@ export const LEVEL_SECTOR_SPECS = {
     },
     16: {
         title: "第十六关：因果律断 · 非定域纠缠",
-        subtitle: "舰艏、科研、中腹与生活区全通",
-        startNodeId: "room_start",
-        exitNodeId: "room_bridge_main",
-        openRoomIds: [
-            "room_sensor_array", "room_tactical_plan", "room_bridge_sub", "room_bridge_main", "room_ai_core", "room_comm_center", "room_observation",
-            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne", "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
-            "room_npc3", "room_junction_nw", "room_path_e", "room_hub_n1", "room_npc2", "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
-            "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se", "room_gravity_well", "room_armory", "room_recreation_gym", "room_east_airlock",
-            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck", "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
-            "room_shields_emitter", "room_sub_coolant", "room_reactor_control", "room_plasma_manifold", "room_main_reactor"
-        ],
+        subtitle: "动力操作台出发 · 全舰搜救并修复主电站后撤离",
+        startNodeId: "room_npc1",            // 卡罗停电站位 · 动力操作台
+        exitNodeId: "room_life_support",     // 维生环境总控机房
+        // 全图开放（全部普通舱室）；专属私人舱仅随队乘员可开
+        openRoomIds: Object.keys(MASTER_ROOM_DEFS).filter(id => !MASTER_ROOM_DEFS[id].isNpcRoom),
         npcPlacements: {
-            "room_tactical_plan": "kaze",
-            "room_npc2": "shaokexin",
-            "room_npc3": "mode"
+            "room_npc1": "kaze",                    // 卡罗 · 动力操作台（停电站位 / 起点）
+            "room_npc2": "shaokexin",               // 邵可欣 · 医护角落（停电站位）
+            "room_corner_ne": "prof_lu",            // 陆知行 · 跃迁前厅（本关改位）
+            "room_gravity_well": "noah",            // 诺亚 · 重力发生核（本关改位）
+            "room_med_surgery": "elsa",             // 艾尔莎 · 全自动急救台（本关指定）
+            "room_hydro_garden": "sophia",          // 索菲亚 · 立体水培温室（停电站位）
+            // 柯尔特、巴恩斯、薇薇安、伊莲四人同在主反应堆，依次招募（去除莫德）
+            "room_main_reactor": "reactor_quartet"
         },
-        foodPlacements: ["room_storage_ne", "room_west_end", "room_mess_hall"]
+        randomFoodCount: 6,
+        severedConnections: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        yellowSeveredPairs: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        useHostCompatibilityLock: true,
+        yellowLockRoomIds: [],
+        hostCompatLockReason: "神经宿主契合度不足 · 该舱段暂无法共鸣进入"
     },
     17: {
         title: "第十七关：空洞节点 · 真空极化",
@@ -1819,7 +1851,9 @@ export function buildSpaceshipLevelMap(levelId) {
                 lockReason = "专属舱室上锁 · 需该乘员随行";
             } else if (spec.useHostCompatibilityLock) {
                 const isYellow = spec.yellowLockRoomIds && spec.yellowLockRoomIds.includes(id);
-                lockReason = isYellow ? "防爆安全气闸锁死 · 供电切断" : "宿主契合度不足，无法探索";
+                lockReason = isYellow
+                    ? "防爆安全气闸锁死 · 供电切断"
+                    : (spec.hostCompatLockReason || "宿主契合度不足，无法探索");
             }
 
             lockedRooms[id] = {

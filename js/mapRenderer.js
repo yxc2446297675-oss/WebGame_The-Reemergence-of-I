@@ -90,6 +90,68 @@ const DECK_THEMES = {
 };
 
 /**
+ * 阶段光感：白昼 / 傍晚 / 黑夜 / 伤亡余波
+ * 用于主舞台蓝图的色温、雾浓、未探明区明暗与警报闪烁
+ */
+const PHASE_ATMOSPHERE = {
+    day: {
+        bg: "#050811",
+        grid: "rgba(56, 189, 248, 0.035)",
+        conduit: "#38bdf8",
+        conduitDim: "rgba(56, 189, 248, 0.35)",
+        conduitShadow: "rgba(56, 189, 248, 0.4)",
+        grade: null,
+        fogColor: "8, 14, 28",
+        fogAlpha: 0.14,
+        fogRadius: 0.72,
+        edgeGlow: null
+    },
+    evening: {
+        bg: "#0a0705",
+        grid: "rgba(251, 146, 60, 0.045)",
+        conduit: "#fb923c",
+        conduitDim: "rgba(251, 146, 60, 0.38)",
+        conduitShadow: "rgba(251, 146, 60, 0.45)",
+        grade: { r: 255, g: 132, b: 48, alpha: 0.13 },
+        fogColor: "48, 22, 8",
+        fogAlpha: 0.34,
+        fogRadius: 0.58,
+        edgeGlow: { r: 251, g: 146, b: 60, alpha: 0.16 }
+    },
+    night: {
+        bg: "#020106",
+        grid: "rgba(129, 140, 248, 0.028)",
+        conduit: "#818cf8",
+        conduitDim: "rgba(129, 140, 248, 0.32)",
+        conduitShadow: "rgba(239, 68, 68, 0.35)",
+        grade: { r: 70, g: 40, b: 120, alpha: 0.18 },
+        fogColor: "4, 2, 14",
+        fogAlpha: 0.46,
+        fogRadius: 0.48,
+        edgeGlow: { r: 239, g: 68, b: 68, alpha: 0.22 },
+        bloodWash: { r: 180, g: 20, b: 40, alpha: 0.10 }
+    },
+    aftermath: {
+        bg: "#080305",
+        grid: "rgba(239, 68, 68, 0.04)",
+        conduit: "#f87171",
+        conduitDim: "rgba(248, 113, 113, 0.35)",
+        conduitShadow: "rgba(239, 68, 68, 0.4)",
+        grade: { r: 160, g: 30, b: 45, alpha: 0.16 },
+        fogColor: "28, 4, 8",
+        fogAlpha: 0.38,
+        fogRadius: 0.52,
+        edgeGlow: { r: 239, g: 68, b: 68, alpha: 0.28 },
+        bloodWash: { r: 200, g: 16, b: 36, alpha: 0.12 }
+    }
+};
+
+function resolveAtmosphereProfile(options = {}) {
+    const key = options.atmosphere || "day";
+    return PHASE_ATMOSPHERE[key] || PHASE_ATMOSPHERE.day;
+}
+
+/**
  * 绘制真实星舰舱室几何轮廓 (多边形外墙、内凹门斗、切角与翼舱)
  */
 function drawRoomPolygon(ctx, shape, x, y, w, h) {
@@ -653,7 +715,8 @@ function drawRoomDecoration(ctx, node, x, y, boxSize, theme) {
             dr_elsa: "#06b6d4",
             colt: "#f59e0b",
             barnes: "#84cc16",
-            colt_barnes: "#f59e0b"
+            colt_barnes: "#f59e0b",
+            vivian_elena: "#a78bfa"
         };
         const roomColor = npcColors[targetNpcId] || "#4ade80";
         const s = boxSize;
@@ -831,7 +894,112 @@ export class MapRenderer {
         this.currentScale = 1.0;
         this.currentCam = { x: 520, y: 410 };
 
+        // 阶段光感：警报短促红闪
+        this.alertFlashUntil = 0;
+        this.alertFlashRaf = null;
+
         this.initInteractiveGestures();
+    }
+
+    /**
+     * 位移动画期间沿用最近一次 render 的 options（含阶段光感）
+     */
+    getPreservedOptions(extra = {}) {
+        const prev = (this.lastRenderParams && this.lastRenderParams.options) || {};
+        return { ...prev, ...extra };
+    }
+
+    /**
+     * 触发短促警报红闪（约 1.1 秒），地图边框与全屏血色短暂脉冲
+     */
+    triggerAlertFlash(durationMs = 1100) {
+        this.alertFlashUntil = (typeof performance !== "undefined" ? performance.now() : Date.now()) + durationMs;
+        if (this.alertFlashRaf) return;
+        const tick = () => {
+            const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+            if (now < this.alertFlashUntil) {
+                this.scheduleRender();
+                this.alertFlashRaf = requestAnimationFrame(tick);
+            } else {
+                this.alertFlashRaf = null;
+                this.scheduleRender();
+            }
+        };
+        if (typeof requestAnimationFrame !== "undefined") {
+            this.alertFlashRaf = requestAnimationFrame(tick);
+        } else {
+            this.scheduleRender();
+        }
+    }
+
+    /**
+     * 屏幕空间阶段光感：色温罩、径向雾、边缘辉光、伤亡血洗、警报闪烁
+     */
+    drawPhaseAtmosphereOverlay(ctx, displayW, displayH, profile, options = {}) {
+        if (!ctx || !profile) return;
+        const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+
+        // 全局色温罩
+        if (profile.grade) {
+            const g = profile.grade;
+            ctx.fillStyle = `rgba(${g.r}, ${g.g}, ${g.b}, ${g.alpha})`;
+            ctx.fillRect(0, 0, displayW, displayH);
+        }
+
+        // 伤亡/黑夜额外血红洗染
+        if (profile.bloodWash) {
+            const b = profile.bloodWash;
+            ctx.fillStyle = `rgba(${b.r}, ${b.g}, ${b.b}, ${b.alpha})`;
+            ctx.fillRect(0, 0, displayW, displayH);
+        }
+
+        // 径向雾：边缘更浓，模拟舱内照明不足 / 傍晚雾气
+        const cx = displayW * 0.5;
+        const cy = displayH * 0.48;
+        const radius = Math.max(displayW, displayH) * (profile.fogRadius || 0.7);
+        const fog = ctx.createRadialGradient(cx, cy, radius * 0.28, cx, cy, radius);
+        fog.addColorStop(0, `rgba(${profile.fogColor}, 0)`);
+        fog.addColorStop(0.55, `rgba(${profile.fogColor}, ${profile.fogAlpha * 0.45})`);
+        fog.addColorStop(1, `rgba(${profile.fogColor}, ${profile.fogAlpha})`);
+        ctx.fillStyle = fog;
+        ctx.fillRect(0, 0, displayW, displayH);
+
+        // 边缘阶段辉光（傍晚暖橙 / 黑夜与余波血红）
+        if (profile.edgeGlow) {
+            const e = profile.edgeGlow;
+            const edge = Math.max(28, Math.min(displayW, displayH) * 0.09);
+            const eg = ctx.createLinearGradient(0, 0, 0, edge);
+            eg.addColorStop(0, `rgba(${e.r}, ${e.g}, ${e.b}, ${e.alpha})`);
+            eg.addColorStop(1, `rgba(${e.r}, ${e.g}, ${e.b}, 0)`);
+            ctx.fillStyle = eg;
+            ctx.fillRect(0, 0, displayW, edge);
+
+            const egB = ctx.createLinearGradient(0, displayH, 0, displayH - edge);
+            egB.addColorStop(0, `rgba(${e.r}, ${e.g}, ${e.b}, ${e.alpha * 0.85})`);
+            egB.addColorStop(1, `rgba(${e.r}, ${e.g}, ${e.b}, 0)`);
+            ctx.fillStyle = egB;
+            ctx.fillRect(0, displayH - edge, displayW, edge);
+        }
+
+        // 警报短促红闪 + 边框脉冲
+        const flashLeft = this.alertFlashUntil - now;
+        if (flashLeft > 0 || options.alertPulse) {
+            const t = flashLeft > 0
+                ? 1 - Math.min(1, flashLeft / 1100)
+                : (Math.sin(now / 220) + 1) * 0.5;
+            const flashAlpha = flashLeft > 0
+                ? 0.32 * Math.sin(Math.min(1, (1100 - flashLeft) / 180) * Math.PI) * (1 - t * 0.55)
+                : 0.08 + t * 0.07;
+            if (flashAlpha > 0.01) {
+                ctx.fillStyle = `rgba(239, 68, 68, ${flashAlpha})`;
+                ctx.fillRect(0, 0, displayW, displayH);
+            }
+            const borderAlpha = flashLeft > 0 ? 0.35 + flashAlpha : 0.12 + t * 0.18;
+            const inset = 3;
+            ctx.strokeStyle = `rgba(239, 68, 68, ${borderAlpha})`;
+            ctx.lineWidth = flashLeft > 0 ? 4.5 : 2.5;
+            ctx.strokeRect(inset, inset, displayW - inset * 2, displayH - inset * 2);
+        }
     }
 
     /**
@@ -1209,6 +1377,7 @@ export class MapRenderer {
 
         const ctx = this.ctx;
         const layout = this.getLayout();
+        const atmosphere = resolveAtmosphereProfile(options);
 
         // 严格遵循工业级高清晰度渲染适配：动态适配真实容器像素尺寸并应用 DPR (Device Pixel Ratio)
         const rect = this.getCanvasRect();
@@ -1260,8 +1429,8 @@ export class MapRenderer {
         this.currentScale = uniformScale;
         this.currentCam = { x: targetCamX, y: targetCamY };
 
-        // 1. 清空背景 (深邃科技黑夜背景)
-        ctx.fillStyle = "#050811";
+        // 1. 清空背景（阶段光感底板色）
+        ctx.fillStyle = atmosphere.bg;
         ctx.fillRect(0, 0, displayW, displayH);
 
         ctx.save();
@@ -1271,7 +1440,7 @@ export class MapRenderer {
         ctx.translate(-targetCamX, -targetCamY);
 
         // 绘制微弱背景装甲格栅
-        ctx.strokeStyle = "rgba(56, 189, 248, 0.035)";
+        ctx.strokeStyle = atmosphere.grid;
         ctx.lineWidth = 1;
         const gridSize = 32;
         const gridMinX = -200;
@@ -1405,19 +1574,19 @@ export class MapRenderer {
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
 
-                // 4.3 走廊中央高科技能量与导航导轨 (Glowing Conduit Line)
+                // 4.3 走廊中央高科技能量与导航导轨 (Glowing Conduit Line) — 随阶段光感变色
                 if (isTraversingEdge) {
-                    ctx.strokeStyle = "#38bdf8";
+                    ctx.strokeStyle = atmosphere.conduit;
                     ctx.lineWidth = 3.5;
-                    ctx.shadowColor = "#38bdf8";
+                    ctx.shadowColor = atmosphere.conduit;
                     ctx.shadowBlur = 14;
                 } else if (bothVisited) {
-                    ctx.strokeStyle = "#38bdf8";
+                    ctx.strokeStyle = atmosphere.conduit;
                     ctx.lineWidth = 2.2;
-                    ctx.shadowColor = "rgba(56, 189, 248, 0.4)";
+                    ctx.shadowColor = atmosphere.conduitShadow;
                     ctx.shadowBlur = 6;
                 } else {
-                    ctx.strokeStyle = "rgba(56, 189, 248, 0.35)";
+                    ctx.strokeStyle = atmosphere.conduitDim;
                     ctx.lineWidth = 1.8;
                     ctx.setLineDash([4, 4]);
                     ctx.shadowBlur = 0;
@@ -1474,13 +1643,13 @@ export class MapRenderer {
                 lph: "#38bdf8", kaze: "#38bdf8", kaluo: "#38bdf8", shaokexin: "#f43f5e", mode: "#a855f7",
                 prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
                 vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
-                colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b"
+                colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b", vivian_elena: "#a78bfa"
             };
             const ownerNames = {
                 lph: "指挥官", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
                 prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
                 vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
-                colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯"
+                colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲"
             };
             const strokeColor = isNpc ? (npcColors[npcOwnerId] || "#38bdf8") : "#ef4444";
             const ownerName = ownerNames[npcOwnerId] || "乘员";
@@ -1571,7 +1740,11 @@ export class MapRenderer {
                 ctx.strokeStyle = isPatrolTarget ? (isPatrolDone ? "#22c55e" : "#f59e0b") : theme.border;
                 ctx.lineWidth = isPatrolTarget ? 2.6 : 2.2;
             } else {
-                ctx.fillStyle = isPatrolTarget ? "rgba(30, 27, 75, 0.85)" : (adjacentDir ? "rgba(15, 23, 42, 0.85)" : "rgba(15, 23, 42, 0.65)");
+                // 黑夜 / 伤亡余波：未探明舱更深，强化“灯灭后的未知”
+                const deepFog = (options.atmosphere === "night" || options.atmosphere === "aftermath");
+                const adjFill = deepFog ? "rgba(6, 8, 16, 0.92)" : "rgba(15, 23, 42, 0.85)";
+                const dimFill = deepFog ? "rgba(3, 4, 10, 0.88)" : "rgba(15, 23, 42, 0.65)";
+                ctx.fillStyle = isPatrolTarget ? "rgba(30, 27, 75, 0.85)" : (adjacentDir ? adjFill : dimFill);
                 ctx.strokeStyle = isPatrolTarget ? (isPatrolDone ? "#22c55e" : "#f59e0b") : (adjacentDir ? "rgba(56, 189, 248, 0.85)" : "rgba(148, 163, 184, 0.4)");
                 ctx.lineWidth = isPatrolTarget ? 2.6 : (adjacentDir ? 2.0 : 1.5);
                 if (!adjacentDir && !isPatrolTarget) ctx.setLineDash([4, 3]);
@@ -1679,13 +1852,13 @@ export class MapRenderer {
                     lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
                     prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
                     vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
-                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯"
+                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲"
                 };
                 const ownerColors = {
                     lph: "#38bdf8", kaze: "#60a5fa", kaluo: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc",
                     prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
                     vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
-                    colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b"
+                    colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b", vivian_elena: "#a78bfa"
                 };
                 const roomNpcId = (node.event && node.event.type === "npc" && node.event.npcId) || node.npcId;
                 const isExitRoom = !!(node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit"))));
@@ -1743,13 +1916,13 @@ export class MapRenderer {
                     lph: "L.P.H", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
                     prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
                     vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
-                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯"
+                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲"
                 };
                 const ownerColors = {
                     lph: "#38bdf8", kaze: "#60a5fa", kaluo: "#60a5fa", shaokexin: "#f472b6", mode: "#c084fc",
                     prof_lu: "#10b981", luzhixing: "#10b981", noah: "#6366f1", sophia: "#ec4899",
                     vivian: "#f43f5e", elena: "#fb923c", elsa: "#06b6d4", dr_elsa: "#06b6d4",
-                    colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b"
+                    colt: "#f59e0b", barnes: "#84cc16", colt_barnes: "#f59e0b", vivian_elena: "#a78bfa"
                 };
                 const roomNpcId = (node.event && node.event.type === "npc" && node.event.npcId) || node.npcId;
                 const isExitRoom = !!(node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit"))));
@@ -1903,6 +2076,9 @@ export class MapRenderer {
 
         ctx.restore(); // 恢复变换矩阵
 
+        // 7.5 阶段光感罩：色温 / 雾浓 / 伤亡血洗 / 警报闪烁（屏幕空间，不影响 HUD 可读性前先画）
+        this.drawPhaseAtmosphereOverlay(ctx, displayW, displayH, atmosphere, options);
+
         // 8. 绘制屏幕固定 HUD (底部提示与缩放指示，自适应手机与桌面)
         const hudH = 26;
         ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
@@ -1929,9 +2105,10 @@ export class MapRenderer {
             this.skipAnimation();
         }
 
+        const opts = this.getPreservedOptions();
         const nodes = levelMap && levelMap.nodes;
         if (!nodes || !fromNodeId || !toNodeId || fromNodeId === toNodeId) {
-            this.render(levelMap, toNodeId, visitedNodes, teamMembers);
+            this.render(levelMap, toNodeId, visitedNodes, teamMembers, null, 0, opts);
             if (onComplete) onComplete();
             return;
         }
@@ -1939,13 +2116,13 @@ export class MapRenderer {
         const fromNode = nodes[fromNodeId];
         const toNode = nodes[toNodeId];
         if (!fromNode || !toNode) {
-            this.render(levelMap, toNodeId, visitedNodes, teamMembers);
+            this.render(levelMap, toNodeId, visitedNodes, teamMembers, null, 0, opts);
             if (onComplete) onComplete();
             return;
         }
 
         if (typeof requestAnimationFrame === "undefined") {
-            this.render(levelMap, toNodeId, visitedNodes, teamMembers);
+            this.render(levelMap, toNodeId, visitedNodes, teamMembers, null, 0, opts);
             if (onComplete) onComplete();
             return;
         }
@@ -1965,7 +2142,7 @@ export class MapRenderer {
                 cancelAnimationFrame(this.animationFrameId);
                 this.animationFrameId = null;
             }
-            this.render(levelMap, toNodeId, visitedNodes, teamMembers);
+            this.render(levelMap, toNodeId, visitedNodes, teamMembers, null, 0, opts);
             if (onComplete) onComplete();
         };
 
@@ -1991,7 +2168,7 @@ export class MapRenderer {
                     fromId: fromNodeId,
                     toId: toNodeId,
                     progress: t
-                }, 0);
+                }, 0, opts);
 
                 this.animationFrameId = requestAnimationFrame(step);
             } else if (elapsed < moveDuration + holdDuration) {
@@ -2004,7 +2181,7 @@ export class MapRenderer {
                     fromId: fromNodeId,
                     toId: toNodeId,
                     progress: 1
-                }, pulseProgress);
+                }, pulseProgress, opts);
 
                 this.animationFrameId = requestAnimationFrame(step);
             } else {
@@ -2023,10 +2200,11 @@ export class MapRenderer {
             this.skipAnimation();
         }
 
+        const opts = this.getPreservedOptions();
         const nodes = levelMap && levelMap.nodes;
         if (!nodes || !pathNodeIds || pathNodeIds.length <= 1) {
             const destId = pathNodeIds ? pathNodeIds[pathNodeIds.length - 1] : null;
-            this.render(levelMap, destId, visitedNodes, teamMembers);
+            this.render(levelMap, destId, visitedNodes, teamMembers, null, 0, opts);
             if (onComplete) onComplete();
             return;
         }
@@ -2039,7 +2217,7 @@ export class MapRenderer {
                     onSegmentStep(i, pathNodeIds[i], pathNodeIds[i + 1]);
                 }
             }
-            this.render(levelMap, destId, visitedNodes, teamMembers);
+            this.render(levelMap, destId, visitedNodes, teamMembers, null, 0, opts);
             if (onComplete) onComplete();
             return;
         }
@@ -2067,7 +2245,7 @@ export class MapRenderer {
                 cancelAnimationFrame(this.animationFrameId);
                 this.animationFrameId = null;
             }
-            this.render(levelMap, destId, visitedNodes, teamMembers);
+            this.render(levelMap, destId, visitedNodes, teamMembers, null, 0, opts);
             if (onComplete) onComplete();
         };
 
@@ -2106,7 +2284,7 @@ export class MapRenderer {
                     toId: pathNodeIds[curSegIdx + 1],
                     progress: segT,
                     path: pathNodeIds
-                }, 0);
+                }, 0, opts);
 
                 this.animationFrameId = requestAnimationFrame(step);
             } else if (elapsed < totalMoveDuration + holdDuration) {
@@ -2122,7 +2300,7 @@ export class MapRenderer {
                     toId: destId,
                     progress: 1,
                     path: pathNodeIds
-                }, pulseProgress);
+                }, pulseProgress, opts);
 
                 this.animationFrameId = requestAnimationFrame(step);
             } else {

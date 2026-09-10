@@ -13,7 +13,8 @@ import { buildSpaceshipLevelMap, LEVEL_SECTOR_SPECS } from "./spaceshipMasterMap
 
 export const GeneratedLevels = [];
 
-for (let lvlId = 13; lvlId <= 25; lvlId++) {
+for (let lvlId = 15; lvlId <= 25; lvlId++) {
+    if (lvlId === 16) continue; // 第十六关已迁入 levels.js 手工定制
     const spec = LEVEL_SECTOR_SPECS[lvlId] || LEVEL_SECTOR_SPECS[1];
     const lvlMap = buildSpaceshipLevelMap(lvlId);
 

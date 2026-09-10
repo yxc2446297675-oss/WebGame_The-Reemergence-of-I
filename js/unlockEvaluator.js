@@ -105,6 +105,24 @@ export class UnlockEvaluator {
                     break;
                 }
 
+                // 11. 第十三关：主电站已合闸
+                case "level13_power_restored": {
+                    isSatisfied = !!context.level13PowerRestored;
+                    break;
+                }
+
+                // 12. 第十四关：主电站已合闸
+                case "level14_power_restored": {
+                    isSatisfied = !!context.level14PowerRestored;
+                    break;
+                }
+
+                // 第十六关：主电站已合闸
+                case "level16_power_restored": {
+                    isSatisfied = !!context.level16PowerRestored;
+                    break;
+                }
+
                 default:
                     console.warn(`[UnlockEvaluator] 未知的解锁条件类型: ${condition.type}`);
                     isSatisfied = false;

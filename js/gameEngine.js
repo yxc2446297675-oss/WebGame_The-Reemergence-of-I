@@ -13,7 +13,7 @@ import { SaveSystem } from "./saveSystem.js";
 import { MapRenderer } from "./mapRenderer.js";
 import { UnlockEvaluator } from "./unlockEvaluator.js";
 import { DiaryUI } from "./diaryUI.js";
-import { getNpcRoomDefs, getRelativeDirection, buildSpaceshipLevelMap } from "./spaceshipMasterMap.js";
+import { getNpcRoomDefs, getRelativeDirection, buildSpaceshipLevelMap, LEVEL_SECTOR_SPECS } from "./spaceshipMasterMap.js";
 import { Level1TutorialPages, Level1ExploreTutorialSequence } from "./level1Tutorial.js";
 
 export class GameEngine {
@@ -31,6 +31,8 @@ export class GameEngine {
         this.phase = "menu"; // menu, q1_black, q2_intro, q3_explore, q4_inquiry, q5_judgement, q6_night, q7_day, victory, gameover
         this.dayCount = 1;
         this.stamina = 100;
+        // 伤亡后的白昼探索保留血红余波，直至下一晚傍晚清除
+        this.mapAftermathLighting = false;
         this.actionLogs = [];
 
         // 角色与队伍
@@ -748,10 +750,15 @@ export class GameEngine {
             const taskName = rule.taskName || `任务${taskNumStr}：${rule.title || "特定撤离"}`;
             const taskObjective = rule.taskObjective || "达成特定撤离条件并到达终点大门";
             // 绝不预先透露解锁的是哪个具体关卡
-            const taskReward = "解构未知深层扇区 🔒???";
+            const taskReward = (rule.unlockLevelIds && rule.unlockLevelIds.length > 0)
+                ? "解构未知深层扇区 🔒???"
+                : (this.currentLevel?.levelId === 13 ? "通关标记本扇区完成 ✓" : "无额外扇区解锁");
 
-            // 检查历史解锁状态
-            const isUnlockedHistory = (rule.unlockLevelIds || []).every(id => this.saveSystem.isLevelUnlocked(id));
+            // 检查历史解锁/完成状态（无后续解锁时，以本关「已完成」为准）
+            const unlockIds = rule.unlockLevelIds || [];
+            const isUnlockedHistory = unlockIds.length > 0
+                ? unlockIds.every(id => this.saveSystem.isLevelUnlocked(id))
+                : !!(this.currentLevel?.levelId && this.saveSystem.isLevelCompleted(this.currentLevel.levelId));
 
             // 当局实时队伍状态判定
             let realtimeStatus = "";
@@ -867,6 +874,22 @@ export class GameEngine {
                     realtimeStatus = `👥 队伍尚有 ${activeNpcIds.length} 名同伴随行（任务要求独自一人脱离，零随行）`;
                     realtimeClass = "realtime-waiting";
                 }
+            } else if (cond.type === "level13_power_restored") {
+                if (this.level13PowerRestored) {
+                    realtimeStatus = "🟢 主电站已合闸，黄色气闸已解除";
+                    realtimeClass = "realtime-ready";
+                } else {
+                    realtimeStatus = "⚡ 主电站离线中（需前往主配电值班舱合闸修复）";
+                    realtimeClass = "realtime-waiting";
+                }
+            } else if (cond.type === "level14_power_restored") {
+                if (this.level14PowerRestored) {
+                    realtimeStatus = "🟢 主电网已合闸，全舰黄色防爆气闸已解除";
+                    realtimeClass = "realtime-ready";
+                } else {
+                    realtimeStatus = "⚡ 主电网断开（需伊莲或陆知行随行协助前往主配电值班舱修复）";
+                    realtimeClass = "realtime-waiting";
+                }
             } else {
                 realtimeStatus = "🎯 特殊条件待达成";
                 realtimeClass = "realtime-waiting";
@@ -935,6 +958,7 @@ export class GameEngine {
         this.levelGrid.innerHTML = "";
 
         const unlockedLevels = this.saveSystem.getUnlockedLevels();
+        const completedLevels = this.saveSystem.getCompletedLevels();
 
         const levelNames = [
             "残破遗迹", "深层重叠", "湮灭奇点", "高熵裂隙", "拟态深渊",
@@ -947,10 +971,11 @@ export class GameEngine {
         for (let i = 1; i <= 25; i++) {
             const card = document.createElement("button");
             const isUnlocked = unlockedLevels.includes(i);
+            const isCompleted = completedLevels.includes(i);
             const levelNumStr = i < 10 ? `0${i}` : `${i}`;
             const levelName = levelNames[i - 1] || `扇区 ${levelNumStr}`;
 
-            card.className = `level-card ${isUnlocked ? "level-unlocked" : "level-locked"} ${i === 2 ? "level-2" : ""} ${i === 14 ? "level-14" : ""}`;
+            card.className = `level-card ${isUnlocked ? "level-unlocked" : "level-locked"} ${isCompleted ? "level-completed" : ""} ${i === 2 ? "level-2" : ""} ${i === 14 ? "level-14" : ""}`;
             card.id = `btn-level-${i}`;
             if (i === 1) {
                 card.setAttribute("data-legacy-id", "btn-menu-new-game");
@@ -964,10 +989,14 @@ export class GameEngine {
                 card.disabled = true;
             }
 
+            let statusText = "🔒 待解锁";
+            if (isUnlocked && isCompleted) statusText = "✓ 已完成";
+            else if (isUnlocked) statusText = "● 开放";
+
             card.innerHTML = `
                 <span class="card-num">SECTOR ${levelNumStr}</span>
                 <span class="card-name">${levelName}</span>
-                <span class="card-status">${isUnlocked ? "● 开放" : "🔒 待解锁"}</span>
+                <span class="card-status">${statusText}</span>
             `;
 
             card.addEventListener("click", () => {
@@ -1015,6 +1044,9 @@ export class GameEngine {
         this.nightModeDefended = false;
         this.level2PowerRestored = false;
         this.level3PowerRestored = false;
+        this.level13PowerRestored = false;
+        this.level14PowerRestored = false;
+        this.level14RecruitedNpcIds = new Set();
         this.level4PatrolVisited = new Set();
         this.level9PatrolStep = 0;
         this.level10KazeNightKilled = false;
@@ -1024,6 +1056,7 @@ export class GameEngine {
         this._l1TutorialQueue = null;
         this._l1TutorialOnDone = null;
         this.unlockedNpcRooms = new Set();
+        this.mapAftermathLighting = false;
         this.modalEncounter?.classList.add("hidden");
         this.modalPowerRestore?.classList.add("hidden");
         this.modalInquiry?.classList.add("hidden");
@@ -1202,7 +1235,13 @@ export class GameEngine {
         this.phase = "q3_explore";
         this.checkAndUnlockNpcRooms();
         this.updateHeaderUI();
+        this.renderStageMap();
         this.renderExplorationControls();
+
+        // 伤亡次日：再闪一次警报，强化“船还浸在血色里”
+        if (this.mapAftermathLighting) {
+            this.triggerMapAlertFlash();
+        }
 
         const beginExploreHint = () => {
             const currentNode = this.explorationEngine.getCurrentNode();
@@ -1335,9 +1374,11 @@ export class GameEngine {
         if (npc && npc.id === "colt_barnes") {
             const colt = this.allNpcMap.get("colt");
             const barnes = this.allNpcMap.get("barnes");
+            const isChainedLevel = this.currentLevel?.levelId === 13 || this.currentLevel?.levelId === 14;
             if (colt && colt.status === "unmet") {
                 return this.showNpcEncounterModal(colt, node, (coltJoined) => {
-                    if (coltJoined && barnes && barnes.status === "unmet") {
+                    // 第十三关/第十四关：无论是否收纳柯尔特，都继续依次触发巴恩斯
+                    if ((isChainedLevel || coltJoined) && barnes && barnes.status === "unmet") {
                         return this.showNpcEncounterModal(barnes, node, (barnesJoined) => {
                             if (onHandled) onHandled(barnesJoined);
                         });
@@ -1346,6 +1387,22 @@ export class GameEngine {
                 });
             } else if (barnes && barnes.status === "unmet") {
                 return this.showNpcEncounterModal(barnes, node, onHandled);
+            }
+        }
+
+        // 第十三关/第十四关：薇薇安与伊莲同在主反应堆，依次弹出招募与入队对话
+        if (npc && npc.id === "vivian_elena") {
+            const vivian = this.allNpcMap.get("vivian");
+            const elena = this.allNpcMap.get("elena");
+            if (vivian && vivian.status === "unmet") {
+                return this.showNpcEncounterModal(vivian, node, () => {
+                    if (elena && elena.status === "unmet") {
+                        return this.showNpcEncounterModal(elena, node, onHandled);
+                    }
+                    if (onHandled) onHandled(true);
+                });
+            } else if (elena && elena.status === "unmet") {
+                return this.showNpcEncounterModal(elena, node, onHandled);
             }
         }
 
@@ -1406,6 +1463,17 @@ export class GameEngine {
                 npc.status = "active";
                 this.teamMembers.push(npc);
                 this.logAction(`【营救同伴】救醒了 [${npc.name}]，加入队伍！当前队伍人数: ${this.getAliveTeamMembers().length} 人`);
+            }
+            if (this.currentLevel?.levelId === 14) {
+                if (npc.id === "colt_barnes") {
+                    this.level14RecruitedNpcIds.add("colt");
+                    this.level14RecruitedNpcIds.add("barnes");
+                } else if (npc.id === "vivian_elena") {
+                    this.level14RecruitedNpcIds.add("vivian");
+                    this.level14RecruitedNpcIds.add("elena");
+                } else {
+                    this.level14RecruitedNpcIds.add(npc.id);
+                }
             }
             this.updateHeaderUI();
             this.checkAndUnlockNpcRooms();
@@ -1585,6 +1653,8 @@ export class GameEngine {
             return;
         }
 
+        // 新一轮傍晚开始：清除上一日伤亡余波光感
+        this.mapAftermathLighting = false;
         this.eveningInquiryCount = 0;
         this.updateHeaderUI();
 
@@ -1600,6 +1670,7 @@ export class GameEngine {
         }
 
         this.phase = "evening_black";
+        this.renderStageMap();
         // 切换至全黑屏转场视口 (浮层全屏覆盖，保留底层主舞台DOM杜绝地图缩放形变)
         this.screenEveningBlack?.classList.remove("hidden");
     }
@@ -2051,11 +2122,18 @@ export class GameEngine {
             return;
         }
 
+        // 有人遇害：开启伤亡余波光感，并立刻警报红闪
+        if (victim) {
+            this.mapAftermathLighting = true;
+            this.triggerMapAlertFlash();
+        }
+
         this.phase = "death_black";
         this.deathBlackCallback = onProceed;
         this.deathRevealed = false;
         this.currentDeathVictim = victim;
         this.currentSurvivedReason = survivedReason;
+        this.renderStageMap();
         if (this.deathRevealTimer) {
             clearTimeout(this.deathRevealTimer);
             this.deathRevealTimer = null;
@@ -2440,12 +2518,19 @@ export class GameEngine {
             isSolo,
             level10KazeNightKilled: !!this.level10KazeNightKilled,
             level10KeyEntered: !!this.level10KeyEntered,
-            level11LifeSupportVisited: !!this.level11LifeSupportVisited
+            level11LifeSupportVisited: !!this.level11LifeSupportVisited,
+            level13PowerRestored: !!this.level13PowerRestored,
+            level14PowerRestored: !!this.level14PowerRestored
         };
 
         // 检定非线性关卡解锁规则
         const unlockResult = UnlockEvaluator.evaluate(this.currentLevel?.unlockRules || [], evalContext);
         const newlyUnlocked = this.saveSystem.unlockLevels(unlockResult.unlockedLevelIds);
+
+        // 第十三关：不解锁后续关卡，仅持久化「已完成」标记
+        if (this.currentLevel?.levelId === 13) {
+            this.saveSystem.markLevelCompleted(13);
+        }
 
         // 检定同伴撤离深度档案解构 (带领卡罗/邵可欣/莫德撤离)
         this.checkPersonaSecretUnlocks("evacuate_with", { evacuatedNpcIds });
@@ -2703,8 +2788,12 @@ export class GameEngine {
                 inquiryCount: npc.inquiryCount
             })),
             unlockedNpcRooms: Array.from(this.unlockedNpcRooms || []),
+            mapAftermathLighting: !!this.mapAftermathLighting,
             level2PowerRestored: !!this.level2PowerRestored,
             level3PowerRestored: !!this.level3PowerRestored,
+            level13PowerRestored: !!this.level13PowerRestored,
+            level14PowerRestored: !!this.level14PowerRestored,
+            level14RecruitedNpcIds: Array.from(this.level14RecruitedNpcIds || []),
             level4PatrolVisited: Array.from(this.level4PatrolVisited || []),
             level9PatrolStep: this.level9PatrolStep || 0,
             level10KazeNightKilled: !!this.level10KazeNightKilled,
@@ -2734,8 +2823,12 @@ export class GameEngine {
         this.stamina = data.stamina;
         this.phase = data.phase;
         this.unlockedNpcRooms = new Set(data.unlockedNpcRooms || []);
+        this.mapAftermathLighting = !!data.mapAftermathLighting;
         this.level2PowerRestored = !!data.level2PowerRestored;
         this.level3PowerRestored = !!data.level3PowerRestored;
+        this.level13PowerRestored = !!data.level13PowerRestored;
+        this.level14PowerRestored = !!data.level14PowerRestored;
+        this.level14RecruitedNpcIds = new Set(data.level14RecruitedNpcIds || []);
         this.level4PatrolVisited = new Set(data.level4PatrolVisited || []);
         this.level9PatrolStep = data.level9PatrolStep || 0;
         this.level10KazeNightKilled = !!data.level10KazeNightKilled;
@@ -2787,8 +2880,19 @@ export class GameEngine {
         this.unlockedNpcRooms = new Set(data.unlockedNpcRooms || []);
         this.level2PowerRestored = !!data.level2PowerRestored;
         this.level3PowerRestored = !!data.level3PowerRestored;
+        this.level13PowerRestored = !!data.level13PowerRestored;
+        this.level14PowerRestored = !!data.level14PowerRestored;
+        this.level14RecruitedNpcIds = new Set(data.level14RecruitedNpcIds || []);
         this.level4PatrolVisited = new Set(data.level4PatrolVisited || []);
         this.checkAndUnlockNpcRooms();
+
+        // 第十三关/第十四关读档：若已合闸，需重连黄色气闸
+        if (this.currentLevel?.levelId === 13 && this.level13PowerRestored) {
+            this.restoreLevel13YellowConnections();
+        }
+        if (this.currentLevel?.levelId === 14 && this.level14PowerRestored) {
+            this.restoreLevel14YellowConnections();
+        }
 
         this.screenMenu.classList.add("hidden");
         this.screenBlack.classList.add("hidden");
@@ -2832,6 +2936,32 @@ export class GameEngine {
                 return barnes;
             }
         }
+        if (id === "vivian_elena") {
+            const vivian = this.allNpcMap.get("vivian");
+            const elena = this.allNpcMap.get("elena");
+            if (vivian && elena) {
+                const bothActive = vivian.status === "active" && elena.status === "active";
+                const bothDead = vivian.status === "dead" && elena.status === "dead";
+                const anyUnmet = vivian.status === "unmet" || elena.status === "unmet";
+                return {
+                    id: "vivian_elena",
+                    name: "薇薇安 & 伊莲",
+                    gender: "双人",
+                    themeColor: vivian.themeColor || "#a78bfa",
+                    boxBorderColor: vivian.boxBorderColor,
+                    boxBgGlow: vivian.boxBgGlow,
+                    folder: vivian.folder,
+                    avatarUrl: vivian.avatarUrl,
+                    expressions: vivian.expressions,
+                    status: bothActive ? "active" : (bothDead ? "dead" : (anyUnmet ? "unmet" : "active")),
+                    introDialogue: vivian.introDialogue || []
+                };
+            } else if (vivian) {
+                return vivian;
+            } else if (elena) {
+                return elena;
+            }
+        }
         return this.allNpcMap.get(id);
     }
 
@@ -2872,7 +3002,7 @@ export class GameEngine {
                         lph: "指挥官", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
                         prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
                         vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
-                        colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯"
+                        colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲"
                     };
                     const ownerName = ownerNames[roomDef.npcOwnerId] || (this.allNpcMap.get(roomDef.npcOwnerId)?.name || roomDef.npcOwnerId);
                     this.logAction(`【舱室解锁】[${roomDef.name}] 经过乘员 [${ownerName}] 信标授权，气闸锁已开启！`);
@@ -3081,7 +3211,8 @@ export class GameEngine {
         const isExitNode = !!(nextNode.isExit || (nextNode.event && nextNode.event.type === "exit"));
         const isPowerRestorationPending = (
             (this.currentLevel?.levelId === 2 && !this.level2PowerRestored) ||
-            (this.currentLevel?.levelId === 3 && !this.level3PowerRestored)
+            (this.currentLevel?.levelId === 3 && !this.level3PowerRestored) ||
+            (this.currentLevel?.levelId === 13 && !this.level13PowerRestored)
         );
         const isLevel5ColtBarnesPending = (
             this.currentLevel?.levelId === 5 &&
@@ -3267,16 +3398,202 @@ export class GameEngine {
                 this.teamMembers,
                 null,
                 0,
-                {
-                    canFastTravel: this.phase === "q3_explore",
-                    hoveredNodeId: this.hoveredMapNodeId,
-                    patrolVisited: this.currentLevel?.levelId === 11
-                        ? new Set(this.level11LifeSupportVisited ? ["room_life_support"] : [])
-                        : this.level4PatrolVisited,
-                    level9PatrolStep: this.level9PatrolStep || 0
-                }
+                this.buildMapRenderOptions()
             );
         }
+    }
+
+    /**
+     * 根据当前阶段解析主舞台蓝图光感：白昼 / 傍晚 / 黑夜 / 伤亡余波
+     */
+    resolveMapAtmosphere() {
+        if (this.phase === "q6_night" || this.phase === "death_black") return "night";
+        if (this.phase === "evening_black" || this.phase === "q4_inquiry" || this.phase === "q5_judgement") {
+            return "evening";
+        }
+        if (this.mapAftermathLighting && (this.phase === "q3_explore" || this.phase === "q7_day")) {
+            return "aftermath";
+        }
+        return "day";
+    }
+
+    /**
+     * 组装地图渲染 options（含阶段光感）
+     */
+    buildMapRenderOptions(extra = {}) {
+        return {
+            canFastTravel: this.phase === "q3_explore",
+            hoveredNodeId: this.hoveredMapNodeId,
+            patrolVisited: this.currentLevel?.levelId === 11
+                ? new Set(this.level11LifeSupportVisited ? ["room_life_support"] : [])
+                : this.level4PatrolVisited,
+            level9PatrolStep: this.level9PatrolStep || 0,
+            atmosphere: this.resolveMapAtmosphere(),
+            ...extra
+        };
+    }
+
+    /**
+     * 同步舞台视口 CSS 阶段光感类（边缘余辉 / 警报闪）
+     */
+    syncStageAtmosphereClass(atmosphere = null) {
+        const viewport = document.getElementById("stage-map-viewport");
+        if (!viewport) return;
+        const mode = atmosphere || this.resolveMapAtmosphere();
+        viewport.classList.remove(
+            "atmosphere-day",
+            "atmosphere-evening",
+            "atmosphere-night",
+            "atmosphere-aftermath"
+        );
+        viewport.classList.add(`atmosphere-${mode}`);
+    }
+
+    /**
+     * 触发地图警报红闪（伤亡公布 / 夜间警示）
+     */
+    triggerMapAlertFlash() {
+        if (this.stageMapRenderer && typeof this.stageMapRenderer.triggerAlertFlash === "function") {
+            this.stageMapRenderer.triggerAlertFlash(1200);
+        }
+        if (this.mapRenderer && typeof this.mapRenderer.triggerAlertFlash === "function") {
+            this.mapRenderer.triggerAlertFlash(1200);
+        }
+        const viewport = document.getElementById("stage-map-viewport");
+        if (viewport) {
+            viewport.classList.remove("atmosphere-alert-flash");
+            // 强制重启动画
+            void viewport.offsetWidth;
+            viewport.classList.add("atmosphere-alert-flash");
+            setTimeout(() => viewport.classList.remove("atmosphere-alert-flash"), 1300);
+        }
+    }
+
+    /**
+     * 第十三关：主电站合闸后重连三处黄色气闸通道
+     */
+    restoreLevel13YellowConnections() {
+        if (!this.currentLevel?.map?.nodes) return;
+        const pairs = (
+            LEVEL_SECTOR_SPECS?.[13]?.yellowSeveredPairs
+        ) || [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ];
+        const nodes = this.currentLevel.map.nodes;
+        pairs.forEach(([a, b]) => {
+            const nodeA = nodes[a];
+            const nodeB = nodes[b];
+            if (!nodeA || !nodeB || !nodeA.coord || !nodeB.coord) return;
+            const dirAtoB = getRelativeDirection(nodeA.coord, nodeB.coord);
+            const dirBtoA = getRelativeDirection(nodeB.coord, nodeA.coord);
+            if (!nodeA.connections) nodeA.connections = {};
+            if (!nodeB.connections) nodeB.connections = {};
+            nodeA.connections[dirAtoB] = b;
+            nodeB.connections[dirBtoA] = a;
+        });
+        this.logAction("【气闸解除】主电网恢复后，三处黄色防爆气闸已重新贯通！");
+    }
+
+    /**
+     * 第十三关：判断两舱是否为尚未通电的黄色气闸对
+     */
+    isLevel13YellowBlockedPair(idA, idB) {
+        if (this.currentLevel?.levelId !== 13 || this.level13PowerRestored) return false;
+        const pairs = LEVEL_SECTOR_SPECS?.[13]?.yellowSeveredPairs || [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ];
+        return pairs.some(([a, b]) =>
+            (a === idA && b === idB) || (a === idB && b === idA)
+        );
+    }
+
+    /**
+     * 第十四关：主电站合闸后重连三处黄色气闸通道并解除黄色锁闭区域
+     */
+    restoreLevel14YellowConnections() {
+        if (!this.currentLevel?.map?.nodes) return;
+        const pairs = (
+            LEVEL_SECTOR_SPECS?.[14]?.yellowSeveredPairs
+        ) || [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ];
+        const nodes = this.currentLevel.map.nodes;
+        pairs.forEach(([a, b]) => {
+            const nodeA = nodes[a];
+            const nodeB = nodes[b];
+            if (!nodeA || !nodeB || !nodeA.coord || !nodeB.coord) return;
+            const dirAtoB = getRelativeDirection(nodeA.coord, nodeB.coord);
+            const dirBtoA = getRelativeDirection(nodeB.coord, nodeA.coord);
+            if (!nodeA.connections) nodeA.connections = {};
+            if (!nodeB.connections) nodeB.connections = {};
+            nodeA.connections[dirAtoB] = b;
+            nodeB.connections[dirBtoA] = a;
+            if (!nodeA.neighbors) nodeA.neighbors = [];
+            if (!nodeB.neighbors) nodeB.neighbors = [];
+            if (!nodeA.neighbors.includes(b)) nodeA.neighbors.push(b);
+            if (!nodeB.neighbors.includes(a)) nodeB.neighbors.push(a);
+        });
+
+        // 将 yellowLockRoomIds 动态解除锁闭，并入 nodes 中并连通相邻已开放节点
+        const yellowLockIds = LEVEL_SECTOR_SPECS?.[14]?.yellowLockRoomIds || [];
+        const masterShip = this.currentLevel.map.masterShip;
+        yellowLockIds.forEach(yId => {
+            if (nodes[yId]) return;
+            const roomDef = MASTER_ROOM_DEFS[yId];
+            if (!roomDef) return;
+            if (masterShip?.lockedRooms && masterShip.lockedRooms[yId]) {
+                delete masterShip.lockedRooms[yId];
+            }
+            nodes[yId] = {
+                id: roomDef.id,
+                name: roomDef.name,
+                zone: roomDef.zone,
+                coord: { ...roomDef.coord },
+                shape: roomDef.shape,
+                equipment: roomDef.equipment,
+                desc: roomDef.desc,
+                connections: {},
+                neighbors: [],
+                event: null,
+                isExit: roomDef.id === this.currentLevel.map.exitNodeId
+            };
+            MASTER_CONNECTIONS.forEach(([a, b]) => {
+                if ((a === yId && nodes[b]) || (b === yId && nodes[a])) {
+                    const otherId = a === yId ? b : a;
+                    const dirToOther = getRelativeDirection(nodes[yId].coord, nodes[otherId].coord);
+                    const dirFromOther = getRelativeDirection(nodes[otherId].coord, nodes[yId].coord);
+                    if (!nodes[otherId].connections) nodes[otherId].connections = {};
+                    if (!nodes[otherId].neighbors) nodes[otherId].neighbors = [];
+                    nodes[yId].connections[dirToOther] = otherId;
+                    nodes[otherId].connections[dirFromOther] = yId;
+                    if (!nodes[yId].neighbors.includes(otherId)) nodes[yId].neighbors.push(otherId);
+                    if (!nodes[otherId].neighbors.includes(yId)) nodes[otherId].neighbors.push(yId);
+                }
+            });
+        });
+
+        this.logAction("【气闸解除】全舰主电网恢复，黄色防爆安全气闸已全部解除锁定，恢复通行！");
+    }
+
+    /**
+     * 第十四关：判断两舱是否为尚未通电的黄色气闸对
+     */
+    isLevel14YellowBlockedPair(idA, idB) {
+        if (this.currentLevel?.levelId !== 14 || this.level14PowerRestored) return false;
+        const pairs = LEVEL_SECTOR_SPECS?.[14]?.yellowSeveredPairs || [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ];
+        return pairs.some(([a, b]) =>
+            (a === idA && b === idB) || (a === idB && b === idA)
+        );
     }
 
     /**
@@ -3292,6 +3609,9 @@ export class GameEngine {
             btnToggleFocus.textContent = this.stageMapRenderer.viewMode === "full" ? "🌌 全景" : "🔭 聚焦";
         }
 
+        const atmosphere = this.resolveMapAtmosphere();
+        this.syncStageAtmosphereClass(atmosphere);
+
         if (this.stageMapRenderer && this.currentLevel && this.currentLevel.map && this.explorationEngine) {
             this.stageMapRenderer.render(
                 this.currentLevel.map,
@@ -3300,14 +3620,7 @@ export class GameEngine {
                 this.teamMembers,
                 null,
                 0,
-                {
-                    canFastTravel: this.phase === "q3_explore",
-                    hoveredNodeId: this.hoveredMapNodeId,
-                    patrolVisited: this.currentLevel?.levelId === 11
-                        ? new Set(this.level11LifeSupportVisited ? ["room_life_support"] : [])
-                        : this.level4PatrolVisited,
-                    level9PatrolStep: this.level9PatrolStep || 0
-                }
+                this.buildMapRenderOptions()
             );
         }
     }
@@ -3360,7 +3673,7 @@ export class GameEngine {
                     lph: "指挥官", kaze: "卡罗", kaluo: "卡罗", shaokexin: "邵可欣", mode: "莫德",
                     prof_lu: "陆知行", luzhixing: "陆知行", noah: "诺亚", sophia: "索菲亚",
                     vivian: "薇薇安", elena: "伊莲", elsa: "艾尔莎", dr_elsa: "艾尔莎",
-                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯"
+                    colt: "柯尔特", barnes: "巴恩斯", colt_barnes: "柯尔特 & 巴恩斯", vivian_elena: "薇薇安 & 伊莲"
                 };
                 const ownerName = ownerNames[node.npcOwnerId] || "乘员";
                 const isNpcInTeam = node.isProtagonistRoom || node.npcOwnerId === "lph"
@@ -3400,6 +3713,16 @@ export class GameEngine {
             // 点击的是相邻连通房间：直接向该方向行进！
             this.performMoveWithMapAnimation(targetDir);
             return;
+        }
+
+        // 第十三关：点击被黄色气闸切断的相邻舱室时，提示气闸锁死（通电后可通行）
+        if (this.currentLevel?.levelId === 13 && !this.level13PowerRestored) {
+            const curId = currentNode.id;
+            if (this.isLevel13YellowBlockedPair(curId, node.id)) {
+                this.showStageToast(`🔒 [${node.name}] 防爆安全气闸锁死 · 供电切断`);
+                if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
+                return;
+            }
         }
 
         // 4. 非相邻房间：若已探明，触发快速往返穿梭寻路
