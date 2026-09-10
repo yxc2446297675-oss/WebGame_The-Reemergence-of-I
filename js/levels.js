@@ -475,8 +475,7 @@ export const BaseLevels = [
             { id: "mode", assignedRole: null },       // 莫德 (西北隔离舱)
             { id: "shaokexin", assignedRole: null },  // 邵可欣 (东侧备勤室 · 医护角落)
             { id: "sophia", assignedRole: null },     // 索菲亚 (立体水培温室)
-            { id: "vivian", assignedRole: null },     // 薇薇安 (二号辅电站)
-            { id: "noah", assignedRole: null }        // 诺亚 (维生环境机房)
+            { id: "vivian", assignedRole: null }      // 薇薇安 (二号辅电站)
         ],
 
         mapImageUrl: null,

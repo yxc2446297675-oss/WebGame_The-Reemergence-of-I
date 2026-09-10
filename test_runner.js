@@ -3124,8 +3124,8 @@ console.log('\n43. 验证第七关（虚数空间 · 复数坐标轴）专属定
     if (mapConfig.nodes["room_hydro_garden"]?.npcId !== "sophia") {
         throw new Error('立体水培温室未正确绑定索菲亚 (sophia)！');
     }
-    if (mapConfig.nodes["room_life_support"]?.npcId !== "noah") {
-        throw new Error('维生环境总控机房未正确绑定诺亚 (noah)！');
+    if (mapConfig.nodes["room_recreation_gym"]?.npcId !== "noah") {
+        throw new Error('失重体能训练馆（体能维持舱）未正确绑定诺亚 (noah)！');
     }
     console.log('   【已验证】艾尔莎、索菲亚、诺亚全部精准配置于各自停电站位！');
 
@@ -3309,8 +3309,8 @@ console.log('\n44. 验证第八关（虚数空间 · 偏置向量）专属定制
     if (mapConfig.nodes["room_hydro_garden"].npcId !== "sophia") {
         throw new Error('立体水培温室应放置索菲亚！');
     }
-    if (mapConfig.nodes["room_life_support"].npcId !== "noah") {
-        throw new Error('维生环境总控机房应放置诺亚！');
+    if (mapConfig.nodes["room_recreation_gym"].npcId !== "noah") {
+        throw new Error('失重体能训练馆（体能维持舱）应放置诺亚！');
     }
     console.log('   【已验证】艾尔莎、索菲亚、诺亚全部精准配置于各自停电站位！');
 
@@ -3489,20 +3489,22 @@ console.log('\n[TEST 45] 开始执行第九关专属定制、潜行规避、要�
     }
     console.log('   【已验证】未开放区域阻断理由统一呈现为“宿主契合度不足，无法探索”！');
 
-    // F. 验证 5 位 NPC 停电站位
+    // F. 验证 4 位 NPC 停电站位（体能维持舱未开放，诺亚不在此关卡出现）
     const expectedNpcPositions = {
         "room_npc3": "mode",
         "room_npc2": "shaokexin",
         "room_hydro_garden": "sophia",
-        "room_sub_generator": "vivian",
-        "room_life_support": "noah"
+        "room_sub_generator": "vivian"
     };
     for (const [rId, npcId] of Object.entries(expectedNpcPositions)) {
         if (mapConfig.nodes[rId].npcId !== npcId) {
             throw new Error(`舱室 [${rId}] 放置的 NPC 应为 [${npcId}]，实际为: ${mapConfig.nodes[rId].npcId}`);
         }
     }
-    console.log('   【已验证】莫德、邵可欣、索菲亚、薇薇安、诺亚 5 位 NPC 精确就位于各自停电站位！');
+    if (Object.values(mapConfig.nodes).some(n => n.npcId === 'noah')) {
+        throw new Error('第九关不应出现诺亚（体能维持舱未开放）！');
+    }
+    console.log('   【已验证】莫德、邵可欣、索菲亚、薇薇安 4 位 NPC 精确就位于各自停电站位，诺亚未在非体能维持舱出现！');
 
     // G. 验证体力箱动态投放（3 处且无冲突）
     const foodNodes = Object.values(mapConfig.nodes).filter(n => n.event && n.event.type === "food");
@@ -3977,7 +3979,7 @@ console.log('\n48. 验证第十二关（时间牢笼 · 因果钟摆）专属定
         'room_west_end': 'prof_lu',
         'room_npc1': 'kaze',
         'room_sub_generator': 'vivian',
-        'room_life_support': 'noah',
+        'room_recreation_gym': 'noah',
         'room_main_reactor': 'elena'
     };
     for (const [rId, npcId] of Object.entries(expectedStationMap)) {
@@ -4131,7 +4133,49 @@ console.log('\n49. 验证第一关新手教程强引导机制...');
     console.log('   【已验证】教程机制严格隔离，仅第一关生效！');
 }
 
-console.log('\n====== [TEST PASSED] 全部 49 项核心流程、前十二关专属定制与第一关新手教程测试 100% 成功！ ======');
+// =============================================================================
+// 50. 验证全局规则：在诺亚出场的所有关卡里，诺亚的站位目前都严格为体能维持舱（room_recreation_gym），绝不在其他地方
+// =============================================================================
+console.log('\n50. 验证全局诺亚站位一致性规则（出场必在体能维持舱，绝不在其他地方）...');
+{
+    const { LEVEL_SECTOR_SPECS } = require('./js/spaceshipMasterMap.js');
+    let noahAppearedCount = 0;
+
+    for (const [lvlIdStr, spec] of Object.entries(LEVEL_SECTOR_SPECS)) {
+        const lvlId = parseInt(lvlIdStr, 10);
+        if (spec.npcPlacements) {
+            for (const [roomId, npcId] of Object.entries(spec.npcPlacements)) {
+                if (npcId === 'noah') {
+                    noahAppearedCount++;
+                    if (roomId !== 'room_recreation_gym') {
+                        throw new Error(`[关卡 ${lvlId}] 发现异常：诺亚的站位为 [${roomId}]，违反了“诺亚出场必在体能维持舱(room_recreation_gym)”规则！`);
+                    }
+                }
+            }
+        }
+    }
+
+    // 针对 BaseLevels 中已实装的关卡，逐一启动并全面排查 nodes 中的 npcId
+    LevelRegistry.forEach(lvl => {
+        if (!lvl || !lvl.levelId) return;
+        app.startNewGame(lvl.levelId);
+        const nodes = app.currentLevel?.map?.nodes || {};
+        for (const [rId, node] of Object.entries(nodes)) {
+            if (node.npcId === 'noah') {
+                if (rId !== 'room_recreation_gym') {
+                    throw new Error(`[关卡 ${lvl.levelId}] 地图节点中发现诺亚放置在 [${rId}]，违反了体能维持舱唯一站位规则！`);
+                }
+            }
+        }
+    });
+
+    if (noahAppearedCount === 0) {
+        throw new Error('未检测到任何包含诺亚的关卡配置！');
+    }
+    console.log(`   【已验证】扫描全部关卡，诺亚共在 ${noahAppearedCount} 个关卡作为NPC出场，全部严格位于【失重体能训练馆 · 体能维持舱】(room_recreation_gym)，绝无其他任何站位！`);
+}
+
+console.log('\n====== [TEST PASSED] 全部 50 项核心流程、全关卡专属定制与诺亚站位全局一致性测试 100% 成功！ ======');
 
 
 

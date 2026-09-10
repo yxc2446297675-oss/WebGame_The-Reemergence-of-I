@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-10T06:35:31.061Z
+ * 自动生成于 2026-09-10T07:04:00.356Z
  */
 (function() {
     'use strict';
@@ -3123,7 +3123,7 @@ const LEVEL_SECTOR_SPECS = {
         npcPlacements: {
             "room_med_surgery": "elsa",    // 艾尔莎 (纳米手术舱 · 生化检测室)
             "room_hydro_garden": "sophia",  // 索菲亚 (立体水培温室)
-            "room_life_support": "noah"    // 诺亚 (维生环境总控机房)
+            "room_recreation_gym": "noah"  // 诺亚 (失重体能训练馆 · 体能维持舱)
         },
         randomFoodCount: 2, // 场景随机投放两处体力箱
         useHostCompatibilityLock: true,
@@ -3155,7 +3155,7 @@ const LEVEL_SECTOR_SPECS = {
         npcPlacements: {
             "room_med_surgery": "elsa",    // 艾尔莎 (纳米手术舱 · 生化检测室)
             "room_hydro_garden": "sophia",  // 索菲亚 (立体水培温室)
-            "room_life_support": "noah"    // 诺亚 (维生环境总控机房)
+            "room_recreation_gym": "noah"  // 诺亚 (失重体能训练馆 · 体能维持舱)
         },
         randomFoodCount: 2, // 场景随机投放两处体力箱
         useHostCompatibilityLock: true,
@@ -3187,8 +3187,7 @@ const LEVEL_SECTOR_SPECS = {
             "room_npc3": "mode",          // 莫德 (西北隔离舱 · 安全避难室)
             "room_npc2": "shaokexin",     // 邵可欣 (东侧备勤室 · 医护角落)
             "room_hydro_garden": "sophia", // 索菲亚 (立体水培温室 · 绿光生态舱)
-            "room_sub_generator": "vivian",// 薇薇安 (辅助等离子发电站 · 二号辅电站)
-            "room_life_support": "noah"   // 诺亚 (维生环境总控机房 · 一号核心芯片失窃点)
+            "room_sub_generator": "vivian" // 薇薇安 (辅助等离子发电站 · 二号辅电站)
         },
         randomFoodCount: 3, // 场景随机投放三处体力箱
         useHostCompatibilityLock: true,
@@ -3295,7 +3294,7 @@ const LEVEL_SECTOR_SPECS = {
             "room_west_end": "prof_lu",     // 陆知行（主配电值班舱 · 全舰停电始发站）
             "room_npc1": "kaze",            // 卡罗（西区整备间 · 动力操作台）
             "room_sub_generator": "vivian", // 薇薇安（辅助等离子发电站 · 二号辅电站）
-            "room_life_support": "noah",    // 诺亚（维生环境总控机房 · 一号核心芯片失窃点）
+            "room_recreation_gym": "noah",  // 诺亚（失重体能训练馆 · 体能维持舱）
             "room_main_reactor": "elena"    // 伊莲（重核聚变主反应堆）
         },
         randomFoodCount: 2, // 场景随机投放两处体力箱
@@ -4264,8 +4263,7 @@ const BaseLevels = [
             { id: "mode", assignedRole: null },       // 莫德 (西北隔离舱)
             { id: "shaokexin", assignedRole: null },  // 邵可欣 (东侧备勤室 · 医护角落)
             { id: "sophia", assignedRole: null },     // 索菲亚 (立体水培温室)
-            { id: "vivian", assignedRole: null },     // 薇薇安 (二号辅电站)
-            { id: "noah", assignedRole: null }        // 诺亚 (维生环境机房)
+            { id: "vivian", assignedRole: null }      // 薇薇安 (二号辅电站)
         ],
 
         mapImageUrl: null,
