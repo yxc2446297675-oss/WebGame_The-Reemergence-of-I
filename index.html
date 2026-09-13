@@ -11,7 +11,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>拟态残响 (视觉小说·肉鸽探索·AI伪人杀)</title>
-    <link rel="stylesheet" href="./style.css?v=1789312999938">
+    <link rel="stylesheet" href="./style.css?v=1789314050362">
 </head>
 <body>
 
@@ -847,27 +847,33 @@
         </div>
 
         <div id="l15-phase-map" class="l15-phase l15-map hidden">
-            <div class="l15-lore-banner" id="l15-lore-banner" role="status" aria-live="polite"></div>
             <div class="l15-map-body">
                 <div class="l15-map-stage" id="l15-map-stage">
-                    <div class="l15-map-stack">
-                        <img class="l15-map-img l15-map-clear" id="l15-map-clear" alt="星舰总览" draggable="false">
-                        <img class="l15-map-img l15-map-blur" id="l15-map-blur" alt="" draggable="false" aria-hidden="true">
-                        <div class="l15-map-reveal l15-reveal-tl" data-region="tl"></div>
-                        <div class="l15-map-reveal l15-reveal-tr" data-region="tr"></div>
-                        <div class="l15-map-reveal l15-reveal-bl" data-region="bl"></div>
-                        <div class="l15-map-reveal l15-reveal-br" data-region="br"></div>
+                    <div class="l15-map-viewport" id="l15-map-viewport">
+                        <div class="l15-map-stack">
+                            <img class="l15-map-img l15-map-clear" id="l15-map-clear" alt="星舰总览" draggable="false">
+                            <img class="l15-map-img l15-map-blur" id="l15-map-blur" alt="" draggable="false" aria-hidden="true">
+                            <div class="l15-map-reveal l15-reveal-tl" data-region="tl"></div>
+                            <div class="l15-map-reveal l15-reveal-tr" data-region="tr"></div>
+                            <div class="l15-map-reveal l15-reveal-bl" data-region="bl"></div>
+                            <div class="l15-map-reveal l15-reveal-br" data-region="br"></div>
+                            <img class="l15-ship-art hidden" id="l15-ship-art" alt="远征星舰侧影" draggable="false">
+                        </div>
                     </div>
                     <div class="l15-drop-zone" id="l15-drop-zone" aria-hidden="true">
                         <span>拖入此处 · 墨染开图</span>
                     </div>
+                    <button type="button" class="l15-lore-dialog" id="l15-lore-banner" hidden aria-live="polite">
+                        <div class="l15-lore-text" id="l15-lore-text"></div>
+                        <div class="l15-lore-hint">点击继续 ▸</div>
+                    </button>
                 </div>
                 <aside class="l15-slot-rail" id="l15-slot-rail" aria-label="关卡槽">
                     <div class="l15-slot-rail-title">关卡槽</div>
                     <div class="l15-slot-list" id="l15-slot-list"></div>
                 </aside>
             </div>
-            <div class="l15-map-guide" id="l15-map-guide">将右侧关卡槽拖入地图中心</div>
+            <div class="l15-map-guide" id="l15-map-guide">将右侧关卡槽拖入地图中心 · 双指缩放</div>
         </div>
     </div>
 
@@ -875,7 +881,7 @@
     <div id="app-toast" class="app-toast" role="status" aria-live="polite"></div>
 
     <!-- 游戏启动引导脚本 (defer + BootLoader 回调；虎扑等宿主友好) -->
-    <script defer src="js/app.bundle.js?v=1789312999938" onload="window.__BootLoader && window.__BootLoader.onBundleLoaded && window.__BootLoader.onBundleLoaded()" onerror="window.__BootLoader && window.__BootLoader.onBundleError && window.__BootLoader.onBundleError()"></script>
+    <script defer src="js/app.bundle.js?v=1789314050362" onload="window.__BootLoader && window.__BootLoader.onBundleLoaded && window.__BootLoader.onBundleLoaded()" onerror="window.__BootLoader && window.__BootLoader.onBundleError && window.__BootLoader.onBundleError()"></script>
 </body>
 </html>
 

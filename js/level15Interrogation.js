@@ -9,6 +9,10 @@ const Level15Config = {
     masterMapLevelId: 25,
     mapCaptureWidth: 1280,
     mapCaptureHeight: 800,
+    // 三槽染开后渐变显现的侧视飞船立绘
+    shipArtUrl: "assets/level15_ship_reveal.webp",
+    shipRevealDelayMs: 1000,
+    shipFadeMs: 1200,
     introLines: [
         "队长！你终于醒了！",
         "看来成功了，对吗？",
@@ -137,6 +141,11 @@ class Level15InterrogationScene {
         this._drag = null;
         this._unsubs = [];
         this._masterMapUrl = null;
+        this._loreDismiss = null;
+        this._mapView = { scale: 1, x: 0, y: 0 };
+        this._pinch = null;
+        this._pan = null;
+        this._finishArmed = false;
     }
 
     start() {
@@ -161,10 +170,12 @@ class Level15InterrogationScene {
 
     stop() {
         this._teardownDrag();
+        this._teardownMapZoom();
         this._unsubs.forEach((fn) => {
             try { fn(); } catch (e) { /* ignore */ }
         });
         this._unsubs = [];
+        this._loreDismiss = null;
         if (this.root) this.root.classList.add("hidden");
         this.phase = "idle";
     }
@@ -178,7 +189,7 @@ class Level15InterrogationScene {
             document.body.appendChild(this.root);
         }
 
-        if (!this.root.querySelector("#l15-phase-intro")) {
+        if (!this.root.querySelector("#l15-phase-intro") || !this.root.querySelector("#l15-map-viewport") || !this.root.querySelector("#l15-lore-text")) {
             this.root.classList.add("l15-screen");
             this.root.innerHTML = `
             <div id="l15-phase-intro" class="l15-phase l15-intro">
@@ -213,27 +224,33 @@ class Level15InterrogationScene {
             </div>
 
             <div id="l15-phase-map" class="l15-phase l15-map hidden">
-                <div class="l15-lore-banner" id="l15-lore-banner" role="status" aria-live="polite"></div>
                 <div class="l15-map-body">
                     <div class="l15-map-stage" id="l15-map-stage">
-                        <div class="l15-map-stack">
-                            <img class="l15-map-img l15-map-clear" id="l15-map-clear" alt="星舰总览" draggable="false">
-                            <img class="l15-map-img l15-map-blur" id="l15-map-blur" alt="" draggable="false" aria-hidden="true">
-                            <div class="l15-map-reveal l15-reveal-tl" data-region="tl"></div>
-                            <div class="l15-map-reveal l15-reveal-tr" data-region="tr"></div>
-                            <div class="l15-map-reveal l15-reveal-bl" data-region="bl"></div>
-                            <div class="l15-map-reveal l15-reveal-br" data-region="br"></div>
+                        <div class="l15-map-viewport" id="l15-map-viewport">
+                            <div class="l15-map-stack">
+                                <img class="l15-map-img l15-map-clear" id="l15-map-clear" alt="星舰总览" draggable="false">
+                                <img class="l15-map-img l15-map-blur" id="l15-map-blur" alt="" draggable="false" aria-hidden="true">
+                                <div class="l15-map-reveal l15-reveal-tl" data-region="tl"></div>
+                                <div class="l15-map-reveal l15-reveal-tr" data-region="tr"></div>
+                                <div class="l15-map-reveal l15-reveal-bl" data-region="bl"></div>
+                                <div class="l15-map-reveal l15-reveal-br" data-region="br"></div>
+                                <img class="l15-ship-art hidden" id="l15-ship-art" alt="远征星舰侧影" draggable="false">
+                            </div>
                         </div>
                         <div class="l15-drop-zone" id="l15-drop-zone" aria-hidden="true">
                             <span>拖入此处 · 墨染开图</span>
                         </div>
+                        <button type="button" class="l15-lore-dialog" id="l15-lore-banner" hidden aria-live="polite">
+                            <div class="l15-lore-text" id="l15-lore-text"></div>
+                            <div class="l15-lore-hint">点击继续 ▸</div>
+                        </button>
                     </div>
                     <aside class="l15-slot-rail" id="l15-slot-rail" aria-label="关卡槽">
                         <div class="l15-slot-rail-title">关卡槽</div>
                         <div class="l15-slot-list" id="l15-slot-list"></div>
                     </aside>
                 </div>
-                <div class="l15-map-guide" id="l15-map-guide">将右侧关卡槽拖入地图中心</div>
+                <div class="l15-map-guide" id="l15-map-guide">将右侧关卡槽拖入地图中心 · 双指缩放</div>
             </div>
             `;
             this.root.dataset.bound = "";
@@ -249,7 +266,12 @@ class Level15InterrogationScene {
         const intro = this.root.querySelector("#l15-phase-intro");
         intro?.addEventListener("click", () => this.advanceIntro());
 
-        // 拖拽委托在 map 阶段绑定
+        const lore = this.root.querySelector("#l15-lore-banner");
+        lore?.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.dismissLore();
+        });
     }
 
     // -------------------------------------------------------------------------
@@ -521,11 +543,21 @@ class Level15InterrogationScene {
             guide.textContent = "总地图生成失败，请刷新后重试";
         }
 
+        // 预热侧视飞船立绘，避免三槽完成后空白闪一下
+        try {
+            const shipUrl = Level15Config.shipArtUrl || "assets/level15_ship_reveal.webp";
+            const pre = new Image();
+            pre.src = shipUrl;
+            const art = this.root.querySelector("#l15-ship-art");
+            if (art && !art.src) art.src = shipUrl;
+        } catch (e) { /* ignore */ }
+
         this.renderSlots();
         this._setupDrag();
+        this._setupMapZoom();
 
         if (guide && url) {
-            guide.textContent = "将右侧关卡槽拖入地图中心";
+            guide.textContent = "拖入关卡槽 · 双指缩放 / 单指拖移";
             guide.style.opacity = "0";
             l15Animate({
                 from: 0,
@@ -534,6 +566,11 @@ class Level15InterrogationScene {
                 onUpdate: (v) => { guide.style.opacity = String(v); }
             });
         }
+
+        // 手机默认稍放大，便于看清舱室
+        const isNarrow = typeof window !== "undefined" && window.innerWidth < 720;
+        this._mapView = { scale: isNarrow ? 1.45 : 1.15, x: 0, y: 0 };
+        this._applyMapView();
 
         if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
     }
@@ -548,6 +585,127 @@ class Level15InterrogationScene {
                 <span class="l15-slot-hint">${slot.hint}</span>
             </button>
         `).join("");
+    }
+
+    _applyMapView() {
+        const vp = this.root?.querySelector("#l15-map-viewport");
+        if (!vp) return;
+        const { scale, x, y } = this._mapView || { scale: 1, x: 0, y: 0 };
+        vp.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+    }
+
+    _clampMapView() {
+        const v = this._mapView;
+        if (!v) return;
+        v.scale = Math.max(1, Math.min(4.5, v.scale));
+        const lim = 180 * v.scale;
+        v.x = Math.max(-lim, Math.min(lim, v.x));
+        v.y = Math.max(-lim, Math.min(lim, v.y));
+    }
+
+    /**
+     * 手机双指缩放 + 单指拖移；桌面滚轮缩放
+     */
+    _setupMapZoom() {
+        this._teardownMapZoom();
+        const stage = this.root.querySelector("#l15-map-stage");
+        if (!stage) return;
+
+        const distOf = (t0, t1) => Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        const midOf = (t0, t1) => ({
+            x: (t0.clientX + t1.clientX) / 2,
+            y: (t0.clientY + t1.clientY) / 2
+        });
+
+        const onTouchStart = (e) => {
+            if (e.target.closest(".l15-lore-dialog")) return;
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                this._pan = null;
+                this._pinch = {
+                    startDist: distOf(e.touches[0], e.touches[1]),
+                    startScale: this._mapView.scale,
+                    startMid: midOf(e.touches[0], e.touches[1]),
+                    startX: this._mapView.x,
+                    startY: this._mapView.y
+                };
+            } else if (e.touches.length === 1 && !e.target.closest(".l15-slot")) {
+                this._pinch = null;
+                this._pan = {
+                    x: e.touches[0].clientX,
+                    y: e.touches[0].clientY,
+                    startX: this._mapView.x,
+                    startY: this._mapView.y
+                };
+            }
+        };
+
+        const onTouchMove = (e) => {
+            if (this._pinch && e.touches.length === 2) {
+                e.preventDefault();
+                const d = distOf(e.touches[0], e.touches[1]);
+                const mid = midOf(e.touches[0], e.touches[1]);
+                const ratio = d / Math.max(1, this._pinch.startDist);
+                this._mapView.scale = this._pinch.startScale * ratio;
+                this._mapView.x = this._pinch.startX + (mid.x - this._pinch.startMid.x);
+                this._mapView.y = this._pinch.startY + (mid.y - this._pinch.startMid.y);
+                this._clampMapView();
+                this._applyMapView();
+            } else if (this._pan && e.touches.length === 1) {
+                e.preventDefault();
+                this._mapView.x = this._pan.startX + (e.touches[0].clientX - this._pan.x);
+                this._mapView.y = this._pan.startY + (e.touches[0].clientY - this._pan.y);
+                this._clampMapView();
+                this._applyMapView();
+            }
+        };
+
+        const onTouchEnd = () => {
+            if (!this._pinch && !this._pan) return;
+            this._pinch = null;
+            this._pan = null;
+        };
+
+        const onWheel = (e) => {
+            e.preventDefault();
+            const factor = e.deltaY < 0 ? 1.12 : 0.9;
+            this._mapView.scale *= factor;
+            this._clampMapView();
+            this._applyMapView();
+        };
+
+        const onDblClick = (e) => {
+            if (e.target.closest(".l15-lore-dialog")) return;
+            e.preventDefault();
+            const isNarrow = window.innerWidth < 720;
+            this._mapView = { scale: isNarrow ? 1.45 : 1.15, x: 0, y: 0 };
+            this._applyMapView();
+        };
+
+        stage.addEventListener("touchstart", onTouchStart, { passive: false });
+        stage.addEventListener("touchmove", onTouchMove, { passive: false });
+        stage.addEventListener("touchend", onTouchEnd, { passive: true });
+        stage.addEventListener("touchcancel", onTouchEnd, { passive: true });
+        stage.addEventListener("wheel", onWheel, { passive: false });
+        stage.addEventListener("dblclick", onDblClick);
+
+        this._zoomUnsubs = [
+            () => stage.removeEventListener("touchstart", onTouchStart),
+            () => stage.removeEventListener("touchmove", onTouchMove),
+            () => stage.removeEventListener("touchend", onTouchEnd),
+            () => stage.removeEventListener("touchcancel", onTouchEnd),
+            () => stage.removeEventListener("wheel", onWheel),
+            () => stage.removeEventListener("dblclick", onDblClick)
+        ];
+    }
+
+    _teardownMapZoom() {
+        (this._zoomUnsubs || []).forEach((fn) => {
+            try { fn(); } catch (e) { /* ignore */ }
+        });
+        this._zoomUnsubs = [];
+        this._pinch = null;
+        this._pan = null;
     }
 
     _setupDrag() {
@@ -655,15 +813,51 @@ class Level15InterrogationScene {
         }
 
         if (this.placedSlots.size >= Level15Config.slots.length) {
-            setTimeout(() => this.finish(), 1600);
+            // 全部染开后等待 1 秒，再渐变为侧视飞船立绘
+            setTimeout(() => this.revealShipArt(), Level15Config.shipRevealDelayMs || 1000);
         }
+    }
+
+    /**
+     * 全槽完成后：模糊战术图 → 侧视飞船立绘 渐变；文案需点击才关闭
+     */
+    revealShipArt() {
+        if (this.phase === "ship" || this.phase === "done") return;
+        this.phase = "ship";
+
+        const url = Level15Config.shipArtUrl || "assets/level15_ship_reveal.webp";
+        const art = this.root.querySelector("#l15-ship-art");
+        const guide = this.root.querySelector("#l15-map-guide");
+        const rail = this.root.querySelector("#l15-slot-rail");
+        const dropZone = this.root.querySelector("#l15-drop-zone");
+
+        if (guide) guide.textContent = "双指缩放查看母舰 · 点击对话框继续";
+        dropZone?.classList.add("hidden");
+        rail?.classList.add("is-dimmed");
+
+        if (art) {
+            art.src = url;
+            art.classList.remove("hidden");
+            art.classList.add("is-revealing");
+            void art.offsetWidth;
+            requestAnimationFrame(() => {
+                art.classList.add("is-visible");
+            });
+        }
+
+        if (typeof Sound !== "undefined" && Sound.playDoubt) Sound.playDoubt();
+
+        this.showLore("折叠维度收敛——战术拓扑凝成远征星舰的侧影。", () => {
+            this.showLore("记忆锚点已校准。折叠通路暂告一段落——请返回扇区观测。", () => {
+                this.finish();
+            });
+        });
     }
 
     revealRegion(region) {
         const el = this.root.querySelector(`.l15-map-reveal[data-region="${region}"]`);
         if (!el || el.classList.contains("is-open")) return;
         el.classList.add("is-open");
-        // 象限已 clip；墨染只填满该象限（约 52% 半径足够覆盖象限内空间）
         l15Animate({
             from: 0,
             to: 52,
@@ -680,20 +874,38 @@ class Level15InterrogationScene {
         });
     }
 
-    showLore(text) {
+    showLore(text, onDismiss = null) {
         const banner = this.root.querySelector("#l15-lore-banner");
+        const textEl = this.root.querySelector("#l15-lore-text");
         if (!banner) return;
-        banner.textContent = text || "";
+        this._loreDismiss = typeof onDismiss === "function" ? onDismiss : null;
+        if (textEl) textEl.textContent = text || "";
+        else banner.textContent = text || "";
+        banner.hidden = false;
         banner.classList.add("is-show");
         banner.style.opacity = "0";
         l15Animate({
             from: 0,
             to: 1,
-            duration: 420,
+            duration: 320,
             onUpdate: (v) => {
                 banner.style.opacity = String(v);
             }
         });
+    }
+
+    dismissLore() {
+        const banner = this.root.querySelector("#l15-lore-banner");
+        if (!banner || !banner.classList.contains("is-show")) return;
+        banner.classList.remove("is-show");
+        banner.style.opacity = "0";
+        setTimeout(() => {
+            if (!banner.classList.contains("is-show")) banner.hidden = true;
+        }, 280);
+        const cb = this._loreDismiss;
+        this._loreDismiss = null;
+        if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
+        if (typeof cb === "function") cb();
     }
 
     finish() {
@@ -701,16 +913,13 @@ class Level15InterrogationScene {
         this.phase = "done";
         if (typeof Sound !== "undefined" && Sound.playVictory) Sound.playVictory();
 
-        const banner = this.root.querySelector("#l15-lore-banner");
-        if (banner) {
-            banner.textContent = "记忆锚点已校准。折叠通路暂告一段落——请返回扇区观测。";
-            banner.classList.add("is-show");
-        }
+        const guide = this.root.querySelector("#l15-map-guide");
+        if (guide) guide.textContent = "核验完成 · 即将返回";
 
         setTimeout(() => {
             this.stop();
             if (typeof this.onComplete === "function") this.onComplete();
-        }, 1400);
+        }, 700);
     }
 }
 
