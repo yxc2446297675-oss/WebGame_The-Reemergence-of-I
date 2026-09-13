@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+    <!-- 拟态残响：仅本地 style.css + 系统字体栈；不引入 Google Fonts / 任何 CDN 外链（虎扑等国内宿主友好） -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="description" content="潜伏危机：循环伪装体 - 一款融合视觉小说叙事、肉鸽地图探索与AI伪人杀推理的网页原生单页游戏。">
+    <meta name="description" content="拟态残响 — 融合视觉小说叙事、肉鸽地图探索与 AI 伪人杀推理的网页原生单页游戏。">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>潜伏危机：循环伪装体 (视觉小说·肉鸽探索·AI伪人杀)</title>
-    <link rel="stylesheet" href="./style.css?v=1789033591127">
+    <title>拟态残响 (视觉小说·肉鸽探索·AI伪人杀)</title>
+    <link rel="stylesheet" href="./style.css?v=1789312999938">
 </head>
 <body>
 
@@ -20,7 +21,7 @@
     <div id="screen-loading" class="loading-screen">
         <div class="loading-container">
             <div class="loading-hud-tag">PROJECT MIMIC // NEURAL SYNC</div>
-            <h1 class="loading-title">DOPPELGANGER</h1>
+            <h1 class="loading-title">拟态残响</h1>
             <div class="loading-subtitle">母舰拓扑网络与感应神经元加载中</div>
 
             <!-- 进度条主体 -->
@@ -44,6 +45,97 @@
         </div>
     </div>
 
+    <!-- 本地启动进度：大包下载时先走进度；引擎起来后会立刻接到 100% -->
+    <script>
+    (function () {
+        var TARGET = 78;
+        var pct = 0;
+        var takenOver = false;
+        var bundleReady = false;
+        var bundleFailed = false;
+        var rafId = 0;
+        var watchdog = 0;
+        var t0 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+        var DURATION = 2800;
+        var bar = document.getElementById("loading-progress-bar");
+        var pctEl = document.getElementById("loading-percent-text");
+        var statusEl = document.getElementById("loading-status-text");
+        var startBtn = document.getElementById("btn-loading-start");
+
+        function now() {
+            return (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+        }
+
+        function paint(p, text) {
+            pct = Math.max(0, Math.min(100, p));
+            var rounded = Math.round(pct);
+            if (bar) bar.style.width = rounded + "%";
+            if (pctEl) pctEl.textContent = rounded + "%";
+            if (text && statusEl) statusEl.textContent = text;
+        }
+
+        function statusText() {
+            if (bundleFailed) return "程序包加载失败，请刷新重试";
+            if (bundleReady) return "正在启动游戏…";
+            return "正在加载游戏程序…";
+        }
+
+        function tick() {
+            if (takenOver) return;
+            var elapsed = now() - t0;
+            var raw = Math.min(1, elapsed / DURATION);
+            var eased = 1 - Math.pow(1 - raw, 2.4);
+            var ceiling = TARGET;
+            if (elapsed > DURATION && !bundleReady) {
+                ceiling = Math.min(88, TARGET + Math.log10(elapsed / DURATION) * 12);
+            }
+            var next = eased * Math.min(TARGET, ceiling);
+            if (elapsed > DURATION) next = ceiling;
+            if (bundleReady) next = Math.max(next, Math.min(92, pct + 2));
+            paint(next, statusText());
+            if (!takenOver) rafId = requestAnimationFrame(tick);
+        }
+
+        function showHardFail(msg) {
+            if (takenOver) return;
+            bundleFailed = true;
+            if (rafId) cancelAnimationFrame(rafId);
+            paint(100, msg || "启动失败，请刷新重试");
+            if (startBtn) {
+                startBtn.classList.remove("hidden");
+                startBtn.onclick = function () { location.reload(); };
+                startBtn.innerHTML = "<span>刷新重试</span>";
+            }
+        }
+
+        rafId = requestAnimationFrame(tick);
+
+        window.__BootLoader = {
+            getPct: function () { return pct; },
+            onBundleLoaded: function () {
+                bundleReady = true;
+                if (!takenOver) paint(Math.max(pct, 80), statusText());
+                // 脚本已下载但仍未启动引擎：多半是执行报错
+                if (watchdog) clearTimeout(watchdog);
+                watchdog = setTimeout(function () {
+                    if (!takenOver && !window.gameApp) {
+                        showHardFail("游戏启动失败，请刷新重试");
+                    }
+                }, 4000);
+            },
+            onBundleError: function () {
+                showHardFail("程序包加载失败，请检查网络后刷新");
+            },
+            takeOver: function () {
+                takenOver = true;
+                if (rafId) cancelAnimationFrame(rafId);
+                if (watchdog) clearTimeout(watchdog);
+                return pct;
+            }
+        };
+    })();
+    </script>
+
     <!-- ================================================================= -->
     <!-- 1. 主菜单界面 (Main Menu) -->
     <!-- ================================================================= -->
@@ -52,7 +144,7 @@
             <div class="title-hud">
                 <span class="hud-tag">PROJECT MIMIC // ROGUELIKE VN</span>
             </div>
-            <h1 class="glow-title">DOPPELGANGER</h1>
+            <h1 class="glow-title menu-brand">拟态残响</h1>
             <div class="menu-subtitle">循环伪装体 · 遗迹分支探索</div>
             
             <div class="menu-actions">
@@ -241,7 +333,7 @@
                             <div class="map-console-focus-marker">
                                 <!-- 动力操作台中心：卡罗专属NPC图标 (别写名字) -->
                                 <div class="map-kaze-npc-icon" id="l4-kaze-npc-icon">
-                                    <img src="assets/characters/卡罗.png" alt="" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2248%22 height=%2248%22 viewBox=%220 0 24 24%22 fill=%22%2360a5fa%22><circle cx=%2212%22 cy=%228%22 r=%224%22/><path d=%22M12 14c-4.42 0-8 1.79-8 4v2h16v-2c0-2.21-3.58-4-8-4z%22/></svg>'">
+                                    <img src="assets/characters/kaluo/clam.webp" alt="" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2248%22 height=%2248%22 viewBox=%220 0 24 24%22 fill=%22%2360a5fa%22><circle cx=%2212%22 cy=%228%22 r=%224%22/><path d=%22M12 14c-4.42 0-8 1.79-8 4v2h16v-2c0-2.21-3.58-4-8-4z%22/></svg>'">
                                 </div>
                                 <!-- 主视角指示标记 (玩家当前视点) -->
                                 <div class="map-player-perspective" id="l4-player-perspective">
@@ -306,6 +398,7 @@
                             <span class="radar-title">📡 战术微型雷达</span>
                             <div class="radar-actions">
                                 <span id="radar-pos-tag" class="radar-pos-tag">[X: --, Y: --]</span>
+                                <button id="btn-radar-toggle" class="radar-btn" title="折叠雷达">−</button>
                                 <button id="btn-radar-expand" class="radar-btn" title="查看战术大地图">🗺️ 大地图</button>
                             </div>
                         </div>
@@ -557,6 +650,21 @@
         </div>
     </div>
 
+    <!-- E2. 系统提示 / 确认弹窗（存档、退出等；游戏内弹窗，不使用浏览器原生 alert/confirm） -->
+    <div id="modal-system-dialog" class="modal-backdrop system-dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="system-dialog-title">
+        <div class="modal-box system-dialog-box">
+            <div class="modal-header">
+                <h3 id="system-dialog-title">系统提示</h3>
+            </div>
+            <div class="modal-body">
+                <p id="system-dialog-message" class="system-dialog-message"></p>
+            </div>
+            <div id="system-dialog-actions" class="modal-choices system-dialog-actions">
+                <!-- 动态生成按钮 -->
+            </div>
+        </div>
+    </div>
+
     <!-- F. 胜负与结局结算弹窗 -->
     <div id="modal-game-result" class="modal-backdrop hidden">
         <div class="modal-box result-box">
@@ -690,8 +798,84 @@
         </div>
     </div>
 
-    <!-- 游戏启动引导脚本 (单文件普通JS，彻底规避file://协议CORS限制，双击即可直接畅玩) -->
-    <script src="js/app.bundle.js?v=1789033591127"></script>
+    <!-- 卡罗唯一伪人自白离队（独立全屏剧情层） -->
+    <div id="kaze-confession-overlay" class="kaze-confession-overlay hidden" aria-live="polite">
+        <div class="kaze-confession-dim"></div>
+        <div class="kaze-confession-content">
+            <div id="kaze-confession-frame" class="kaze-confession-frame">
+                <img id="kaze-confession-img" alt="卡罗" src="">
+            </div>
+            <div class="kaze-confession-dialog">
+                <div id="kaze-confession-name" class="kaze-confession-name">卡罗</div>
+                <div id="kaze-confession-text" class="kaze-confession-text"></div>
+                <div class="kaze-confession-hint">点击继续 ▸</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第十五关 · 折叠维度（审讯 / 记忆核验 / 墨染星图） -->
+    <div id="screen-level15" class="l15-screen hidden">
+        <div id="l15-phase-intro" class="l15-phase l15-intro">
+            <div class="l15-intro-veil" aria-hidden="true"></div>
+            <div class="l15-intro-orbit" aria-hidden="true"></div>
+            <div class="l15-intro-center">
+                <div class="l15-intro-eyebrow">MEMORY INTEGRITY · 记忆核验</div>
+                <div id="l15-intro-text" class="l15-intro-text"></div>
+                <div class="l15-intro-prompt">触摸继续</div>
+            </div>
+        </div>
+
+        <div id="l15-phase-quiz" class="l15-phase l15-quiz hidden">
+            <div class="l15-quiz-atmosphere" aria-hidden="true">
+                <div class="l15-quiz-frame-line l15-quiz-frame-t"></div>
+                <div class="l15-quiz-frame-line l15-quiz-frame-b"></div>
+                <div class="l15-quiz-corner l15-c-tl"></div>
+                <div class="l15-quiz-corner l15-c-tr"></div>
+                <div class="l15-quiz-corner l15-c-bl"></div>
+                <div class="l15-quiz-corner l15-c-br"></div>
+                <div class="l15-quiz-glow"></div>
+            </div>
+            <div class="l15-quiz-shell">
+                <div class="l15-quiz-progress" id="l15-quiz-progress"></div>
+                <div class="l15-quiz-card" id="l15-quiz-card">
+                    <div class="l15-quiz-ink" aria-hidden="true"></div>
+                    <h2 class="l15-quiz-title" id="l15-quiz-title">核验提问</h2>
+                    <p class="l15-quiz-prompt" id="l15-quiz-prompt"></p>
+                    <div class="l15-quiz-options" id="l15-quiz-options"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="l15-phase-map" class="l15-phase l15-map hidden">
+            <div class="l15-lore-banner" id="l15-lore-banner" role="status" aria-live="polite"></div>
+            <div class="l15-map-body">
+                <div class="l15-map-stage" id="l15-map-stage">
+                    <div class="l15-map-stack">
+                        <img class="l15-map-img l15-map-clear" id="l15-map-clear" alt="星舰总览" draggable="false">
+                        <img class="l15-map-img l15-map-blur" id="l15-map-blur" alt="" draggable="false" aria-hidden="true">
+                        <div class="l15-map-reveal l15-reveal-tl" data-region="tl"></div>
+                        <div class="l15-map-reveal l15-reveal-tr" data-region="tr"></div>
+                        <div class="l15-map-reveal l15-reveal-bl" data-region="bl"></div>
+                        <div class="l15-map-reveal l15-reveal-br" data-region="br"></div>
+                    </div>
+                    <div class="l15-drop-zone" id="l15-drop-zone" aria-hidden="true">
+                        <span>拖入此处 · 墨染开图</span>
+                    </div>
+                </div>
+                <aside class="l15-slot-rail" id="l15-slot-rail" aria-label="关卡槽">
+                    <div class="l15-slot-rail-title">关卡槽</div>
+                    <div class="l15-slot-list" id="l15-slot-list"></div>
+                </aside>
+            </div>
+            <div class="l15-map-guide" id="l15-map-guide">将右侧关卡槽拖入地图中心</div>
+        </div>
+    </div>
+
+    <!-- 全局轻量提示条（菜单 / 弹窗 / 局内通用） -->
+    <div id="app-toast" class="app-toast" role="status" aria-live="polite"></div>
+
+    <!-- 游戏启动引导脚本 (defer + BootLoader 回调；虎扑等宿主友好) -->
+    <script defer src="js/app.bundle.js?v=1789312999938" onload="window.__BootLoader && window.__BootLoader.onBundleLoaded && window.__BootLoader.onBundleLoaded()" onerror="window.__BootLoader && window.__BootLoader.onBundleError && window.__BootLoader.onBundleError()"></script>
 </body>
 </html>
 

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 游戏主控制器与视觉小说 UI 驱动 (Game Controller & Visual Novel UI)
  * 串联主菜单、评议会圆桌、打字机对话流、夜间自由行动、存档读档
  */
@@ -406,7 +406,11 @@ class GameApp {
                 const npc = this.engine.getCharacter(npcId);
                 if (npc) {
                     const line = npc.dialogues.night || `「L.P.H，明天评议会见吧。今晚早点休息。」`;
-                    alert(`${npc.name}：\n\n${line}`);
+                    if (typeof window.showAppToast === "function") {
+                        window.showAppToast(`${npc.name}：${line}`);
+                    } else if (window.gameApp?.showStageToast) {
+                        window.gameApp.showStageToast(`${npc.name}：${line}`);
+                    }
                 }
             };
         });
@@ -505,13 +509,21 @@ class GameApp {
             }))
         };
         localStorage.setItem("gnosia_ai_save", JSON.stringify(saveData));
-        alert("【系统提示】：当前航行日志与生体状态已完整持久化保存！");
+        if (typeof window.showAppToast === "function") {
+            window.showAppToast("【系统提示】：当前航行日志与生体状态已完整持久化保存！");
+        } else if (window.gameApp?.showStageToast) {
+            window.gameApp.showStageToast("【系统提示】：当前航行日志与生体状态已完整持久化保存！");
+        }
     }
 
     loadGame() {
         const str = localStorage.getItem("gnosia_ai_save");
         if (!str) {
-            alert("未检测到本地有效存档！");
+            if (typeof window.showAppToast === "function") {
+                window.showAppToast("未检测到本地有效存档！");
+            } else if (window.gameApp?.showStageToast) {
+                window.gameApp.showStageToast("未检测到本地有效存档！");
+            }
             return;
         }
         try {
@@ -533,7 +545,11 @@ class GameApp {
             this.updateHeaderUI();
             this.appendLog("【系统自愈】：已成功自本地镜像恢复评议会现场！");
         } catch (e) {
-            alert("存档解析损坏，请开始新游戏。");
+            if (typeof window.showAppToast === "function") {
+                window.showAppToast("存档解析损坏，请开始新游戏。");
+            } else if (window.gameApp?.showStageToast) {
+                window.gameApp.showStageToast("存档解析损坏，请开始新游戏。");
+            }
         }
     }
 

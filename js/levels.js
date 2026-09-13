@@ -37,7 +37,7 @@ export const BaseLevels = [
         ],
 
         // 手绘原稿参考图
-        mapImageUrl: "assets/level1_sketch.jpg",
+        mapImageUrl: "assets/level1_sketch.webp",
 
         // 地图拓扑网络 (基于宇宙飞船母蓝图构建，100% 对应手绘图路线)
         map: buildSpaceshipLevelMap(1),
@@ -181,11 +181,11 @@ export const BaseLevels = [
                     type: "require_npc_count", 
                     count: 4 
                 },
-                unlockLevelIds: [15],
+                unlockLevelIds: [],
                 taskName: "任务二：带离场景中四名NPC撤离",
                 taskObjective: "搜寻救醒同伴，至少携行四名NPC共同撤离逃生",
                 title: "矩阵大撤离",
-                toast: "成功带领四名同伴突破重围脱离！激活深层坐标，额外开放【第十五关】！"
+                toast: "成功带领四名同伴突破重围脱离！第三关 · 任务二已达成！"
             }
         ]
     },
@@ -845,6 +845,472 @@ export const BaseLevels = [
                 taskObjective: "确保卡罗与邵可欣存活在队，一同抵达维生环境总控机房脱出",
                 title: "双核引渡",
                 toast: "第十六关 · 任务三已达成！"
+            }
+        ]
+    },
+    {
+        levelId: 17,
+        title: "第十七关：空洞节点 · 真空极化",
+        subtitle: "重核聚变主反应堆出发 · 全舰搜救并修复主电站后自防爆甬道撤离",
+
+        // 第五关风味 + 爆炸受伤（留白、悬疑）
+        blackScreenText: [
+            "……你只是碰巧来到这里。",
+            "下一秒，主反应堆的光像被掐灭的烛芯——死寂漫上来。",
+            "冲击波晚到一步，把你甩进金属与血腥的味道里。",
+            "耳鸣里，有什么东西在暗处挪动。",
+            "重核聚变堆芯旁，伊莲的应急手电还在抖……像不肯闭上的眼。",
+            "——触摸屏幕，开始探查。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: ["elena"], // 开局自动携带伊莲（计入带离人数）
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量：随机 3~6 人（候选池不含薇薇安，含开局伊莲）
+        wolfCountRange: [3, 6],
+        candidateNPCs: [
+            { id: "kaze", assignedRole: null },
+            { id: "shaokexin", assignedRole: null },
+            { id: "mode", assignedRole: null },
+            { id: "prof_lu", assignedRole: null },
+            { id: "colt", assignedRole: null },
+            { id: "barnes", assignedRole: null },
+            { id: "elsa", assignedRole: null },
+            { id: "sophia", assignedRole: null },
+            { id: "noah", assignedRole: null },
+            { id: "elena", assignedRole: null }
+        ],
+
+        mapImageUrl: null,
+        map: buildSpaceshipLevelMap(17),
+
+        // 通关不解锁后续关卡；仅保存「已完成」标记。两任务均须在撤离前满足。
+        unlockRules: [
+            {
+                id: "l17_escort_5_no_mimics",
+                condition: { type: "require_npc_count_no_mimics", count: 5 },
+                unlockLevelIds: [],
+                taskName: "任务一：带离五名同伴且队伍无伪人",
+                taskObjective: "护送至少 5 名同伴抵达防爆甬道撤离，且撤离队伍中不得含有伪人（伊莲计入人数）",
+                title: "纯净引渡",
+                toast: "第十七关 · 任务一已达成！"
+            },
+            {
+                id: "l17_power_restore",
+                condition: { type: "level17_power_restored" },
+                unlockLevelIds: [],
+                taskName: "任务二：找到并修复主电站",
+                taskObjective: "前往【主配电值班舱】合闸恢复主电网，解除黄色气闸封锁",
+                title: "主电站重合闸",
+                toast: "第十七关 · 任务二已达成！"
+            }
+        ]
+    },
+    {
+        levelId: 18,
+        title: "第十八关：反转信标 · 宇称不守恒",
+        subtitle: "重核聚变主反应堆出发 · 全舰搜救并修复主电站后自防爆甬道撤离",
+
+        // 第六关风味 + 爆炸受伤（留白、悬疑）
+        blackScreenText: [
+            "幽蓝的等离子辉光在视网膜前跃动……你如往常一样管控着重核聚变主反应堆。",
+            "毫无预警，光被撕开——冲击波把你甩进金属与焦糊的气味里。",
+            "耳鸣里，遥测遥控信号像潮水退尽。有什么在暗处挪动。",
+            "伊莲的工位空着。薇薇安的呼吸近在咫尺。",
+            "必须带伤搜救同伴、合上主电网，再从防爆甬道离开。",
+            "——触摸屏幕，紧急行动。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: ["vivian"], // 开局自动携带薇薇安（计入带离人数）
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量：随机 3~6 人（候选池不含伊莲，含开局薇薇安）
+        wolfCountRange: [3, 6],
+        candidateNPCs: [
+            { id: "kaze", assignedRole: null },
+            { id: "shaokexin", assignedRole: null },
+            { id: "mode", assignedRole: null },
+            { id: "prof_lu", assignedRole: null },
+            { id: "colt", assignedRole: null },
+            { id: "barnes", assignedRole: null },
+            { id: "elsa", assignedRole: null },
+            { id: "sophia", assignedRole: null },
+            { id: "noah", assignedRole: null },
+            { id: "vivian", assignedRole: null }
+        ],
+
+        mapImageUrl: null,
+        map: buildSpaceshipLevelMap(18),
+
+        // 通关不解锁后续关卡；仅保存「已完成」标记。两任务均须在撤离前满足。
+        unlockRules: [
+            {
+                id: "l18_escort_5_no_mimics",
+                condition: { type: "require_npc_count_no_mimics", count: 5 },
+                unlockLevelIds: [],
+                taskName: "任务一：带离五名同伴且队伍无伪人",
+                taskObjective: "护送至少 5 名同伴抵达防爆甬道撤离，且撤离队伍中不得含有伪人（薇薇安计入人数）",
+                title: "纯净引渡",
+                toast: "第十八关 · 任务一已达成！"
+            },
+            {
+                id: "l18_power_restore",
+                condition: { type: "level18_power_restored" },
+                unlockLevelIds: [],
+                taskName: "任务二：找到并修复主电站",
+                taskObjective: "由薇薇安随行协助，前往【主配电值班舱】合闸恢复主电网，解除黄色气闸封锁",
+                title: "主电站重合闸",
+                toast: "第十八关 · 任务二已达成！"
+            }
+        ]
+    },
+    {
+        levelId: 19,
+        title: "第十九关：终极拟态 · 意识同化沼泽",
+        subtitle: "防爆甬道出发 · 核检维生总控后自深潜休眠舱撤离",
+
+        // 第七关风味 + 爆炸受伤（留白、悬疑）
+        blackScreenText: [
+            "趁着巡检空档，你躲在防爆甬道的阴影里……巴恩斯的呼吸近在咫尺。",
+            "毫无征兆，警示灯被撕碎——冲击波把你们甩进金属与焦糊的气味。",
+            "耳鸣里，通风阀的呼啸也化作死寂。有什么在暗处挪动。",
+            "必须带伤穿过维生总控，再把巴恩斯带进深潜休眠舱。",
+            "——触摸屏幕，携手突入。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: ["barnes"], // 开局自动携带巴恩斯
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        // 伪人数量：随机 3~6（候选池不含柯尔特，含开局巴恩斯）
+        wolfCountRange: [3, 6],
+        candidateNPCs: [
+            { id: "kaze", assignedRole: null },
+            { id: "shaokexin", assignedRole: null },
+            { id: "mode", assignedRole: null },
+            { id: "prof_lu", assignedRole: null },
+            { id: "barnes", assignedRole: null },
+            { id: "elsa", assignedRole: null },
+            { id: "sophia", assignedRole: null },
+            { id: "noah", assignedRole: null },
+            { id: "vivian", assignedRole: null },
+            { id: "elena", assignedRole: null }
+        ],
+
+        mapImageUrl: null,
+        map: buildSpaceshipLevelMap(19),
+
+        // 通关不解锁其它关；仅标记完成。两任务均须在撤离前满足。
+        unlockRules: [
+            {
+                id: "l19_escort_barnes",
+                condition: { type: "require_npcs", npcIds: ["barnes"] },
+                unlockLevelIds: [],
+                taskName: "任务一：带离巴恩斯撤离",
+                taskObjective: "确保巴恩斯存活随行，一同抵达深潜休眠舱脱出",
+                title: "搭档引渡",
+                toast: "第十九关 · 任务一已达成！"
+            },
+            {
+                id: "l19_life_support_visit",
+                condition: { type: "level19_life_support_visited" },
+                unlockLevelIds: [],
+                taskName: "任务二：经过维生环境总控机房",
+                taskObjective: "抵达地图高亮的【维生环境总控机房】完成核检记录（开局即高亮）",
+                title: "维生核检",
+                toast: "第十九关 · 任务二已达成！"
+            }
+        ]
+    },
+    {
+        levelId: 20,
+        title: "第二十关：意识海床 · 神经突触云端",
+        subtitle: "防爆甬道出发 · 核检维生总控后自深潜休眠舱撤离",
+
+        // 第八关风味 + 爆炸受伤（留白、悬疑）
+        blackScreenText: [
+            "柯尔特还是那个老样子……缩在防爆甬道暗格里打瞌睡。",
+            "忽然，死寂像潮水漫上来——冲击波把你们甩进金属与焦糊的气味。",
+            "耳鸣里，有什么在暗处挪动。他骂了一句，把枪口抬起。",
+            "必须带伤穿过维生总控，再把柯尔特带进深潜休眠舱。",
+            "——触摸屏幕，携伴突围。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: ["colt"],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        wolfCountRange: [3, 6],
+        candidateNPCs: [
+            { id: "kaze", assignedRole: null },
+            { id: "shaokexin", assignedRole: null },
+            { id: "mode", assignedRole: null },
+            { id: "prof_lu", assignedRole: null },
+            { id: "colt", assignedRole: null },
+            { id: "elsa", assignedRole: null },
+            { id: "sophia", assignedRole: null },
+            { id: "noah", assignedRole: null },
+            { id: "vivian", assignedRole: null },
+            { id: "elena", assignedRole: null }
+        ],
+
+        mapImageUrl: null,
+        map: buildSpaceshipLevelMap(20),
+
+        unlockRules: [
+            {
+                id: "l20_escort_colt",
+                condition: { type: "require_npcs", npcIds: ["colt"] },
+                unlockLevelIds: [],
+                taskName: "任务一：带离柯尔特撤离",
+                taskObjective: "确保柯尔特存活随行，一同抵达深潜休眠舱脱出",
+                title: "搭档引渡",
+                toast: "第二十关 · 任务一已达成！"
+            },
+            {
+                id: "l20_life_support_visit",
+                condition: { type: "level20_life_support_visited" },
+                unlockLevelIds: [],
+                taskName: "任务二：经过维生环境总控机房",
+                taskObjective: "抵达地图高亮的【维生环境总控机房】完成核检记录（开局即高亮）",
+                title: "维生核检",
+                toast: "第二十关 · 任务二已达成！"
+            }
+        ]
+    },
+    {
+        levelId: 21,
+        title: "第二十一关：镜像死局 · 对称破缺迷津",
+        subtitle: "全自动急救台出发 · 核检维生总控后携索菲亚自深潜休眠舱撤离",
+
+        // 第九关风味 + 全舰停电（无爆炸、留白悬疑）
+        blackScreenText: [
+            "急救台的指示灯一盏盏熄灭。",
+            "不是警报——是整条母线失压后的真空静默。",
+            "换气格栅停了。走廊深处，有人在黑暗里缓慢挪动。",
+            "先去维生总控核检，再把索菲亚带出深潜休眠舱。",
+            "——触摸屏幕，在停电中行动。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        wolfCountRange: [3, 6],
+        candidateNPCs: [
+            { id: "kaze", assignedRole: null },
+            { id: "shaokexin", assignedRole: null },
+            { id: "mode", assignedRole: null },
+            { id: "prof_lu", assignedRole: null },
+            { id: "colt", assignedRole: null },
+            { id: "barnes", assignedRole: null },
+            { id: "sophia", assignedRole: null },
+            { id: "noah", assignedRole: null },
+            { id: "vivian", assignedRole: null },
+            { id: "elena", assignedRole: null }
+        ],
+
+        mapImageUrl: null,
+        map: buildSpaceshipLevelMap(21),
+
+        unlockRules: [
+            {
+                id: "l21_escort_sophia",
+                condition: { type: "require_npcs", npcIds: ["sophia"] },
+                unlockLevelIds: [],
+                taskName: "任务一：带离索菲亚撤离",
+                taskObjective: "在绿光生态舱寻回索菲亚，确保其存活随行抵达深潜休眠舱脱出",
+                title: "搭档引渡",
+                toast: "第二十一关 · 任务一已达成！"
+            },
+            {
+                id: "l21_life_support_visit",
+                condition: { type: "level21_life_support_visited" },
+                unlockLevelIds: [],
+                taskName: "任务二：经过维生环境总控机房",
+                taskObjective: "抵达地图高亮的【维生环境总控机房】完成核检记录（开局即高亮）",
+                title: "维生核检",
+                toast: "第二十一关 · 任务二已达成！"
+            }
+        ]
+    },
+    {
+        levelId: 22,
+        title: "第二十二关：光锥视界 · 类光测地线",
+        subtitle: "高危冷藏间出发 · 避让停电始发地后孤身自深潜休眠舱撤离",
+
+        // 第十关风味 + 爆炸受伤（留白、悬疑）
+        blackScreenText: [
+            "——静默，像冰雪又落回走廊。",
+            "没有倒计时。只有余震后的耳鸣，和掌心蹭到的灼热金属。",
+            "计划还在——独自走完。",
+            "别靠近那盏灭掉的主配电值班灯。",
+            "——触摸屏幕，孤身突围。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        wolfCountRange: [3, 6],
+        candidateNPCs: [
+            { id: "kaze", assignedRole: null },
+            { id: "shaokexin", assignedRole: null },
+            { id: "mode", assignedRole: null },
+            { id: "colt", assignedRole: null },
+            { id: "barnes", assignedRole: null },
+            { id: "elsa", assignedRole: null },
+            { id: "sophia", assignedRole: null },
+            { id: "noah", assignedRole: null },
+            { id: "vivian", assignedRole: null },
+            { id: "elena", assignedRole: null }
+        ],
+
+        mapImageUrl: null,
+        map: buildSpaceshipLevelMap(22),
+
+        unlockRules: [
+            {
+                id: "l22_solo_evac",
+                condition: { type: "solo_only" },
+                unlockLevelIds: [],
+                taskName: "任务一：独自撤离",
+                taskObjective: "抵达深潜休眠舱时队伍中不得有任何存活同伴（含伪人）",
+                title: "孤身脱出",
+                toast: "第二十二关 · 任务一已达成！"
+            },
+            {
+                id: "l22_avoid_outage",
+                condition: { type: "level22_avoided_outage_origin" },
+                unlockLevelIds: [],
+                taskName: "任务二：不要经过全舰停电始发地",
+                taskObjective: "避开地图高亮的【全舰停电始发地】；一旦踏入或途经即失败",
+                title: "禁区绕行",
+                toast: "第二十二关 · 任务二已达成！"
+            }
+        ]
+    },
+    {
+        levelId: 23,
+        title: "第二十三关：高维裂解 · 膜宇宙碰撞",
+        subtitle: "重力发生核出发 · 避让维生总控后携五人自深潜休眠舱撤离",
+
+        // 第十一关风味 + 爆炸受伤（留白、悬疑）
+        blackScreenText: [
+            "……你只是一台机器。",
+            "爆炸后的耳鸣里，人类的生死依旧没有回声。",
+            "所谓危机感——不过是屏幕上未定义的噪声。",
+            "带上五个人。绕开那扇亮着的维生总控门。",
+            "……无所谓了。触摸屏幕，继续。"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        wolfCountRange: [3, 6],
+        candidateNPCs: [
+            { id: "kaze", assignedRole: null },
+            { id: "shaokexin", assignedRole: null },
+            { id: "mode", assignedRole: null },
+            { id: "prof_lu", assignedRole: null },
+            { id: "colt", assignedRole: null },
+            { id: "barnes", assignedRole: null },
+            { id: "elsa", assignedRole: null },
+            { id: "sophia", assignedRole: null },
+            { id: "vivian", assignedRole: null },
+            { id: "elena", assignedRole: null }
+        ],
+
+        mapImageUrl: null,
+        map: buildSpaceshipLevelMap(23),
+
+        unlockRules: [
+            {
+                id: "l23_escort_five",
+                condition: { type: "require_npc_count", count: 5 },
+                unlockLevelIds: [],
+                taskName: "任务一：带领五名NPC撤离",
+                taskObjective: "确保至少五名同伴存活随行，一同抵达深潜休眠舱脱出（伪人计入人数）",
+                title: "五人引渡",
+                toast: "第二十三关 · 任务一已达成！"
+            },
+            {
+                id: "l23_avoid_life_support",
+                condition: { type: "level23_avoided_life_support" },
+                unlockLevelIds: [],
+                taskName: "任务二：不经过维生环境总控机房",
+                taskObjective: "避开地图高亮的【维生环境总控机房】；一旦踏入或途经即失败",
+                title: "禁区绕行",
+                toast: "第二十三关 · 任务二已达成！"
+            }
+        ]
+    },
+    {
+        levelId: 24,
+        title: "第二十四关：原初黑洞 · 微型奇点蒸发",
+        subtitle: "绿光生态舱出发 · 全员汇合后自深潜休眠舱撤离",
+
+        // 第十二关风味 + 爆炸受伤（留白、悬疑）
+        blackScreenText: [
+            "像往常那样，你停在绿光生态舱的叶片旁……",
+            "可光影骤然湮灭。冲击波撕开温室的穹顶，焦糊与土腥涌进肺里。",
+            "或许……又有谁在某个走廊闹出了岔子。",
+            "这一次，必须把所有人带走。一个都不能少。",
+            "——触摸屏幕，踏入未知。"
+        ],
+
+        // 黑屏后独立高潮提示（非常醒目）
+        postBlackScreenClimaxTip: "本关结束将开始揭晓一切真相",
+
+        // 通关后尾声黑屏（分句闪现）
+        victoryEndingBlackScreen: [
+            "一切貌似有迹可循",
+            "完成其余所有关卡后",
+            "请移步至第十五、二十五关",
+            "真相将在此刻浮出水面"
+        ],
+
+        initialStamina: 100,
+        initialTeam: [],
+        protagonistRolePool: ["seer", "guard", "witch"],
+        defaultProtagonistRole: "seer",
+
+        wolfCountRange: [3, 6],
+        candidateNPCs: [
+            { id: "kaze", assignedRole: null },
+            { id: "shaokexin", assignedRole: null },
+            { id: "mode", assignedRole: null },
+            { id: "prof_lu", assignedRole: null },
+            { id: "colt", assignedRole: null },
+            { id: "barnes", assignedRole: null },
+            { id: "elsa", assignedRole: null },
+            { id: "noah", assignedRole: null },
+            { id: "vivian", assignedRole: null },
+            { id: "elena", assignedRole: null }
+        ],
+
+        mapImageUrl: null,
+        map: buildSpaceshipLevelMap(24),
+
+        unlockRules: [
+            {
+                id: "l24_escort_all",
+                condition: { type: "require_all_level_npcs" },
+                unlockLevelIds: [],
+                taskName: "任务一：带离所有人撤离",
+                taskObjective: "本关全部同伴必须存活随行抵达深潜休眠舱（含伪人；有人死亡则本循环无法通关）",
+                title: "全员引渡",
+                toast: "第二十四关 · 任务一已达成！"
             }
         ]
     }

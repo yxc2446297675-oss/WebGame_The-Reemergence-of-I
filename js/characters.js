@@ -339,13 +339,13 @@ export const CharacterRegistry = {
             themeColor: "#f43f5e",
             boxBorderColor: "rgba(244, 63, 94, 0.9)",
             boxBgGlow: "rgba(244, 63, 94, 0.25)",
-            avatarUrl: "assets/characters/Vivian/calm.png",
+            avatarUrl: "assets/characters/Vivian/calm.webp",
             expressions: {
-                clam: "assets/characters/Vivian/calm.png",
-                calm: "assets/characters/Vivian/calm.png",
-                normal: "assets/characters/Vivian/calm.png",
-                angry: "assets/characters/Vivian/angry.png",
-                dead: "assets/characters/Vivian/dead.jpg"
+                clam: "assets/characters/Vivian/calm.webp",
+                calm: "assets/characters/Vivian/calm.webp",
+                normal: "assets/characters/Vivian/calm.webp",
+                angry: "assets/characters/Vivian/angry.webp",
+                dead: "assets/characters/Vivian/dead.webp"
             },
             introDialogue: [
                 { text: "（手持光子微冲，战术目镜闪烁着橙红辉光警惕扫视）站在那里别动！出示识别码……", expression: "angry" },
@@ -395,13 +395,13 @@ export const CharacterRegistry = {
             themeColor: "#fb923c",
             boxBorderColor: "rgba(251, 146, 60, 0.9)",
             boxBgGlow: "rgba(251, 146, 60, 0.25)",
-            avatarUrl: "assets/characters/Elena/calm.jpg",
+            avatarUrl: "assets/characters/Elena/calm.webp",
             expressions: {
-                clam: "assets/characters/Elena/calm.jpg",
-                calm: "assets/characters/Elena/calm.jpg",
-                normal: "assets/characters/Elena/calm.jpg",
-                angry: "assets/characters/Elena/angry.jpg",
-                dead: "assets/characters/Elena/3f928911-2a4d-4b34-9aa7-932b3791ba3d.jpg"
+                clam: "assets/characters/Elena/calm.webp",
+                calm: "assets/characters/Elena/calm.webp",
+                normal: "assets/characters/Elena/calm.webp",
+                angry: "assets/characters/Elena/angry.webp",
+                dead: "assets/characters/Elena/dead.webp"
             },
             introDialogue: [
                 { text: "（满手重油污渍，正用力敲击着嗡鸣作响的等离子泄压阀）咳咳……别催了！", expression: "angry" },
@@ -450,13 +450,13 @@ export const CharacterRegistry = {
             themeColor: "#f59e0b",
             boxBorderColor: "rgba(245, 158, 11, 0.9)",
             boxBgGlow: "rgba(245, 158, 11, 0.25)",
-            avatarUrl: "assets/characters/Colt/calm.jpg",
+            avatarUrl: "assets/characters/Colt/calm.webp",
             expressions: {
-                clam: "assets/characters/Colt/calm.jpg",
-                calm: "assets/characters/Colt/calm.jpg",
-                normal: "assets/characters/Colt/calm.jpg",
-                angry: "assets/characters/Colt/angry.png",
-                dead: "assets/characters/Colt/dead.jpg"
+                clam: "assets/characters/Colt/calm.webp",
+                calm: "assets/characters/Colt/calm.webp",
+                normal: "assets/characters/Colt/calm.webp",
+                angry: "assets/characters/Colt/angry.webp",
+                dead: "assets/characters/Colt/dead.webp"
             },
             introDialogue: [
                 { text: "（指尖娴熟地把玩着一枚黄铜筹码，嘴角挂着玩世不恭的笑意）哟，大指挥官。", expression: "clam" },
@@ -505,13 +505,13 @@ export const CharacterRegistry = {
             themeColor: "#10b981",
             boxBorderColor: "rgba(16, 185, 129, 0.9)",
             boxBgGlow: "rgba(16, 185, 129, 0.25)",
-            avatarUrl: "assets/characters/Prof_Lu/calm.png",
+            avatarUrl: "assets/characters/Prof_Lu/calm.webp",
             expressions: {
-                clam: "assets/characters/Prof_Lu/calm.png",
-                calm: "assets/characters/Prof_Lu/calm.png",
-                normal: "assets/characters/Prof_Lu/calm.png",
-                angry: "assets/characters/Prof_Lu/angry.png",
-                dead: "assets/characters/Prof_Lu/dead.jpg"
+                clam: "assets/characters/Prof_Lu/calm.webp",
+                calm: "assets/characters/Prof_Lu/calm.webp",
+                normal: "assets/characters/Prof_Lu/calm.webp",
+                angry: "assets/characters/Prof_Lu/angry.webp",
+                dead: "assets/characters/Prof_Lu/dead.webp"
             },
             introDialogue: [
                 { text: "（推了推反光的单片测镜，全神贯注凝视着真空试管内的异质晶体）别打扰我……", expression: "clam" },
@@ -560,13 +560,13 @@ export const CharacterRegistry = {
             themeColor: "#06b6d4",
             boxBorderColor: "rgba(6, 182, 212, 0.9)",
             boxBgGlow: "rgba(6, 182, 212, 0.25)",
-            avatarUrl: "assets/characters/Dr_Elsa/calm.jpg",
+            avatarUrl: "assets/characters/Dr_Elsa/calm.webp",
             expressions: {
-                clam: "assets/characters/Dr_Elsa/calm.jpg",
-                calm: "assets/characters/Dr_Elsa/calm.jpg",
-                normal: "assets/characters/Dr_Elsa/calm.jpg",
-                angry: "assets/characters/Dr_Elsa/angry.jpg",
-                dead: "assets/characters/Dr_Elsa/dead.jpg"
+                clam: "assets/characters/Dr_Elsa/calm.webp",
+                calm: "assets/characters/Dr_Elsa/calm.webp",
+                normal: "assets/characters/Dr_Elsa/calm.webp",
+                angry: "assets/characters/Dr_Elsa/angry.webp",
+                dead: "assets/characters/Dr_Elsa/dead.webp"
             },
             introDialogue: [
                 { text: "（戴着沾有荧光消毒凝胶的手套，神情清冷甚至有些严酷）心率138，血压偏低。", expression: "clam" },
@@ -615,14 +615,14 @@ export const CharacterRegistry = {
             themeColor: "#84cc16",
             boxBorderColor: "rgba(132, 204, 22, 0.9)",
             boxBgGlow: "rgba(132, 204, 22, 0.25)",
-            avatarUrl: "assets/characters/Barnes/calm.jpg",
+            avatarUrl: "assets/characters/Barnes/calm.webp",
             expressions: {
-                clam: "assets/characters/Barnes/calm.jpg",
-                calm: "assets/characters/Barnes/calm.jpg",
-                normal: "assets/characters/Barnes/calm.jpg",
-                happy: "assets/characters/Barnes/happy.jpg",
-                angry: "assets/characters/Barnes/angry.jpg",
-                dead: "assets/characters/Barnes/dead.jpg"
+                clam: "assets/characters/Barnes/calm.webp",
+                calm: "assets/characters/Barnes/calm.webp",
+                normal: "assets/characters/Barnes/calm.webp",
+                happy: "assets/characters/Barnes/happy.webp",
+                angry: "assets/characters/Barnes/angry.webp",
+                dead: "assets/characters/Barnes/dead.webp"
             },
             introDialogue: [
                 { text: "（拍了拍身边挂着三重密码锁的防爆箱，皮笑肉不笑地咧嘴）嘿嘿……大驾光临啊指挥官。", expression: "happy" },
@@ -671,13 +671,13 @@ export const CharacterRegistry = {
             themeColor: "#6366f1",
             boxBorderColor: "rgba(99, 102, 241, 0.9)",
             boxBgGlow: "rgba(99, 102, 241, 0.25)",
-            avatarUrl: "assets/characters/Noah/calm.png",
+            avatarUrl: "assets/characters/Noah/calm.webp",
             expressions: {
-                clam: "assets/characters/Noah/calm.png",
-                calm: "assets/characters/Noah/calm.png",
-                normal: "assets/characters/Noah/calm.png",
-                angry: "assets/characters/Noah/calm.png", // 保底使用平静
-                dead: "assets/characters/Noah/dead.jpg"
+                clam: "assets/characters/Noah/calm.webp",
+                calm: "assets/characters/Noah/calm.webp",
+                normal: "assets/characters/Noah/calm.webp",
+                angry: "assets/characters/Noah/calm.webp", // 保底使用平静
+                dead: "assets/characters/Noah/dead.webp"
             },
             introDialogue: [
                 { text: "（颈部液态金属接口闪烁着深蓝脉冲，无机质的双眸缓缓对焦）系统自检中……", expression: "clam" },
@@ -726,14 +726,14 @@ export const CharacterRegistry = {
             themeColor: "#ec4899",
             boxBorderColor: "rgba(236, 72, 153, 0.9)",
             boxBgGlow: "rgba(236, 72, 153, 0.25)",
-            avatarUrl: "assets/characters/Sophia/calm.jpg",
+            avatarUrl: "assets/characters/Sophia/calm.webp",
             expressions: {
-                clam: "assets/characters/Sophia/calm.jpg",
-                calm: "assets/characters/Sophia/calm.jpg",
-                normal: "assets/characters/Sophia/calm.jpg",
-                angry: "assets/characters/Sophia/angry.jpg",
-                sad: "assets/characters/Sophia/sad.png",
-                dead: "assets/characters/Sophia/dead.jpg"
+                clam: "assets/characters/Sophia/calm.webp",
+                calm: "assets/characters/Sophia/calm.webp",
+                normal: "assets/characters/Sophia/calm.webp",
+                angry: "assets/characters/Sophia/angry.webp",
+                sad: "assets/characters/Sophia/sad.webp",
+                dead: "assets/characters/Sophia/dead.webp"
             },
             introDialogue: [
                 { text: "（用微滴喷雾器给濒危的水培幼苗细致补水，转过身来目光清澈而忧伤）请轻一点……", expression: "sad" },
@@ -1015,7 +1015,7 @@ export const CharacterRegistry = {
             <!-- HUD刻度圆环 -->
             <circle cx="100" cy="80" r="56" fill="none" stroke="${color}" stroke-width="1.2" stroke-dasharray="6 6" opacity="0.5"/>
             <!-- 角色姓名首字 -->
-            <text x="100" y="93" font-family="'Orbitron', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="34" font-weight="bold" fill="#ffffff" text-anchor="middle" filter="drop-shadow(0px 2px 5px rgba(0,0,0,0.9))">
+            <text x="100" y="93" font-family="'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', sans-serif" font-size="34" font-weight="bold" fill="#ffffff" text-anchor="middle" filter="drop-shadow(0px 2px 5px rgba(0,0,0,0.9))">
                 ${nameInitial}
             </text>
             <!-- 徽章气泡 -->
@@ -1067,9 +1067,12 @@ export const CharacterRegistry = {
                 settled = true;
                 resolve(imgOrNull);
             };
+            // 弱网硬超时：绝不让单张图挂死后续流程
+            const hardTimer = setTimeout(() => finish(null), 4000);
             try {
                 const img = new Image();
                 const markOk = () => {
+                    clearTimeout(hardTimer);
                     if (this.isImageReady(img)) {
                         if (this.imageCache) this.imageCache.set(url, img);
                         this.preloadedImages.add(url);
@@ -1081,6 +1084,7 @@ export const CharacterRegistry = {
                     }
                 };
                 const markFail = () => {
+                    clearTimeout(hardTimer);
                     this.preloadedImages.delete(url);
                     this.failedImages.add(url);
                     if (this.imageCache) this.imageCache.delete(url);
@@ -1095,6 +1099,7 @@ export const CharacterRegistry = {
                     });
                 }
             } catch (e) {
+                clearTimeout(hardTimer);
                 this.failedImages.add(url);
                 finish(null);
             }
@@ -1122,42 +1127,41 @@ export const CharacterRegistry = {
         return candidates[0] || "";
     },
 
-    preloadCharacter(character) {
+    preloadCharacter(character, opts = {}) {
         if (!character) return Promise.resolve();
+        const light = opts.light !== false; // 默认轻量：只预热平静/常用表情
         const promises = [];
         if (character.avatarUrl) promises.push(this.preloadImage(character.avatarUrl));
         if (character.expressions) {
-            Object.values(character.expressions).forEach(url => {
-                if (url && typeof url === "string") {
-                    promises.push(this.preloadImage(url));
-                }
+            const keys = light ? ["clam", "normal"] : Object.keys(character.expressions);
+            keys.forEach((k) => {
+                const url = character.expressions[k];
+                if (url && typeof url === "string") promises.push(this.preloadImage(url));
             });
         }
-        // 额外预热候选探测前几项（兼容别名路径），减少局内 onerror 轮询
-        ["clam", "happy", "angry", "dead"].forEach(exp => {
-            const candidates = this.getCharacterImageCandidates(character, exp) || [];
-            candidates.slice(0, 6).forEach(url => {
-                if (url) promises.push(this.preloadImage(url));
+        if (!light) {
+            ["clam", "happy", "angry", "dead"].forEach(exp => {
+                const candidates = this.getCharacterImageCandidates(character, exp) || [];
+                candidates.slice(0, 3).forEach(url => {
+                    if (url) promises.push(this.preloadImage(url));
+                });
             });
-        });
+        }
         return Promise.all(promises);
     },
 
     preloadForLevel(levelConfig) {
-        this.preloadImage("assets/level1_sketch.jpg");
+        this.preloadImage("assets/level1_sketch.webp");
         const candidates = (levelConfig && levelConfig.candidateNPCs) || [];
-        if (candidates.length > 0) {
-            candidates.forEach(c => {
-                const char = this.get(c.id);
-                if (char) this.preloadCharacter(char);
-            });
-        } else {
-            this.getAll().forEach(char => this.preloadCharacter(char));
-        }
+        const list = candidates.length > 0
+            ? candidates.map(c => this.get(c.id)).filter(Boolean)
+            : [];
+        // 进关只预热本关角色平静表情；其余表情局内按需加载
+        list.forEach(char => this.preloadCharacter(char, { light: true }));
     },
 
     preloadAll() {
-        this.preloadImage("assets/level1_sketch.jpg");
+        this.preloadImage("assets/level1_sketch.webp");
         this.getAll().forEach(char => this.preloadCharacter(char));
     }
 };
@@ -1168,12 +1172,7 @@ CharacterRegistry.npcs.kaluo = CharacterRegistry.npcs.kaze;
 CharacterRegistry.npcs.luzhixing = CharacterRegistry.npcs.prof_lu;
 CharacterRegistry.npcs.dr_elsa = CharacterRegistry.npcs.elsa;
 
-// 浏览器空闲期静默预热全部角色立绘资源
+// 不在模块加载时全量预热立绘（虎扑弱网会拖垮首屏）；由 GameEngine.scheduleBackgroundWarmup / preloadForLevel 按需处理
 if (typeof window !== "undefined") {
-    const idlePreload = window.requestIdleCallback || ((cb) => setTimeout(cb, 600));
-    idlePreload(() => {
-        if (typeof CharacterRegistry.preloadAll === "function") {
-            CharacterRegistry.preloadAll();
-        }
-    });
+    /* intentionally idle — no preloadAll on boot */
 }

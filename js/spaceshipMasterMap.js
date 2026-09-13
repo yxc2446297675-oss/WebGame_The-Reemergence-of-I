@@ -1575,137 +1575,383 @@ export const LEVEL_SECTOR_SPECS = {
     },
     17: {
         title: "第十七关：空洞节点 · 真空极化",
-        subtitle: "生活区、工程机库与动力推进全域打通",
-        startNodeId: "room_living_quarter",
-        exitNodeId: "room_singularity_gate",
+        subtitle: "重核聚变主反应堆出发 · 全舰搜救并修复主电站后自防爆甬道撤离",
+        startNodeId: "room_main_reactor",        // 伊莲停电站位 · 重核聚变主反应堆（伊莲开局随队，作起点）
+        exitNodeId: "room_armored_corridor",     // 舰尾重装甲巡检长廊 · 防爆甬道
+        // 全图开放（普通舱室）；黄色区域断电锁死，合闸后解锁；专属私人舱仍需乘员授权
+        // 黑市特勤套房为 isNpcRoom，需显式纳入以便柯尔特&巴恩斯站位可进入
         openRoomIds: [
-            "room_exit", "room_corner_ne", "room_storage_ne", "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
-            "room_path_e", "room_hub_n1", "room_npc2", "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
-            "room_corridor_w1", "room_start", "room_corner_se", "room_gravity_well", "room_armory", "room_recreation_gym", "room_east_airlock",
-            "room_cargo_lift", "room_sub_generator", "room_hangar_deck", "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
-            "room_sub_coolant", "room_reactor_control", "room_plasma_manifold", "room_main_reactor", "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock",
-            "room_escape_pod_w", "room_ion_thruster_l", "room_antimatter_tap", "room_singularity_gate", "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e", "room_npc1", "room_junction_nw"
+            ...Object.keys(MASTER_ROOM_DEFS).filter(id =>
+                !MASTER_ROOM_DEFS[id].isNpcRoom &&
+                ![
+                    "room_armory", "room_escape_pod_w", "room_ion_thruster_l",
+                    "room_antimatter_tap", "room_singularity_gate", "room_matter_stream",
+                    "room_ion_thruster_r", "room_escape_pod_e"
+                ].includes(id)
+            ),
+            "room_npc_colt_barnes"
         ],
         npcPlacements: {
-            "room_armory": "kaze",
-            "room_npc2": "shaokexin",
-            "room_warp_field_gen": "mode"
+            // 停电站位 / 受伤站位（剔除主角 LPH、薇薇安；伊莲开局随队不刷地图）
+            "room_npc1": "kaze",                    // 卡罗 · 动力操作台
+            "room_npc2": "shaokexin",               // 邵可欣 · 医护角落
+            "room_npc3": "mode",                    // 莫德 · 西北隔离舱
+            "room_west_end": "prof_lu",             // 陆知行 · 主配电值班舱
+            "room_npc_colt_barnes": "colt_barnes",  // 柯尔特 & 巴恩斯 · 黑市特勤套房
+            "room_med_surgery": "elsa",             // 艾尔莎 · 纳米手术舱
+            "room_hydro_garden": "sophia",          // 索菲亚 · 立体水培温室
+            "room_recreation_gym": "noah"           // 诺亚 · 体能维持舱
         },
-        foodPlacements: ["room_storage_ne", "room_mess_hall", "room_coolant_tank"]
+        randomFoodCountRange: [5, 7], // 场景随机投放 5~7 处体力箱
+        severedConnections: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        yellowSeveredPairs: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        useHostCompatibilityLock: false,
+        yellowLockRoomIds: [
+            "room_armory", "room_escape_pod_w", "room_ion_thruster_l",
+            "room_antimatter_tap", "room_singularity_gate", "room_matter_stream",
+            "room_ion_thruster_r", "room_escape_pod_e"
+        ]
     },
     18: {
         title: "第十八关：反转信标 · 宇称不守恒",
-        subtitle: "全舰下层机库与两侧应急气闸贯通",
-        startNodeId: "room_salvage_bay",
-        exitNodeId: "room_singularity_gate",
+        subtitle: "重核聚变主反应堆出发 · 全舰搜救并修复主电站后自防爆甬道撤离",
+        startNodeId: "room_main_reactor",        // 伊莲站位作起点；本关去除伊莲，开局随队为薇薇安
+        exitNodeId: "room_armored_corridor",     // 防爆甬道
+        // 与第十七关一致：全图可走（除黄区断电锁）；不做宿主契合度锁
         openRoomIds: [
-            "room_specimen_vault", "room_exit", "room_storage_ne", "room_med_surgery", "room_cryo_stasis",
-            "room_npc3", "room_junction_nw", "room_hub_n1", "room_npc2", "room_living_quarter", "room_hydro_garden", "room_mess_hall",
-            "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se", "room_gravity_well", "room_armory", "room_east_airlock",
-            "room_salvage_bay", "room_cargo_lift", "room_sub_generator", "room_hangar_deck", "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler", "room_eva_staging",
-            "room_shields_emitter", "room_sub_coolant", "room_reactor_control", "room_plasma_manifold", "room_main_reactor", "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor", "room_starboard_dock",
-            "room_escape_pod_w", "room_ion_thruster_l", "room_antimatter_tap", "room_singularity_gate", "room_matter_stream", "room_ion_thruster_r", "room_escape_pod_e"
+            ...Object.keys(MASTER_ROOM_DEFS).filter(id =>
+                !MASTER_ROOM_DEFS[id].isNpcRoom &&
+                ![
+                    "room_armory", "room_escape_pod_w", "room_ion_thruster_l",
+                    "room_antimatter_tap", "room_singularity_gate", "room_matter_stream",
+                    "room_ion_thruster_r", "room_escape_pod_e"
+                ].includes(id)
+            ),
+            "room_npc_colt_barnes"
         ],
         npcPlacements: {
-            "room_reactor_control": "kaze",
-            "room_hangar_deck": "shaokexin",
-            "room_shields_emitter": "mode"
+            // 受伤站位（缺省同停电站位）；剔除主角 LPH、伊莲；薇薇安开局随队不刷地图
+            "room_npc1": "kaze",
+            "room_npc2": "shaokexin",
+            "room_npc3": "mode",
+            "room_west_end": "prof_lu",
+            "room_npc_colt_barnes": "colt_barnes",
+            "room_med_surgery": "elsa",
+            "room_hydro_garden": "sophia",
+            "room_recreation_gym": "noah"
         },
-        foodPlacements: ["room_west_end", "room_mess_hall", "room_coolant_tank"]
+        randomFoodCountRange: [5, 7],
+        severedConnections: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        yellowSeveredPairs: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        useHostCompatibilityLock: false,
+        yellowLockRoomIds: [
+            "room_armory", "room_escape_pod_w", "room_ion_thruster_l",
+            "room_antimatter_tap", "room_singularity_gate", "room_matter_stream",
+            "room_ion_thruster_r", "room_escape_pod_e"
+        ]
     },
     19: {
         title: "第十九关：终极拟态 · 意识同化沼泽",
-        subtitle: "舰艏主控至舰尾推进主轴完全连通",
-        startNodeId: "room_start",
-        exitNodeId: "room_singularity_gate",
+        subtitle: "防爆甬道出发 · 核检维生总控后自深潜休眠舱撤离",
+        startNodeId: "room_armored_corridor",   // 防爆通道
+        exitNodeId: "room_cryo_stasis",         // 深潜休眠舱
+        patrolNodes: ["room_life_support"],     // 开局高亮：维生环境总控机房
+        // 与第十七关一致：全图可走（除黄区断电锁）；不做宿主契合度锁
         openRoomIds: [
-            "room_sensor_array", "room_tactical_plan", "room_bridge_sub", "room_bridge_main", "room_ai_core", "room_comm_center",
-            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne", "room_bio_corridor", "room_med_surgery", "room_cryo_stasis",
-            "room_junction_nw", "room_path_e", "room_hub_n1", "room_npc2", "room_living_quarter", "room_hydro_garden", "room_mess_hall",
-            "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se", "room_gravity_well", "room_armory",
-            "room_cargo_lift", "room_sub_generator", "room_hangar_deck", "room_machine_shop", "room_water_purify", "room_life_support",
-            "room_shields_emitter", "room_sub_coolant", "room_reactor_control", "room_plasma_manifold", "room_main_reactor", "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor",
-            "room_escape_pod_w", "room_ion_thruster_l", "room_antimatter_tap", "room_singularity_gate", "room_matter_stream", "room_ion_thruster_r"
+            ...Object.keys(MASTER_ROOM_DEFS).filter(id =>
+                !MASTER_ROOM_DEFS[id].isNpcRoom &&
+                ![
+                    "room_armory", "room_escape_pod_w", "room_ion_thruster_l",
+                    "room_antimatter_tap", "room_singularity_gate", "room_matter_stream",
+                    "room_ion_thruster_r", "room_escape_pod_e"
+                ].includes(id)
+            ),
+            "room_npc_vivian"
         ],
         npcPlacements: {
-            "room_tactical_plan": "kaze",
+            // 受伤/停电站位；剔除主角 LPH、柯尔特；巴恩斯开局随队不刷地图
+            "room_npc1": "kaze",
             "room_npc2": "shaokexin",
-            "room_shields_emitter": "mode"
+            "room_npc3": "mode",
+            "room_west_end": "prof_lu",
+            "room_med_surgery": "elsa",
+            "room_hydro_garden": "sophia",
+            "room_recreation_gym": "noah",
+            "room_main_reactor": "elena",
+            "room_npc_vivian": "vivian"
         },
-        foodPlacements: ["room_storage_ne", "room_mess_hall", "room_coolant_tank"]
+        randomFoodCountRange: [5, 7],
+        severedConnections: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        yellowSeveredPairs: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        useHostCompatibilityLock: false,
+        yellowLockRoomIds: [
+            "room_armory", "room_escape_pod_w", "room_ion_thruster_l",
+            "room_antimatter_tap", "room_singularity_gate", "room_matter_stream",
+            "room_ion_thruster_r", "room_escape_pod_e"
+        ]
     },
     20: {
         title: "第二十关：意识海床 · 神经突触云端",
-        subtitle: "四区深度大联通 · 拟态波高频共振",
-        startNodeId: "room_start",
-        exitNodeId: "room_singularity_gate",
+        subtitle: "防爆甬道出发 · 核检维生总控后自深潜休眠舱撤离",
+        startNodeId: "room_armored_corridor",
+        exitNodeId: "room_cryo_stasis",
+        patrolNodes: ["room_life_support"],
         openRoomIds: [
-            "room_sensor_array", "room_tactical_plan", "room_bridge_sub", "room_bridge_main", "room_ai_core", "room_comm_center", "room_observation",
-            "room_specimen_vault", "room_exit", "room_corner_ne", "room_storage_ne", "room_bio_corridor", "room_med_surgery", "room_cryo_stasis", "room_decon_airlock",
-            "room_npc3", "room_junction_nw", "room_path_e", "room_hub_n1", "room_npc2", "room_living_quarter", "room_hydro_garden", "room_mess_hall", "room_east_observation",
-            "room_west_end", "room_npc1", "room_corridor_w1", "room_start", "room_corner_se", "room_gravity_well", "room_armory", "room_recreation_gym", "room_east_airlock",
-            "room_cargo_lift", "room_sub_generator", "room_hangar_deck", "room_machine_shop", "room_water_purify", "room_life_support", "room_air_recycler",
-            "room_sub_coolant", "room_reactor_control", "room_plasma_manifold", "room_main_reactor", "room_coolant_tank", "room_warp_field_gen", "room_armored_corridor",
-            "room_ion_thruster_l", "room_antimatter_tap", "room_singularity_gate", "room_matter_stream", "room_ion_thruster_r"
+            ...Object.keys(MASTER_ROOM_DEFS).filter(id =>
+                !MASTER_ROOM_DEFS[id].isNpcRoom &&
+                ![
+                    "room_armory", "room_escape_pod_w", "room_ion_thruster_l",
+                    "room_antimatter_tap", "room_singularity_gate", "room_matter_stream",
+                    "room_ion_thruster_r", "room_escape_pod_e"
+                ].includes(id)
+            ),
+            "room_npc_vivian"
         ],
         npcPlacements: {
-            "room_bridge_sub": "kaze",
-            "room_med_surgery": "shaokexin",
-            "room_armory": "mode"
+            // 受伤/停电站位；剔除主角 LPH、巴恩斯；柯尔特开局随队不刷地图
+            "room_npc1": "kaze",
+            "room_npc2": "shaokexin",
+            "room_npc3": "mode",
+            "room_west_end": "prof_lu",
+            "room_med_surgery": "elsa",
+            "room_hydro_garden": "sophia",
+            "room_recreation_gym": "noah",
+            "room_main_reactor": "elena",
+            "room_npc_vivian": "vivian"
         },
-        foodPlacements: ["room_storage_ne", "room_mess_hall", "room_coolant_tank"]
+        randomFoodCount: 5, // 场景随机投放五处体力箱
+        severedConnections: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        yellowSeveredPairs: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        useHostCompatibilityLock: false,
+        yellowLockRoomIds: [
+            "room_armory", "room_escape_pod_w", "room_ion_thruster_l",
+            "room_antimatter_tap", "room_singularity_gate", "room_matter_stream",
+            "room_ion_thruster_r", "room_escape_pod_e"
+        ]
     },
     21: {
         title: "第二十一关：镜像死局 · 对称破缺迷津",
-        subtitle: "全舰 53 舱室大开放 · 仅少数严重损毁区锁闭",
-        startNodeId: "room_start",
-        exitNodeId: "room_singularity_gate",
-        openRoomIds: Object.keys(MASTER_ROOM_DEFS).filter(id => !MASTER_ROOM_DEFS[id].isNpcRoom && id !== "room_salvage_bay" && id !== "room_east_observation" && id !== "room_escape_pod_w" && id !== "room_escape_pod_e" && id !== "room_starboard_dock"),
+        subtitle: "全自动急救台出发 · 核检维生总控后携索菲亚自深潜休眠舱撤离",
+        startNodeId: "room_med_surgery",    // 全自动急救台
+        exitNodeId: "room_cryo_stasis",     // 深潜休眠舱
+        patrolNodes: ["room_life_support"], // 开局高亮：维生环境总控机房
+        openRoomIds: [
+            ...Object.keys(MASTER_ROOM_DEFS).filter(id =>
+                !MASTER_ROOM_DEFS[id].isNpcRoom &&
+                ![
+                    "room_armory", "room_escape_pod_w", "room_ion_thruster_l",
+                    "room_antimatter_tap", "room_singularity_gate", "room_matter_stream",
+                    "room_ion_thruster_r", "room_escape_pod_e"
+                ].includes(id)
+            ),
+            "room_npc_colt_barnes",
+            "room_npc_vivian"
+        ],
         npcPlacements: {
+            // 停电站位；剔除主角 LPH、艾尔莎（起点急救台为空）；索菲亚在绿光生态舱
             "room_npc1": "kaze",
             "room_npc2": "shaokexin",
-            "room_npc3": "mode"
+            "room_npc3": "mode",
+            "room_west_end": "prof_lu",
+            "room_npc_colt_barnes": "colt_barnes",
+            "room_hydro_garden": "sophia",
+            "room_recreation_gym": "noah",
+            "room_main_reactor": "elena",
+            "room_npc_vivian": "vivian"
         },
-        foodPlacements: ["room_storage_ne", "room_mess_hall", "room_water_purify", "room_coolant_tank"]
+        randomFoodCount: 5, // 场景随机投放五处体力箱
+        severedConnections: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        yellowSeveredPairs: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        useHostCompatibilityLock: false,
+        yellowLockRoomIds: [
+            "room_armory", "room_escape_pod_w", "room_ion_thruster_l",
+            "room_antimatter_tap", "room_singularity_gate", "room_matter_stream",
+            "room_ion_thruster_r", "room_escape_pod_e"
+        ]
     },
     22: {
         title: "第二十二关：光锥视界 · 类光测地线",
-        subtitle: "全舰 55 舱室开放 · 舰首至舰尾全线贯通",
-        startNodeId: "room_start",
-        exitNodeId: "room_singularity_gate",
-        openRoomIds: Object.keys(MASTER_ROOM_DEFS).filter(id => !MASTER_ROOM_DEFS[id].isNpcRoom && id !== "room_salvage_bay" && id !== "room_escape_pod_w" && id !== "room_starboard_dock"),
+        subtitle: "高危冷藏间出发 · 避让停电始发地后孤身自深潜休眠舱撤离",
+        startNodeId: "room_specimen_vault", // 高危冷藏间
+        exitNodeId: "room_cryo_stasis",     // 深潜休眠舱
+        patrolNodes: ["room_west_end"],     // 开局高亮：全舰停电始发地（禁入）
+        openRoomIds: [
+            ...Object.keys(MASTER_ROOM_DEFS).filter(id =>
+                !MASTER_ROOM_DEFS[id].isNpcRoom &&
+                ![
+                    "room_armory", "room_escape_pod_w", "room_ion_thruster_l",
+                    "room_antimatter_tap", "room_singularity_gate", "room_matter_stream",
+                    "room_ion_thruster_r", "room_escape_pod_e"
+                ].includes(id)
+            ),
+            "room_npc_colt_barnes",
+            "room_npc_vivian"
+        ],
         npcPlacements: {
-            "room_bridge_main": "kaze",
-            "room_med_surgery": "shaokexin",
-            "room_shields_emitter": "mode"
+            // 受伤/停电站位；剔除主角 LPH、陆知行；停电始发地为空（禁入致死）
+            "room_npc1": "kaze",
+            "room_npc2": "shaokexin",
+            "room_npc3": "mode",
+            "room_npc_colt_barnes": "colt_barnes",
+            "room_med_surgery": "elsa",
+            "room_hydro_garden": "sophia",
+            "room_recreation_gym": "noah",
+            "room_main_reactor": "elena",
+            "room_npc_vivian": "vivian"
         },
-        foodPlacements: ["room_storage_ne", "room_mess_hall", "room_coolant_tank", "room_west_end"]
+        randomFoodCount: 5, // 场景随机投放五处体力箱
+        severedConnections: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        yellowSeveredPairs: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        // 本关停电始发地禁入致死，故黄区断电锁保持至终局（不提供合闸）
+        useHostCompatibilityLock: false,
+        yellowLockRoomIds: [
+            "room_armory", "room_escape_pod_w", "room_ion_thruster_l",
+            "room_antimatter_tap", "room_singularity_gate", "room_matter_stream",
+            "room_ion_thruster_r", "room_escape_pod_e"
+        ]
     },
     23: {
         title: "第二十三关：高维裂解 · 膜宇宙碰撞",
-        subtitle: "全舰 54 舱室开放 · 穿梭双侧逃生机库",
-        startNodeId: "room_bridge_main",
-        exitNodeId: "room_singularity_gate",
-        openRoomIds: Object.keys(MASTER_ROOM_DEFS).filter(id => !MASTER_ROOM_DEFS[id].isNpcRoom && id !== "room_salvage_bay" && id !== "room_east_airlock" && id !== "room_starboard_dock" && id !== "room_specimen_vault"),
+        subtitle: "重力发生核出发 · 避让维生总控后携五人自深潜休眠舱撤离",
+        startNodeId: "room_gravity_well",   // 重力发生核
+        exitNodeId: "room_cryo_stasis",     // 深潜休眠舱
+        patrolNodes: ["room_life_support"], // 开局高亮：维生环境总控机房（禁入）
+        openRoomIds: [
+            ...Object.keys(MASTER_ROOM_DEFS).filter(id =>
+                !MASTER_ROOM_DEFS[id].isNpcRoom &&
+                ![
+                    "room_armory", "room_escape_pod_w", "room_ion_thruster_l",
+                    "room_antimatter_tap", "room_singularity_gate", "room_matter_stream",
+                    "room_ion_thruster_r", "room_escape_pod_e"
+                ].includes(id)
+            ),
+            "room_npc_colt_barnes",
+            "room_npc_vivian"
+        ],
         npcPlacements: {
-            "room_tactical_plan": "kaze",
+            // 受伤/停电站位；剔除主角 LPH、诺亚；维生总控为空（禁入致死）
+            "room_npc1": "kaze",
             "room_npc2": "shaokexin",
-            "room_armory": "mode"
+            "room_npc3": "mode",
+            "room_west_end": "prof_lu",
+            "room_npc_colt_barnes": "colt_barnes",
+            "room_med_surgery": "elsa",
+            "room_hydro_garden": "sophia",
+            "room_main_reactor": "elena",
+            "room_npc_vivian": "vivian"
         },
-        foodPlacements: ["room_storage_ne", "room_mess_hall", "room_coolant_tank"]
+        randomFoodCount: 5, // 场景随机投放五处体力箱
+        severedConnections: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        yellowSeveredPairs: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        useHostCompatibilityLock: false,
+        yellowLockRoomIds: [
+            "room_armory", "room_escape_pod_w", "room_ion_thruster_l",
+            "room_antimatter_tap", "room_singularity_gate", "room_matter_stream",
+            "room_ion_thruster_r", "room_escape_pod_e"
+        ]
     },
     24: {
         title: "第二十四关：原初黑洞 · 微型奇点蒸发",
-        subtitle: "全舰 56 舱室大决战 · 拟态狂潮全面爆发",
-        startNodeId: "room_start",
-        exitNodeId: "room_singularity_gate",
-        openRoomIds: Object.keys(MASTER_ROOM_DEFS).filter(id => !MASTER_ROOM_DEFS[id].isNpcRoom && id !== "room_salvage_bay" && id !== "room_starboard_dock"),
+        subtitle: "绿光生态舱出发 · 全员汇合后自深潜休眠舱撤离",
+        startNodeId: "room_hydro_garden", // 绿光生态舱
+        exitNodeId: "room_cryo_stasis",   // 深潜休眠舱
+        openRoomIds: [
+            ...Object.keys(MASTER_ROOM_DEFS).filter(id =>
+                !MASTER_ROOM_DEFS[id].isNpcRoom &&
+                ![
+                    "room_armory", "room_escape_pod_w", "room_ion_thruster_l",
+                    "room_antimatter_tap", "room_singularity_gate", "room_matter_stream",
+                    "room_ion_thruster_r", "room_escape_pod_e"
+                ].includes(id)
+            ),
+            "room_npc_colt_barnes",
+            "room_npc_vivian"
+        ],
         npcPlacements: {
-            "room_bridge_main": "kaze",
-            "room_hydro_garden": "shaokexin",
-            "room_reactor_control": "mode"
+            // 受伤/停电站位；剔除主角 LPH、索菲亚（起点绿光生态舱为空）
+            "room_npc1": "kaze",
+            "room_npc2": "shaokexin",
+            "room_npc3": "mode",
+            "room_west_end": "prof_lu",
+            "room_npc_colt_barnes": "colt_barnes",
+            "room_med_surgery": "elsa",
+            "room_recreation_gym": "noah",
+            "room_main_reactor": "elena",
+            "room_npc_vivian": "vivian"
         },
-        foodPlacements: ["room_storage_ne", "room_mess_hall", "room_water_purify", "room_coolant_tank"]
+        randomFoodCount: 5, // 场景随机投放五处体力箱
+        severedConnections: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        yellowSeveredPairs: [
+            ["room_path_e", "room_corner_ne"],
+            ["room_corridor_w1", "room_sub_generator"],
+            ["room_start", "room_hangar_deck"]
+        ],
+        useHostCompatibilityLock: false,
+        yellowLockRoomIds: [
+            "room_armory", "room_escape_pod_w", "room_ion_thruster_l",
+            "room_antimatter_tap", "room_singularity_gate", "room_matter_stream",
+            "room_ion_thruster_r", "room_escape_pod_e"
+        ]
     },
     25: {
         title: "第二十五关：终焉回响 · 莫比乌斯终环",
@@ -1730,7 +1976,15 @@ export function buildSpaceshipLevelMap(levelId) {
 
     // 决定食物投放位置 (支持固定配置或动态随机抽取投放)
     let finalFoodRooms = new Set(spec.foodPlacements || []);
-    if (spec.randomFoodCount && spec.randomFoodCount > 0) {
+    let resolvedFoodCount = spec.randomFoodCount || 0;
+    if (Array.isArray(spec.randomFoodCountRange) && spec.randomFoodCountRange.length >= 2) {
+        const lo = Number(spec.randomFoodCountRange[0]) || 0;
+        const hi = Number(spec.randomFoodCountRange[1]) || lo;
+        const minC = Math.min(lo, hi);
+        const maxC = Math.max(lo, hi);
+        resolvedFoodCount = minC + Math.floor(Math.random() * (maxC - minC + 1));
+    }
+    if (resolvedFoodCount > 0) {
         // 方案一：场景动态随机抽取指定数量的房间投放体力箱 (排除起点、终点和已放置NPC的房间)
         const eligibleRooms = openRoomIds.filter(id =>
             id !== spec.startNodeId &&
@@ -1744,7 +1998,7 @@ export function buildSpaceshipLevelMap(levelId) {
             const j = Math.floor(Math.random() * (i + 1));
             [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
-        finalFoodRooms = new Set(shuffled.slice(0, spec.randomFoodCount));
+        finalFoodRooms = new Set(shuffled.slice(0, resolvedFoodCount));
     }
 
     openRoomIds.forEach(id => {

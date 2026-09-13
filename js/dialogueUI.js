@@ -69,6 +69,7 @@ export class DialogueUI {
         this.isTyping = false;
         this.typingTimer = null;
         this.fullTextOfCurrentLine = "";
+        this.currentSpeakerKey = null;
 
         this.bindEvents();
         this.hideBox(); // 初始默认隐藏对话框，不占用任何探索界面与导航按键空间
@@ -260,48 +261,42 @@ export class DialogueUI {
         }
 
         // 角色/NPC 说话时：立绘展示在对话框左上角！用户明确要求：不要标注“生气/平静”等字样
+        const color = speaker.themeColor || "#38bdf8";
+        const exp = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.normalizeExpression)
+            ? CharacterRegistry.normalizeExpression(expression)
+            : (expression || "clam");
+        const speakerKey = `${speaker.id || speaker.name || "char"}_${exp}`;
+
+        const candidates = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getCharacterImageCandidates)
+            ? CharacterRegistry.getCharacterImageCandidates(speaker, exp)
+            : [(speaker.expressions && speaker.expressions[exp]) || speaker.avatarUrl || ""];
+        const fallbackSvg = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getAvatarSvg)
+            ? CharacterRegistry.getAvatarSvg(speaker, exp)
+            : (speaker.fallbackSvg || "");
+        const isDead = (exp === "dead");
+        const borderColor = isDead ? "#ef4444" : color;
+        const shadowGlow = isDead
+            ? "0 0 24px rgba(239, 68, 68, 0.95), inset 0 0 16px rgba(239, 68, 68, 0.6)"
+            : `0 0 16px ${color}80, inset 0 0 12px ${color}40`;
+        const primaryUrl = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getBestPortraitUrl)
+            ? (CharacterRegistry.getBestPortraitUrl(speaker, exp) || candidates[0] || fallbackSvg)
+            : (candidates[0] || fallbackSvg);
+        const startIndex = Math.max(0, candidates.indexOf(primaryUrl));
+        const candidatesAttr = JSON.stringify(candidates).replace(/"/g, "&quot;");
+        const safePrimary = primaryUrl && !String(primaryUrl).startsWith("data:")
+            ? encodeURI(primaryUrl)
+            : primaryUrl;
+
         if (this.cornerAvatarElement) {
             this.cornerAvatarElement.classList.remove("portrait-hidden");
             if (this.boxElement) {
                 this.boxElement.classList.add("has-portrait");
             }
 
-            const color = speaker.themeColor || "#38bdf8";
-            const exp = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.normalizeExpression)
-                ? CharacterRegistry.normalizeExpression(expression)
-                : (expression || "clam");
-            
-            // 获取候选立绘队列，并优先选用已预热成功的 URL（避免手机上 onerror 连环探测）
-            const candidates = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getCharacterImageCandidates)
-                ? CharacterRegistry.getCharacterImageCandidates(speaker, exp)
-                : [(speaker.expressions && speaker.expressions[exp]) || speaker.avatarUrl || ""];
-
-            // 备用差分SVG
-            const fallbackSvg = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getAvatarSvg)
-                ? CharacterRegistry.getAvatarSvg(speaker, exp)
-                : (speaker.fallbackSvg || "");
-
-            const isDead = (exp === "dead");
-            const borderColor = isDead ? "#ef4444" : color;
-            const shadowGlow = isDead
-                ? "0 0 24px rgba(239, 68, 68, 0.95), inset 0 0 16px rgba(239, 68, 68, 0.6)"
-                : `0 0 16px ${color}80, inset 0 0 12px ${color}40`;
-
-            const primaryUrl = (typeof CharacterRegistry !== "undefined" && CharacterRegistry.getBestPortraitUrl)
-                ? (CharacterRegistry.getBestPortraitUrl(speaker, exp) || candidates[0] || fallbackSvg)
-                : (candidates[0] || fallbackSvg);
-            const startIndex = Math.max(0, candidates.indexOf(primaryUrl));
-            const candidatesAttr = JSON.stringify(candidates).replace(/"/g, '&quot;');
-            const safePrimary = primaryUrl && !String(primaryUrl).startsWith("data:")
-                ? encodeURI(primaryUrl)
-                : primaryUrl;
-
-            // 优化 DOM 节点复用：同角色同表情连续发言时，完全保留已有 DOM 树，杜绝销毁重绘导致的白屏与解码延迟
-            const speakerKey = `${speaker.id || speaker.name || 'char'}_${exp}`;
             if (this.currentSpeakerKey !== speakerKey || !this.cornerAvatarElement.innerHTML) {
                 this.currentSpeakerKey = speakerKey;
                 this.cornerAvatarElement.innerHTML = `
-                    <div class="corner-avatar-frame ${isDead ? 'avatar-frame-dead' : ''}" style="border-color:${borderColor}; box-shadow:${shadowGlow};">
+                    <div class="corner-avatar-frame ${isDead ? "avatar-frame-dead" : ""}" style="border-color:${borderColor}; box-shadow:${shadowGlow};">
                         <img src="${safePrimary}"
                              loading="eager"
                              decoding="async"
@@ -310,7 +305,7 @@ export class DialogueUI {
                              data-current-url="${primaryUrl || ""}"
                              data-fallback="${fallbackSvg}"
                              alt="${speaker.name}"
-                             class="corner-portrait-img ${isDead ? 'dead-portrait-img' : ''}"
+                             class="corner-portrait-img ${isDead ? "dead-portrait-img" : ""}"
                              onerror="window.handlePortraitError && window.handlePortraitError(this)">
                     </div>
                 `;

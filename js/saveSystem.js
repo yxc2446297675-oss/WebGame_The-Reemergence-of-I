@@ -4,6 +4,9 @@
  */
 
 export class SaveSystem {
+    /** 试玩开关：为 true 时扇区观测开放 1–25 全部关卡 */
+    static DEV_UNLOCK_ALL_LEVELS = true;
+
     constructor(saveKey = "DOPPELGANGER_ROGUE_SAVE_V1", unlockedKey = "DOPPELGANGER_UNLOCKED_LEVELS_V1", personaKey = "DOPPELGANGER_PERSONA_SECRETS_V1", completedKey = "DOPPELGANGER_COMPLETED_LEVELS_V1", talentKey = "DOPPELGANGER_TALENT_TREE_V1") {
         this.saveKey = saveKey;
         this.unlockedKey = unlockedKey;
@@ -85,6 +88,9 @@ export class SaveSystem {
     // 关卡解锁持久化管理 (默认初始仅开放第 1 关)
     // =========================================================================
     getUnlockedLevels() {
+        if (SaveSystem.DEV_UNLOCK_ALL_LEVELS) {
+            return Array.from({ length: 25 }, (_, i) => i + 1);
+        }
         try {
             let raw = null;
             if (this.isLocalStorageAvailable) {

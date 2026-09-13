@@ -108,7 +108,9 @@ export class ExplorationEngine {
             (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored) ||
             (this.gameEngine?.currentLevel?.levelId === 13 && !this.gameEngine.level13PowerRestored) ||
             (this.gameEngine?.currentLevel?.levelId === 14 && !this.gameEngine.level14PowerRestored) ||
-            (this.gameEngine?.currentLevel?.levelId === 16 && !this.gameEngine.level16PowerRestored)
+            (this.gameEngine?.currentLevel?.levelId === 16 && !this.gameEngine.level16PowerRestored) ||
+            (this.gameEngine?.currentLevel?.levelId === 17 && !this.gameEngine.level17PowerRestored) ||
+            (this.gameEngine?.currentLevel?.levelId === 18 && !this.gameEngine.level18PowerRestored)
         );
         const isLevel5ColtBarnesPending = (
             this.gameEngine?.currentLevel?.levelId === 5 &&
@@ -181,12 +183,61 @@ export class ExplorationEngine {
                 !this.gameEngine.getAliveTeamMembers().some(m => m.id === "shaokexin")
             )
         );
+        const isLevel17Pending = (
+            this.gameEngine?.currentLevel?.levelId === 17 &&
+            (
+                !this.gameEngine.level17PowerRestored ||
+                this.gameEngine.getAliveNpcTeamMembers().length < 5 ||
+                this.gameEngine.getAliveNpcTeamMembers().some(m => m.role === "wolf")
+            )
+        );
+        const isLevel18Pending = (
+            this.gameEngine?.currentLevel?.levelId === 18 &&
+            (
+                !this.gameEngine.level18PowerRestored ||
+                this.gameEngine.getAliveNpcTeamMembers().length < 5 ||
+                this.gameEngine.getAliveNpcTeamMembers().some(m => m.role === "wolf")
+            )
+        );
+        const isLevel19Pending = (
+            this.gameEngine?.currentLevel?.levelId === 19 &&
+            (
+                !this.gameEngine.getAliveTeamMembers().some(m => m.id === "barnes") ||
+                !this.gameEngine.level19LifeSupportVisited
+            )
+        );
+        const isLevel20Pending = (
+            this.gameEngine?.currentLevel?.levelId === 20 &&
+            (
+                !this.gameEngine.getAliveTeamMembers().some(m => m.id === "colt") ||
+                !this.gameEngine.level20LifeSupportVisited
+            )
+        );
+        const isLevel21Pending = (
+            this.gameEngine?.currentLevel?.levelId === 21 &&
+            (
+                !this.gameEngine.getAliveTeamMembers().some(m => m.id === "sophia") ||
+                !this.gameEngine.level21LifeSupportVisited
+            )
+        );
+        const isLevel22Pending = (
+            this.gameEngine?.currentLevel?.levelId === 22 &&
+            this.gameEngine.getAliveNpcTeamMembers().length > 0
+        );
+        const isLevel23Pending = (
+            this.gameEngine?.currentLevel?.levelId === 23 &&
+            this.gameEngine.getAliveNpcTeamMembers().length < 5
+        );
+        const isLevel24Pending = (
+            this.gameEngine?.currentLevel?.levelId === 24 &&
+            this.gameEngine.getAliveNpcTeamMembers().length < (this.gameEngine.allNpcMap?.size || 0)
+        );
         // 如果终点节点包含未救助的NPC（如第五关主反应堆的伊莲），不可提前视为最终脱出阻断，必须步入触发NPC救助
         const nextRoomNpcId = (nextNode.event && nextNode.event.type === "npc" && nextNode.event.npcId) || nextNode.npcId;
         const targetNpc = nextRoomNpcId ? this.gameEngine.getNpcById(nextRoomNpcId) : null;
         const hasUnmetNpc = targetNpc && targetNpc.status === "unmet" && !this.consumedEvents.has(`${nextNode.id}_event`);
 
-        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !isLevel8ColtPending && !isLevel9PatrolPending && !isLevel10Pending && !isLevel11Pending && !isLevel12Pending && !isLevel13Pending && !isLevel14Pending && !isLevel16Pending && !hasUnmetNpc;
+        const isEffectiveExit = isExitNode && !isPowerRestorationPending && !isLevel5ColtBarnesPending && !isLevel6ElsaNoahPending && !isLevel7BarnesPending && !isLevel8ColtPending && !isLevel9PatrolPending && !isLevel10Pending && !isLevel11Pending && !isLevel12Pending && !isLevel13Pending && !isLevel14Pending && !isLevel16Pending && !isLevel17Pending && !isLevel18Pending && !isLevel19Pending && !isLevel20Pending && !isLevel21Pending && !isLevel22Pending && !isLevel23Pending && !isLevel24Pending && !hasUnmetNpc;
         if (isEffectiveExit) {
             if (!isAlreadyExplored) {
                 this.choiceCount++;
@@ -222,6 +273,22 @@ export class ExplorationEngine {
         // 更新左上角区域名称与UI
         this.gameEngine.updateHeaderUI();
 
+        // 第二十二关专属：踏入全舰停电始发地立即失败（开局地图高亮禁区）
+        if (this.gameEngine?.currentLevel?.levelId === 22 && node.id === "room_west_end") {
+            this.gameEngine.level22AvoidedOutageOrigin = false;
+            this.gameEngine.logAction("【禁区覆灭】误入全舰停电始发地，残余电磁风暴瞬间撕碎了你的生命体征……");
+            this.gameEngine.triggerGameOver("你踏入了全舰停电始发地。黑暗里，有什么早已在等你——复现失败。");
+            return;
+        }
+
+        // 第二十三关专属：踏入维生环境总控机房立即失败（开局地图高亮禁区）
+        if (this.gameEngine?.currentLevel?.levelId === 23 && node.id === "room_life_support") {
+            this.gameEngine.level23AvoidedLifeSupport = false;
+            this.gameEngine.logAction("【禁区覆灭】误入维生环境总控机房，循环伪装体的宿主锁死协议瞬间启动……");
+            this.gameEngine.triggerGameOver("你踏入了维生环境总控机房。空气里有什么在数你的心跳——复现失败。");
+            return;
+        }
+
         // 1. 特殊关卡机制：第二关与第三关停电始发地合闸通电特殊确认弹窗
         // 核心要求：完成修电任务需要有特殊弹窗提示确认，若NPC在上面则先触发修电弹窗再触发NPC选择
         const isPowerRestoreNeeded = (
@@ -229,12 +296,19 @@ export class ExplorationEngine {
              (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored) ||
              (this.gameEngine?.currentLevel?.levelId === 13 && !this.gameEngine.level13PowerRestored) ||
              (this.gameEngine?.currentLevel?.levelId === 14 && !this.gameEngine.level14PowerRestored) ||
-             (this.gameEngine?.currentLevel?.levelId === 16 && !this.gameEngine.level16PowerRestored)) &&
+             (this.gameEngine?.currentLevel?.levelId === 16 && !this.gameEngine.level16PowerRestored) ||
+             (this.gameEngine?.currentLevel?.levelId === 17 && !this.gameEngine.level17PowerRestored) ||
+             (this.gameEngine?.currentLevel?.levelId === 18 && !this.gameEngine.level18PowerRestored) ||
+             (this.gameEngine?.currentLevel?.levelId === 19 && !this.gameEngine.level19PowerRestored) ||
+             (this.gameEngine?.currentLevel?.levelId === 20 && !this.gameEngine.level20PowerRestored) ||
+             (this.gameEngine?.currentLevel?.levelId === 21 && !this.gameEngine.level21PowerRestored) ||
+             (this.gameEngine?.currentLevel?.levelId === 23 && !this.gameEngine.level23PowerRestored) ||
+             (this.gameEngine?.currentLevel?.levelId === 24 && !this.gameEngine.level24PowerRestored)) &&
             (node.id === "room_west_end" || node.isPowerOrigin)
         );
 
         if (isPowerRestoreNeeded) {
-            if (this.gameEngine?.currentLevel?.levelId === 14) {
+            if (this.gameEngine?.currentLevel?.levelId === 14 || this.gameEngine?.currentLevel?.levelId === 17 || this.gameEngine?.currentLevel?.levelId === 19 || this.gameEngine?.currentLevel?.levelId === 20 || this.gameEngine?.currentLevel?.levelId === 21 || this.gameEngine?.currentLevel?.levelId === 23 || this.gameEngine?.currentLevel?.levelId === 24) {
                 const aliveTeam = this.gameEngine.getAliveTeamMembers();
                 const canRestore = aliveTeam.some(m => m.id === "elena" || m.id === "prof_lu");
                 if (!canRestore) {
@@ -248,11 +322,79 @@ export class ExplorationEngine {
                     );
                 } else {
                     this.gameEngine.showPowerRestoreModal(node, () => {
-                        this.gameEngine.level14PowerRestored = true;
-                        if (typeof this.gameEngine.restoreLevel14YellowConnections === "function") {
-                            this.gameEngine.restoreLevel14YellowConnections();
+                        if (this.gameEngine?.currentLevel?.levelId === 14) {
+                            this.gameEngine.level14PowerRestored = true;
+                            if (typeof this.gameEngine.restoreLevel14YellowConnections === "function") {
+                                this.gameEngine.restoreLevel14YellowConnections();
+                            }
+                        } else if (this.gameEngine?.currentLevel?.levelId === 19) {
+                            this.gameEngine.level19PowerRestored = true;
+                            if (typeof this.gameEngine.restoreLevel19YellowConnections === "function") {
+                                this.gameEngine.restoreLevel19YellowConnections();
+                            }
+                        } else if (this.gameEngine?.currentLevel?.levelId === 20) {
+                            this.gameEngine.level20PowerRestored = true;
+                            if (typeof this.gameEngine.restoreLevel20YellowConnections === "function") {
+                                this.gameEngine.restoreLevel20YellowConnections();
+                            }
+                        } else if (this.gameEngine?.currentLevel?.levelId === 21) {
+                            this.gameEngine.level21PowerRestored = true;
+                            if (typeof this.gameEngine.restoreLevel21YellowConnections === "function") {
+                                this.gameEngine.restoreLevel21YellowConnections();
+                            }
+                        } else if (this.gameEngine?.currentLevel?.levelId === 23) {
+                            this.gameEngine.level23PowerRestored = true;
+                            if (typeof this.gameEngine.restoreLevel23YellowConnections === "function") {
+                                this.gameEngine.restoreLevel23YellowConnections();
+                            }
+                        } else if (this.gameEngine?.currentLevel?.levelId === 24) {
+                            this.gameEngine.level24PowerRestored = true;
+                            if (typeof this.gameEngine.restoreLevel24YellowConnections === "function") {
+                                this.gameEngine.restoreLevel24YellowConnections();
+                            }
+                        } else {
+                            this.gameEngine.level17PowerRestored = true;
+                            if (typeof this.gameEngine.restoreLevel17YellowConnections === "function") {
+                                this.gameEngine.restoreLevel17YellowConnections();
+                            }
                         }
                         this.gameEngine.logAction(`【主电站修复】在同伴协助下抵达全舰主电站 [${node.name}]！手动重合全舰主高压电网，黄色气闸封锁与过载闭锁全面解除！`);
+                        if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
+                            Sound.playAlarmSound();
+                        }
+                        if (this.gameEngine.showStageToast) {
+                            this.gameEngine.showStageToast("⚡ [主电站] 全舰电网重合闸成功！黄色防爆气闸全面解除封锁！");
+                        }
+                        if (this.gameEngine.renderMissionsPanel) {
+                            this.gameEngine.renderMissionsPanel();
+                        }
+                        if (this.gameEngine.renderStageMap) {
+                            this.gameEngine.renderStageMap();
+                        }
+                        this.handleNodeEvents(node, isAlreadyExplored);
+                    });
+                    return;
+                }
+            } else if (this.gameEngine?.currentLevel?.levelId === 18) {
+                // 本关去除伊莲；合闸仅需开局同伴薇薇安（对应「一人即可」）
+                const aliveTeam = this.gameEngine.getAliveTeamMembers();
+                const canRestore = aliveTeam.some(m => m.id === "vivian");
+                if (!canRestore) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 配电总控面板锁定！需要薇薇安随行协助方可合闸检修！");
+                    }
+                    this.gameEngine.logAction("【合闸受阻】主电网严重过载锁死，缺少薇薇安协助！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "主配电总控台", themeColor: "#fb923c" },
+                        "【配电总控面板锁定】全舰主电网处于深度过载状态！必须由薇薇安随行协助，方可进行人工合闸！"
+                    );
+                } else {
+                    this.gameEngine.showPowerRestoreModal(node, () => {
+                        this.gameEngine.level18PowerRestored = true;
+                        if (typeof this.gameEngine.restoreLevel18YellowConnections === "function") {
+                            this.gameEngine.restoreLevel18YellowConnections();
+                        }
+                        this.gameEngine.logAction(`【主电站修复】在薇薇安协助下抵达全舰主电站 [${node.name}]！手动重合全舰主高压电网，黄色气闸封锁与过载闭锁全面解除！`);
                         if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
                             Sound.playAlarmSound();
                         }
@@ -334,10 +476,12 @@ export class ExplorationEngine {
                 (this.gameEngine?.currentLevel?.levelId === 3 && !this.gameEngine.level3PowerRestored) ||
                 (this.gameEngine?.currentLevel?.levelId === 13 && !this.gameEngine.level13PowerRestored) ||
                 (this.gameEngine?.currentLevel?.levelId === 14 && !this.gameEngine.level14PowerRestored) ||
-                (this.gameEngine?.currentLevel?.levelId === 16 && !this.gameEngine.level16PowerRestored)
+                (this.gameEngine?.currentLevel?.levelId === 16 && !this.gameEngine.level16PowerRestored) ||
+                (this.gameEngine?.currentLevel?.levelId === 17 && !this.gameEngine.level17PowerRestored) ||
+                (this.gameEngine?.currentLevel?.levelId === 18 && !this.gameEngine.level18PowerRestored)
             );
             if (isPowerRestorationPending) {
-                const isMainStationLevel = [13, 14, 16].includes(this.gameEngine?.currentLevel?.levelId);
+                const isMainStationLevel = [13, 14, 16, 17, 18].includes(this.gameEngine?.currentLevel?.levelId);
                 this.gameEngine.logAction(isMainStationLevel
                     ? `【主电站离线】主电网仍处于切断状态！请先前往【主配电值班舱】合闸修复电源！`
                     : `【气动锁未解压】逃生舱主电源处于切断状态！气动锁未解压，无法启动撤离程序。请先前往停电始发地修复电源！`);
@@ -553,6 +697,68 @@ export class ExplorationEngine {
                 }
             }
 
+            // 第二十二关专属通关校验：必须独自撤离（零存活同伴）
+            if (this.gameEngine?.currentLevel?.levelId === 22) {
+                const aliveNpcs = this.gameEngine.getAliveNpcTeamMembers();
+                if (aliveNpcs.length > 0) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！身边尚有其他存活同伴，必须独自撤离！");
+                    }
+                    this.gameEngine.logAction(`【撤离受阻】队伍中尚有 ${aliveNpcs.length} 名存活同伴随行，任务要求零同伴（伪人亦不可）独自脱离！`);
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "深潜休眠矩阵舱", themeColor: "#f43f5e" },
+                        "【逃生指令驳回】检测到随行生命体征！深潜休眠舱撤离通道仅允许你一人独自撤离，队伍中不得有任何存活同伴（包括伪人）！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
+            // 第二十三关专属通关校验：至少五名存活同伴（伪人计入）
+            if (this.gameEngine?.currentLevel?.levelId === 23) {
+                const aliveNpcs = this.gameEngine.getAliveNpcTeamMembers();
+                if (aliveNpcs.length < 5) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast(`⚠️ 撤离受阻！随行同伴不足 5 人（当前: ${aliveNpcs.length}/5）！`);
+                    }
+                    this.gameEngine.logAction(`【撤离受阻】队伍中存活同伴仅有 ${aliveNpcs.length}/5 人，必须带离至少五名同伴一同抵达深潜休眠舱！`);
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "深潜休眠矩阵舱", themeColor: "#f43f5e" },
+                        `【引渡配额未满】当前随行同伴不足 5 人（当前: ${aliveNpcs.length}/5）。深潜休眠舱拒绝启动终点撤离！`
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
+            // 第二十四关专属通关校验：本关全部同伴必须存活随行
+            if (this.gameEngine?.currentLevel?.levelId === 24) {
+                const aliveNpcs = this.gameEngine.getAliveNpcTeamMembers();
+                const totalNpcs = this.gameEngine.allNpcMap?.size || 0;
+                const deadOrMissing = totalNpcs - aliveNpcs.length;
+                if (aliveNpcs.length < totalNpcs) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast(`⚠️ 撤离受阻！尚未全员汇合（当前: ${aliveNpcs.length}/${totalNpcs}）！`);
+                    }
+                    this.gameEngine.logAction(`【撤离受阻】队伍中存活同伴仅有 ${aliveNpcs.length}/${totalNpcs} 人，必须带离本关全部同伴一同抵达深潜休眠舱！`);
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "深潜休眠矩阵舱", themeColor: "#f43f5e" },
+                        `【全员引渡未闭环】尚有 ${deadOrMissing} 名同伴未存活随行（当前: ${aliveNpcs.length}/${totalNpcs}）。有人失踪或死亡则本循环无法启动终点撤离！`
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
             // 第十二关专属通关校验：必须带离三名NPC撤离（不这样做就算踩上终点也不触发通过）
             if (this.gameEngine?.currentLevel?.levelId === 12) {
                 const aliveNpcs = this.gameEngine.getAliveNpcTeamMembers();
@@ -710,6 +916,178 @@ export class ExplorationEngine {
                 }
             }
 
+            // 第十七/十八关专属通关校验：≥5名同伴且无伪人 + 主电站已修
+            if (this.gameEngine?.currentLevel?.levelId === 17 || this.gameEngine?.currentLevel?.levelId === 18) {
+                const aliveNpcs = this.gameEngine.getAliveNpcTeamMembers();
+                const hasWolf = aliveNpcs.some(m => m.role === "wolf");
+                const lid = this.gameEngine.currentLevel.levelId;
+                const isPowerRestored = lid === 18
+                    ? !!this.gameEngine.level18PowerRestored
+                    : !!this.gameEngine.level17PowerRestored;
+
+                if (aliveNpcs.length < 5) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast(`⚠️ 撤离受阻！随行同伴不足 5 人（当前: ${aliveNpcs.length}/5）！`);
+                    }
+                    this.gameEngine.logAction(`【撤离受阻】队伍中存活同伴仅有 ${aliveNpcs.length}/5 人，必须找到至少五名同伴！`);
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "防爆甬道引渡闸", themeColor: "#f43f5e" },
+                        `【搜救协议未闭环】当前随行同伴不足 5 人（当前: ${aliveNpcs.length}/5）。在完成搜救配额之前，防爆甬道拒绝启动撤离程序！`
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+
+                if (hasWolf) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！队伍中仍有伪人潜伏！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】随行队伍中检测到伪装体反应，防爆甬道纯净引渡协议拒绝开启！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "防爆甬道引渡闸", themeColor: "#f43f5e" },
+                        "【纯净引渡拦截】撤离队列中仍有伪人拟态反应！在清除伪装体之前，防爆甬道无法启动终点撤离！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+
+                if (!isPowerRestored) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！全舰主电站尚未修复！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】主电站仍处于断电过载状态，防爆甬道引渡通道拒绝开启！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "防爆甬道引渡闸", themeColor: "#f43f5e" },
+                        "【主能源离线】全舰主电站尚未合闸修复，黄色气闸封锁尚未解除，防爆甬道无法启动终点撤离程序！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
+            // 第十九关专属通关校验：巴恩斯随行 + 已过维生总控
+            if (this.gameEngine?.currentLevel?.levelId === 19) {
+                const hasBarnes = this.gameEngine.getAliveTeamMembers().some(m => m.id === "barnes");
+                const lifeDone = !!this.gameEngine.level19LifeSupportVisited;
+
+                if (!hasBarnes) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！必须带离巴恩斯一同撤离！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】巴恩斯未存活随行，深潜休眠舱引渡协议拒绝开启！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "深潜休眠矩阵舱", themeColor: "#f43f5e" },
+                        "【搭档引渡拦截】巴恩斯必须存活随行！缺少搭档信标授权，深潜休眠舱无法启动终点撤离！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+
+                if (!lifeDone) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！尚未经过维生环境总控机房！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】尚未完成维生总控核检，深潜休眠舱拒绝开启！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "深潜休眠矩阵舱", themeColor: "#f43f5e" },
+                        "【维生核检未闭环】请先前往地图高亮的【维生环境总控机房】完成核检记录，再返回深潜休眠舱撤离！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
+            // 第二十关专属通关校验：柯尔特随行 + 已过维生总控
+            if (this.gameEngine?.currentLevel?.levelId === 20) {
+                const hasColt = this.gameEngine.getAliveTeamMembers().some(m => m.id === "colt");
+                const lifeDone = !!this.gameEngine.level20LifeSupportVisited;
+
+                if (!hasColt) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！必须带离柯尔特一同撤离！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】柯尔特未存活随行，深潜休眠舱引渡协议拒绝开启！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "深潜休眠矩阵舱", themeColor: "#f43f5e" },
+                        "【搭档引渡拦截】柯尔特必须存活随行！缺少搭档信标授权，深潜休眠舱无法启动终点撤离！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+
+                if (!lifeDone) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！尚未经过维生环境总控机房！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】尚未完成维生总控核检，深潜休眠舱拒绝开启！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "深潜休眠矩阵舱", themeColor: "#f43f5e" },
+                        "【维生核检未闭环】请先前往地图高亮的【维生环境总控机房】完成核检记录，再返回深潜休眠舱撤离！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
+            // 第二十一关专属通关校验：索菲亚随行 + 已过维生总控
+            if (this.gameEngine?.currentLevel?.levelId === 21) {
+                const hasSophia = this.gameEngine.getAliveTeamMembers().some(m => m.id === "sophia");
+                const lifeDone = !!this.gameEngine.level21LifeSupportVisited;
+
+                if (!hasSophia) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！必须带离索菲亚一同撤离！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】索菲亚未存活随行，深潜休眠舱引渡协议拒绝开启！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "深潜休眠矩阵舱", themeColor: "#f43f5e" },
+                        "【搭档引渡拦截】索菲亚必须存活随行！缺少搭档信标授权，深潜休眠舱无法启动终点撤离！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+
+                if (!lifeDone) {
+                    if (this.gameEngine.showStageToast) {
+                        this.gameEngine.showStageToast("⚠️ 撤离受阻！尚未经过维生环境总控机房！");
+                    }
+                    this.gameEngine.logAction("【撤离受阻】尚未完成维生总控核检，深潜休眠舱拒绝开启！");
+                    this.gameEngine.dialogueUI?.say(
+                        { name: "深潜休眠矩阵舱", themeColor: "#f43f5e" },
+                        "【维生核检未闭环】请先前往地图高亮的【维生环境总控机房】完成核检记录，再返回深潜休眠舱撤离！"
+                    );
+                    this.gameEngine.renderExplorationControls();
+                    if (this.gameEngine.refreshStageMap) {
+                        this.gameEngine.refreshStageMap();
+                    }
+                    return;
+                }
+            }
+
             this.gameEngine.logAction(`【通关突破】全员成功抵达目的地 [${node.name}]！准备跳跃！`);
             this.gameEngine.triggerVictory(node);
             return;
@@ -786,6 +1164,69 @@ export class ExplorationEngine {
                     this.gameEngine.showStageToast("🎯 [维生核检] 已抵达【维生环境总控机房】！请独自前往重力发生核撤离！");
                 }
                 this.gameEngine.logAction("【维生核检】成功抵达维生环境总控机房，一号核心回路状态已记录！请确保零同伴随行后前往【重力发生核】撤离！");
+                if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
+                    Sound.playAlarmSound();
+                }
+                if (this.gameEngine.renderMissionsPanel) {
+                    this.gameEngine.renderMissionsPanel();
+                }
+                this.gameEngine.updateHeaderUI();
+                if (this.gameEngine.refreshStageMap) {
+                    this.gameEngine.refreshStageMap();
+                }
+            }
+        }
+
+        // 第十九关专属：抵达维生环境总控机房完成核检打卡（开局地图高亮）
+        if (this.gameEngine?.currentLevel?.levelId === 19 && node.id === "room_life_support") {
+            if (!this.gameEngine.level19LifeSupportVisited) {
+                this.gameEngine.level19LifeSupportVisited = true;
+                if (this.gameEngine.showStageToast) {
+                    this.gameEngine.showStageToast("🎯 [维生核检] 已抵达【维生环境总控机房】！可携巴恩斯前往深潜休眠舱撤离！");
+                }
+                this.gameEngine.logAction("【维生核检】成功抵达维生环境总控机房，核检记录已写入！请确保巴恩斯随行后前往【深潜休眠矩阵舱】撤离！");
+                if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
+                    Sound.playAlarmSound();
+                }
+                if (this.gameEngine.renderMissionsPanel) {
+                    this.gameEngine.renderMissionsPanel();
+                }
+                this.gameEngine.updateHeaderUI();
+                if (this.gameEngine.refreshStageMap) {
+                    this.gameEngine.refreshStageMap();
+                }
+            }
+        }
+
+        // 第二十关专属：抵达维生环境总控机房完成核检打卡（开局地图高亮）
+        if (this.gameEngine?.currentLevel?.levelId === 20 && node.id === "room_life_support") {
+            if (!this.gameEngine.level20LifeSupportVisited) {
+                this.gameEngine.level20LifeSupportVisited = true;
+                if (this.gameEngine.showStageToast) {
+                    this.gameEngine.showStageToast("🎯 [维生核检] 已抵达【维生环境总控机房】！可携柯尔特前往深潜休眠舱撤离！");
+                }
+                this.gameEngine.logAction("【维生核检】成功抵达维生环境总控机房，核检记录已写入！请确保柯尔特随行后前往【深潜休眠矩阵舱】撤离！");
+                if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
+                    Sound.playAlarmSound();
+                }
+                if (this.gameEngine.renderMissionsPanel) {
+                    this.gameEngine.renderMissionsPanel();
+                }
+                this.gameEngine.updateHeaderUI();
+                if (this.gameEngine.refreshStageMap) {
+                    this.gameEngine.refreshStageMap();
+                }
+            }
+        }
+
+        // 第二十一关专属：抵达维生环境总控机房完成核检打卡（开局地图高亮）
+        if (this.gameEngine?.currentLevel?.levelId === 21 && node.id === "room_life_support") {
+            if (!this.gameEngine.level21LifeSupportVisited) {
+                this.gameEngine.level21LifeSupportVisited = true;
+                if (this.gameEngine.showStageToast) {
+                    this.gameEngine.showStageToast("🎯 [维生核检] 已抵达【维生环境总控机房】！可携索菲亚前往深潜休眠舱撤离！");
+                }
+                this.gameEngine.logAction("【维生核检】成功抵达维生环境总控机房，核检记录已写入！请确保索菲亚随行后前往【深潜休眠矩阵舱】撤离！");
                 if (typeof Sound !== "undefined" && Sound.playAlarmSound) {
                     Sound.playAlarmSound();
                 }
@@ -965,7 +1406,7 @@ export class ExplorationEngine {
         // 弹出对话框并提示玩家选择：让其加入 / 不救助
         // 若选择救助入队，则标记该事件已消耗；若选择不救助/不理睬，则不标记消耗，允许之后再次踏入该区域时重新触发是否救助！
         this.gameEngine.showNpcEncounterModal(npc, node, (joined) => {
-            if (npcId === "vivian_elena" || npcId === "reactor_quartet" || (npcId === "colt_barnes" && this.gameEngine?.currentLevel?.levelId === 13)) {
+            if (npcId === "vivian_elena" || npcId === "reactor_quartet" || (npcId === "colt_barnes" && (this.gameEngine?.currentLevel?.levelId === 13 || this.gameEngine?.currentLevel?.levelId === 14 || this.gameEngine?.currentLevel?.levelId === 17 || this.gameEngine?.currentLevel?.levelId === 18))) {
                 // 双人/四人站位：仅当成员皆已不再处于 unmet 时才消耗，便于漏救时回来补招
                 const ids = npcId === "reactor_quartet"
                     ? ["colt", "barnes", "vivian", "elena"]

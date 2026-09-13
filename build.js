@@ -20,6 +20,8 @@ const files = [
     'mapRenderer.js',
     'unlockEvaluator.js',
     'exploration.js',
+    'kazeConfession.js',
+    'level15Interrogation.js',
     'gameEngine.js'
 ];
 
@@ -37,10 +39,18 @@ files.forEach(fileName => {
 
     // 移除 import 语句
     code = code.replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?/g, '');
+    // 侧效 import（无 from）
+    code = code.replace(/import\s+['"][^'"]+['"];?/g, '');
 
     // 将 export const / export class / export function 转换为普通的声明
     code = code.replace(/export\s+(const|let|var|class|function)/g, '$1');
     code = code.replace(/export\s+default\s+/g, '');
+    // 具名再导出：export { A, B as C }; → 删除（符号已在作用域内）
+    code = code.replace(/export\s*\{[^}]*\}\s*;?/g, '');
+    // export * from '...'
+    code = code.replace(/export\s+\*\s+from\s+['"][^'"]+['"];?/g, '');
+    // 兜底：残留的 export 关键字
+    code = code.replace(/^\s*export\s+/gm, '');
 
     bundleContent += `    // =========================================================================\n`;
     bundleContent += `    // 模块: ${fileName}\n`;
@@ -67,9 +77,21 @@ bundleContent += `    // 挂载全局对象以便于调试和扩展
     window.buildSpaceshipLevelMap = buildSpaceshipLevelMap;
 
     function bootstrap() {
-        if (!window.gameApp) {
+        if (window.gameApp) return;
+        try {
             console.log("[DOPPELGANGER] 启动游戏主引擎...");
             window.gameApp = new GameEngine();
+        } catch (err) {
+            console.error("[DOPPELGANGER] 引擎启动失败", err);
+            try {
+                if (window.__BootLoader && window.__BootLoader.takeOver) window.__BootLoader.takeOver();
+                var status = document.getElementById("loading-status-text");
+                var pct = document.getElementById("loading-percent-text");
+                var bar = document.getElementById("loading-progress-bar");
+                if (status) status.textContent = "引擎启动失败，请刷新重试";
+                if (pct) pct.textContent = "!";
+                if (bar) bar.style.width = "100%";
+            } catch (e2) { /* ignore */ }
         }
     }
 
@@ -88,8 +110,15 @@ const indexPath = path.join(__dirname, 'index.html');
 if (fs.existsSync(indexPath)) {
     let indexHtml = fs.readFileSync(indexPath, 'utf8');
     const timestamp = Date.now();
-    indexHtml = indexHtml.replace(/style\.css(\?v=[^"']*)?/g, `style.css?v=${timestamp}`);
-    indexHtml = indexHtml.replace(/app\.bundle\.js(\?v=[^"']*)?/g, `app.bundle.js?v=${timestamp}`);
+    // 仅改写 href/src 属性，避免误伤注释或内联脚本里的同名字符串
+    indexHtml = indexHtml.replace(
+        /href="((?:\.\/)?style\.css)(?:\?v=[^"]*)?"/g,
+        `href="$1?v=${timestamp}"`
+    );
+    indexHtml = indexHtml.replace(
+        /src="((?:\.\/)?js\/app\.bundle\.js)(?:\?v=[^"]*)?"/g,
+        `src="$1?v=${timestamp}"`
+    );
     fs.writeFileSync(indexPath, indexHtml, 'utf8');
     console.log(`[OK] index.html 资源防缓存戳已自动刷新为: ?v=${timestamp}`);
 }

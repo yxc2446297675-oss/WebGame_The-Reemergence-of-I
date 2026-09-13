@@ -26,6 +26,7 @@ export class UnlockEvaluator {
         const evacuatedNpcIds = context.evacuatedNpcIds || [];
         const evacuatedNpcs = context.evacuatedNpcs || [];
         const allLevelMimics = context.allLevelMimics || [];
+        const allLevelNpcs = context.allLevelNpcs || [];
         const isSolo = context.isSolo ?? (evacuatedNpcIds.length === 0);
 
         const triggeredRules = [];
@@ -79,6 +80,25 @@ export class UnlockEvaluator {
                     break;
                 }
 
+                // 6c. 本关全部 NPC 必须存活随行撤离
+                case "require_all_level_npcs": {
+                    if (allLevelNpcs.length > 0) {
+                        isSatisfied = allLevelNpcs.every(npc => evacuatedNpcIds.includes(npc.id));
+                    } else {
+                        isSatisfied = false;
+                    }
+                    break;
+                }
+
+                // 6b. 撤离同伴数量达标且队伍中无伪人
+                case "require_npc_count_no_mimics": {
+                    const minCount = condition.count || condition.minCount || 1;
+                    const enough = evacuatedNpcIds.length >= minCount;
+                    const clean = evacuatedNpcs.every(npc => npc.role !== "wolf");
+                    isSatisfied = enough && clean;
+                    break;
+                }
+
                 // 7. 自定义回调判定
                 case "custom": {
                     if (typeof condition.matcher === "function") {
@@ -123,6 +143,62 @@ export class UnlockEvaluator {
                     break;
                 }
 
+                // 第十七关：主电站已合闸
+                case "level17_power_restored": {
+                    isSatisfied = !!context.level17PowerRestored;
+                    break;
+                }
+
+                case "level18_power_restored": {
+                    isSatisfied = !!context.level18PowerRestored;
+                    break;
+                }
+
+                case "level19_life_support_visited": {
+                    isSatisfied = !!context.level19LifeSupportVisited;
+                    break;
+                }
+
+                case "level19_power_restored": {
+                    isSatisfied = !!context.level19PowerRestored;
+                    break;
+                }
+
+                case "level20_life_support_visited": {
+                    isSatisfied = !!context.level20LifeSupportVisited;
+                    break;
+                }
+
+                case "level20_power_restored": {
+                    isSatisfied = !!context.level20PowerRestored;
+                    break;
+                }
+
+                case "level21_life_support_visited": {
+                    isSatisfied = !!context.level21LifeSupportVisited;
+                    break;
+                }
+
+                case "level21_power_restored": {
+                    isSatisfied = !!context.level21PowerRestored;
+                    break;
+                }
+
+                case "level22_avoided_outage_origin": {
+                    isSatisfied = context.level22AvoidedOutageOrigin !== false;
+                    break;
+                }
+
+                case "level23_avoided_life_support": {
+                    isSatisfied = context.level23AvoidedLifeSupport !== false;
+                    break;
+                }
+
+                case "level23_power_restored": {
+                    isSatisfied = !!context.level23PowerRestored;
+                    break;
+                }
+
                 default:
                     console.warn(`[UnlockEvaluator] 未知的解锁条件类型: ${condition.type}`);
                     isSatisfied = false;
@@ -143,6 +219,33 @@ export class UnlockEvaluator {
         return {
             triggeredRules,
             unlockedLevelIds: Array.from(unlockedIdsSet).sort((a, b) => a - b)
+        };
+    }
+
+    /**
+     * 第十五关元解锁：除第 15、25 关外，其余关卡（1–14、16–24）均已通关时开放。
+     * @param {Array<number>} completedLevels
+     * @returns {{ shouldUnlock: boolean, requiredIds: number[], missingIds: number[], rule: Object|null }}
+     */
+    static evaluateLevel15MetaUnlock(completedLevels = []) {
+        const requiredIds = [];
+        for (let id = 1; id <= 24; id++) {
+            if (id === 15) continue;
+            requiredIds.push(id);
+        }
+        const completedSet = new Set((completedLevels || []).map(Number).filter(n => !isNaN(n)));
+        const missingIds = requiredIds.filter(id => !completedSet.has(id));
+        const shouldUnlock = missingIds.length === 0;
+        return {
+            shouldUnlock,
+            requiredIds,
+            missingIds,
+            rule: shouldUnlock ? {
+                id: "meta_l15_all_clear_except_15_25",
+                unlockLevelIds: [15],
+                title: "折叠信标共振",
+                toast: "除终焉节点外的全部扇区均已观测完成！深层折叠通路开启——【第十五关】现已开放！"
+            } : null
         };
     }
 }

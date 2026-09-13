@@ -14,9 +14,12 @@ import { buildSpaceshipLevelMap, LEVEL_SECTOR_SPECS } from "./spaceshipMasterMap
 export const GeneratedLevels = [];
 
 for (let lvlId = 15; lvlId <= 25; lvlId++) {
-    if (lvlId === 16) continue; // 第十六关已迁入 levels.js 手工定制
+    if (lvlId === 16 || lvlId === 17) continue; // 第十六/十七关已迁入 levels.js 手工定制
     const spec = LEVEL_SECTOR_SPECS[lvlId] || LEVEL_SECTOR_SPECS[1];
     const lvlMap = buildSpaceshipLevelMap(lvlId);
+
+    // 第十五关不由线性通关链解锁；需完成 1–14、16–24 后由元规则开放
+    const unlockLevelIds = (lvlId === 15 || lvlId >= 25) ? [] : (lvlId < 25 ? [lvlId + 1] : []);
 
     const levelObj = {
         levelId: lvlId,
@@ -45,11 +48,13 @@ for (let lvlId = 15; lvlId <= 25; lvlId++) {
             {
                 id: `l${lvlId}_basic_clear`,
                 condition: { type: "clear_any" },
-                unlockLevelIds: lvlId < 25 ? [lvlId + 1] : [],
+                unlockLevelIds,
                 taskName: "任务一：成功撤离 (战术突破)",
                 taskObjective: "穿越封锁甲板，抵达终点气密大门完成脱出",
                 title: "常规路线探明",
-                toast: lvlId < 25 ? `已探明深层通路，开放【第 ${lvlId + 1} 关】！` : `全关卡已全部通关！`
+                toast: lvlId === 15
+                    ? "第十五关 · 折叠观测完成！"
+                    : (lvlId < 25 ? `已探明深层通路，开放【第 ${lvlId + 1} 关】！` : `全关卡已全部通关！`)
             }
         ]
     };

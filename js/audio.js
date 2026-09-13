@@ -191,7 +191,7 @@ class SoundEngine {
         });
     }
 
-    // 异步预加载音频文件到缓存池 (同时支持 HTML5 Audio 实例预热与 Web Audio API 内存直接解码)
+    // 异步预加载音频：硬超时，避免虎扑/WebView 卡住首屏
     preloadAudio(primaryUrl) {
         if (!primaryUrl) return Promise.resolve(null);
         if (this.audioBuffers && this.audioBuffers.has(primaryUrl)) {
@@ -207,7 +207,9 @@ class SoundEngine {
                 }
             };
 
-            // 1. HTML5 Audio 实例预热与 load() 调用 (确保移动端浏览器立刻发起音频数据缓冲)
+            // 硬超时：2s 内必须结束，绝不等 canplaythrough
+            setTimeout(done, 2000);
+
             if (typeof Audio !== "undefined" && !this.audioCache.has(primaryUrl)) {
                 try {
                     const safeUrl = encodeURI(primaryUrl);
@@ -227,11 +229,16 @@ class SoundEngine {
                 }
             }
 
-            // 2. 若 Web Audio 上下文可用，异步抓取二进制并解码至物理内存 AudioBuffer (极速 0ms 硬件发声)
+            // fetch 解码仅作增强；失败/挂起不影响结束
             if (this.ctx && typeof fetch === "function") {
                 try {
                     const safeUrl = encodeURI(primaryUrl);
-                    fetch(safeUrl)
+                    const ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+                    const fetchTimer = setTimeout(() => {
+                        try { ctrl && ctrl.abort(); } catch (e) { /* ignore */ }
+                        done();
+                    }, 1800);
+                    fetch(safeUrl, ctrl ? { signal: ctrl.signal } : undefined)
                         .then(res => (res.ok ? res.arrayBuffer() : null))
                         .then(arrayBuffer => {
                             if (arrayBuffer && this.ctx && typeof this.ctx.decodeAudioData === "function") {
@@ -240,17 +247,19 @@ class SoundEngine {
                             return null;
                         })
                         .then(decodedBuffer => {
+                            clearTimeout(fetchTimer);
                             if (decodedBuffer) {
                                 this.audioBuffers.set(primaryUrl, decodedBuffer);
                             }
                             done();
                         })
-                        .catch(() => done());
+                        .catch(() => {
+                            clearTimeout(fetchTimer);
+                            done();
+                        });
                 } catch (e) {
                     done();
                 }
-            } else {
-                setTimeout(done, 150);
             }
         });
     }

@@ -864,7 +864,7 @@ function drawAirlockDoorway(ctx, cx, cy, boxSize, dir, isTraversed = false, isLo
 }
 
 export class MapRenderer {
-    constructor(canvasElement) {
+    constructor(canvasElement, opts = {}) {
         this.canvas = canvasElement;
         this.ctx = canvasElement ? canvasElement.getContext("2d") : null;
         this.animating = false;
@@ -899,7 +899,9 @@ export class MapRenderer {
         this.alertFlashUntil = 0;
         this.alertFlashRaf = null;
 
-        this.initInteractiveGestures();
+        if (opts.interactive !== false) {
+            this.initInteractiveGestures();
+        }
     }
 
     /**
@@ -1346,10 +1348,13 @@ export class MapRenderer {
         const worldX = cam.x + (normX - (displayW / 2 + this.panX)) / scale;
         const worldY = cam.y + (normY - (displayH / 2 + this.panY)) / scale;
 
-        // 判定点击房间节点自身 (留有 18px 容错边缘，保障移动端触控精度)
+        // 判定点击房间节点自身 (移动端触控容错加大)
         const layout = this.getLayout();
         const boxSize = layout.boxSize;
-        const half = boxSize / 2 + 18;
+        const touchPad = (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(pointer: coarse)").matches)
+            ? 28
+            : 18;
+        const half = boxSize / 2 + touchPad;
 
         for (const node of Object.values(levelMap.nodes)) {
             const p = this.getNodeCenter(node);
@@ -2011,13 +2016,13 @@ export class MapRenderer {
             if (isCurrent && !animatedMarker) {
                 ctx.fillStyle = "#38bdf8";
                 const hereFontSize = Math.max(Math.min(Math.floor(boxSize * 0.2), 10), 8);
-                ctx.font = `bold ${hereFontSize}px 'Orbitron', monospace`;
+                ctx.font = `bold ${hereFontSize}px ui-monospace, Consolas, monospace`;
                 ctx.fillText(boxSize >= 40 ? "📍HERE" : "📍", p.x, p.y - boxSize / 2 - 8);
             } else if (options.canFastTravel && isVisited && !adjacentDir && !animatedMarker) {
                 const isHover = options.hoveredNodeId === node.id;
                 ctx.fillStyle = isHover ? "#4ade80" : "rgba(74, 222, 128, 0.9)";
                 const travelFontSize = Math.max(Math.min(Math.floor(boxSize * 0.18), 9), 8);
-                ctx.font = `bold ${travelFontSize}px 'Orbitron', sans-serif`;
+                ctx.font = `bold ${travelFontSize}px ui-monospace, Consolas, "Microsoft YaHei", sans-serif`;
                 ctx.fillText(boxSize >= 42 ? "⚡快速往返" : "⚡", p.x, p.y - boxSize / 2 - 8);
             }
 
@@ -2067,7 +2072,7 @@ export class MapRenderer {
             ctx.fillText("📍", curX, curY - 1);
 
             const tagText = arrivalPulse > 0 ? "抵达" : "L.P.H";
-            ctx.font = "bold 10px 'Orbitron', monospace";
+            ctx.font = "bold 10px ui-monospace, Consolas, monospace";
             const tagW = ctx.measureText(tagText).width + 14;
             ctx.fillStyle = "rgba(11, 17, 32, 0.94)";
             ctx.fillRect(curX - tagW / 2, curY - 34, tagW, 18);
@@ -2425,7 +2430,7 @@ export class MapRenderer {
         ctx.strokeRect(cx - cSize / 2, cy - cSize / 2, cSize, cSize);
 
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 10px 'Orbitron', sans-serif";
+        ctx.font = "bold 10px ui-monospace, Consolas, monospace";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("📍", cx, cy);
@@ -2434,7 +2439,7 @@ export class MapRenderer {
         if (isNearMimic) {
             ctx.save();
             ctx.fillStyle = "#eab308";
-            ctx.font = "bold 9px 'Orbitron', sans-serif";
+            ctx.font = "bold 9px ui-monospace, Consolas, monospace";
             ctx.textAlign = "center";
             ctx.fillText("⚠️ 异常高熵", cx, cy - 20);
             ctx.restore();
