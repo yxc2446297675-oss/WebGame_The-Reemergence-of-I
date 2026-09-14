@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-14T07:10:19.430Z
+ * 自动生成于 2026-09-14T07:14:16.756Z
  */
 (function() {
     'use strict';
@@ -14779,8 +14779,12 @@ class GameEngine {
                     this.modalLevelSelect?.classList.add("hidden");
                     this.modalLevelSelect?.classList.remove("ship-docked", "ship-window-enter", "ship-window-exit");
                     this.setMenuCinematicFocus(false);
-                    if (typeof MenuSkyShader !== "undefined" && MenuSkyShader.stop) {
-                        MenuSkyShader.stop();
+                    document.getElementById("menu-hangar-fx")?.classList.remove(
+                        "is-active", "phase-approach", "phase-face", "phase-hatch", "phase-tray"
+                    );
+                    if (typeof MenuSkyShader !== "undefined") {
+                        if (MenuSkyShader.stop) MenuSkyShader.stop();
+                        if (MenuSkyShader.setCinematicLite) MenuSkyShader.setCinematicLite(false);
                     }
                     this.startNewGame(i);
                 } else {
