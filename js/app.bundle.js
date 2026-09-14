@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-14T07:31:45.961Z
+ * 自动生成于 2026-09-14T07:43:38.989Z
  */
 (function() {
     'use strict';
@@ -8163,10 +8163,12 @@ class MapRenderer {
         this.skipAnimation = null;
         this.viewMode = "focus"; // "focus" | "full"
 
-        // 交互平移与缩放引擎属性 (工业化标准：支持手机双指锚点缩放、单指1:1平移、双击聚焦复位、滚轮光标锚点缩放)
+        // 交互平移与缩放引擎属性 (双指锚点缩放、单指1:1平移、滚轮光标锚点缩放；手机最大可放大约 7x)
         this.panX = 0;
         this.panY = 0;
         this.zoom = 1.0;
+        this.minZoom = 0.45;
+        this.maxZoom = 7.0;
         this.isDragging = false;
         this.pointerDown = false;
         this.startPointer = { x: 0, y: 0 };
@@ -8179,8 +8181,6 @@ class MapRenderer {
         // 性能调度：按需渲染Dirty-Flag与RAF合并调度
         this.renderRequested = false;
         this.cameraAnimId = null;
-        this.lastTapTime = 0;
-        this.lastTapPos = { x: 0, y: 0 };
 
         // 运行时状态缓存：世界坐标缩放与摄像机中点
         this.currentScale = 1.0;
@@ -8314,7 +8314,7 @@ class MapRenderer {
     }
 
     /**
-     * 绑定工业化标准手势 (手机双指以中点锚定无跳跃缩放、单指1:1跟手平移、滚轮光标锚定缩放、双击平滑复位)
+     * 绑定工业化标准手势 (手机双指以中点锚定无跳跃缩放、单指1:1跟手平移、滚轮光标锚定缩放)
      */
     initInteractiveGestures() {
         if (!this.canvas || typeof window === "undefined") return;
@@ -8354,7 +8354,7 @@ class MapRenderer {
         canvas.addEventListener("wheel", (e) => {
             e.preventDefault();
             const factor = e.deltaY < 0 ? 1.15 : 0.87;
-            const newZoom = Math.max(0.45, Math.min(3.5, this.zoom * factor));
+            const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoom * factor));
             
             const rect = this.getCanvasRect();
             const mouseX = e.clientX - rect.left;
@@ -8367,7 +8367,7 @@ class MapRenderer {
             this.scheduleRender();
         }, { passive: false });
 
-        // 手机触摸手势 (单指平移 + 双指以触控中点锚定自由缩放 + 双击平滑聚焦复位)
+        // 手机触摸手势 (单指平移 + 双指以触控中点锚定自由缩放)
         canvas.addEventListener("touchstart", (e) => {
             if (this.animating) return;
             if (e.touches.length === 1) {
@@ -8414,7 +8414,7 @@ class MapRenderer {
                 const curMidY = (t1.clientY + t2.clientY) / 2;
 
                 const factor = dist / this.initialPinchDist;
-                const newZoom = Math.max(0.45, Math.min(3.5, this.startZoom * factor));
+                const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.startZoom * factor));
 
                 const rect = this.getCanvasRect();
                 const midX = curMidX - rect.left;
@@ -8431,17 +8431,6 @@ class MapRenderer {
 
         canvas.addEventListener("touchend", (e) => {
             if (e.touches.length === 0) {
-                // 检查双击手势
-                const now = Date.now();
-                if (!this.isDragging && this.startPointer) {
-                    const distFromLast = Math.hypot(this.startPointer.x - this.lastTapPos.x, this.startPointer.y - this.lastTapPos.y);
-                    if (now - this.lastTapTime < 320 && distFromLast < 24) {
-                        // 触发双击平滑聚焦复位
-                        this.resetView();
-                    }
-                    this.lastTapTime = now;
-                    this.lastTapPos = { ...this.startPointer };
-                }
                 this.pointerDown = false;
                 this.initialPinchDist = 0;
             }
@@ -8557,11 +8546,11 @@ class MapRenderer {
     }
 
     zoomIn() {
-        this.animateCameraTo({ zoom: Math.min(3.5, this.zoom * 1.3) }, 200);
+        this.animateCameraTo({ zoom: Math.min(this.maxZoom, this.zoom * 1.3) }, 200);
     }
 
     zoomOut() {
-        this.animateCameraTo({ zoom: Math.max(0.45, this.zoom * 0.77) }, 200);
+        this.animateCameraTo({ zoom: Math.max(this.minZoom, this.zoom * 0.77) }, 200);
     }
 
     /**
@@ -18880,11 +18869,6 @@ class GameEngine {
     renderStageMap() {
         if (!this.stageMapRenderer && this.stageMapCanvas) {
             this.stageMapRenderer = new MapRenderer(this.stageMapCanvas);
-        }
-
-        // 手机竖屏：默认整舰等比缩小入画；用户手动切到聚焦后不再强行改回
-        if (this.stageMapRenderer && !this._stageMapUserPickedViewMode) {
-            this.stageMapRenderer.preferFullShipOnMobilePortrait();
         }
 
         const btnToggleFocus = document.getElementById("btn-stage-map-focus");
