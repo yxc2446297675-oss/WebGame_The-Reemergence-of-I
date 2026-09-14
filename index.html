@@ -11,7 +11,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>拟态残响 (视觉小说·肉鸽探索·AI伪人杀)</title>
-    <link rel="stylesheet" href="./style.css?v=1789314050362">
+    <link rel="stylesheet" href="./style.css?v=1789365901435">
 </head>
 <body>
 
@@ -140,6 +140,8 @@
     <!-- 1. 主菜单界面 (Main Menu) -->
     <!-- ================================================================= -->
     <div id="screen-menu">
+        <canvas id="menu-sky-canvas" class="menu-sky-canvas" aria-hidden="true"></canvas>
+        <div class="menu-sky-veil" aria-hidden="true"></div>
         <div class="menu-container">
             <div class="title-hud">
                 <span class="hud-tag">PROJECT MIMIC // ROGUELIKE VN</span>
@@ -148,15 +150,15 @@
             <div class="menu-subtitle">循环伪装体 · 遗迹分支探索</div>
             
             <div class="menu-actions">
-                <button id="btn-menu-select-level" class="menu-btn primary-btn" style="background: linear-gradient(135deg, rgba(14, 165, 233, 0.3), rgba(168, 85, 247, 0.25)); border-color: #38bdf8;">
+                <button id="btn-menu-select-level" class="menu-btn primary-btn">
                     <span class="btn-icon">🌌</span>
                     <span class="btn-text">关卡选择 · 扇区观测 (Level Select)</span>
                 </button>
-                <button id="btn-menu-persona-log" class="menu-btn persona-menu-btn" style="background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(244, 63, 94, 0.2)); border-color: #c084fc;">
-                    <span class="btn-icon">👤</span>
-                    <span class="btn-text">记忆图鉴 · 角色专属分支 (Persona Log)</span>
+                <button id="btn-menu-persona-log" class="menu-btn persona-menu-btn">
+                    <span class="btn-icon">📔</span>
+                    <span class="btn-text">记忆图鉴 · 残响收录</span>
                 </button>
-                <button id="btn-menu-talent-tree" class="menu-btn talent-menu-btn" style="background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(14, 165, 233, 0.2)); border-color: #fbbf24;">
+                <button id="btn-menu-talent-tree" class="menu-btn talent-menu-btn">
                     <span class="btn-icon">⚓</span>
                     <span class="btn-text">定锚科技树 · 回溯稳定性 (Talent Tree)</span>
                 </button>
@@ -341,9 +343,47 @@
                                     <div class="map-player-crosshair"></div>
                                 </div>
                             </div>
-                            <!-- 从右侧渐变滑入的未知X实体 (图一图标) -->
-                            <div id="l4-entity-x" class="map-entity-x">
-                                <img src="assets/level4_x_marker.png" alt="X">
+                            <!-- 从右侧渐变滑入的未知异象实体（矢量点阵圆圈） -->
+                            <div id="l4-entity-x" class="map-entity-x" aria-hidden="true">
+                                <svg class="map-entity-x-svg" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <filter id="l4-ring-glow" x="-40%" y="-40%" width="180%" height="180%">
+                                            <feGaussianBlur stdDeviation="1.6" result="blur"/>
+                                            <feMerge>
+                                                <feMergeNode in="blur"/>
+                                                <feMergeNode in="SourceGraphic"/>
+                                            </feMerge>
+                                        </filter>
+                                    </defs>
+                                    <circle cx="60" cy="60" r="44" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.5"/>
+                                    <circle cx="60" cy="60" r="34" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+                                    <g filter="url(#l4-ring-glow)" fill="#ffffff">
+                                        <circle cx="60" cy="16" r="3.1"/>
+                                        <circle cx="82" cy="22" r="3.1"/>
+                                        <circle cx="98" cy="38" r="3.1"/>
+                                        <circle cx="104" cy="60" r="3.1"/>
+                                        <circle cx="98" cy="82" r="3.1"/>
+                                        <circle cx="82" cy="98" r="3.1"/>
+                                        <circle cx="60" cy="104" r="3.1"/>
+                                        <circle cx="38" cy="98" r="3.1"/>
+                                        <circle cx="22" cy="82" r="3.1"/>
+                                        <circle cx="16" cy="60" r="3.1"/>
+                                        <circle cx="22" cy="38" r="3.1"/>
+                                        <circle cx="38" cy="22" r="3.1"/>
+                                        <circle cx="71" cy="18" r="2.2"/>
+                                        <circle cx="90" cy="29" r="2.2"/>
+                                        <circle cx="101" cy="49" r="2.2"/>
+                                        <circle cx="101" cy="71" r="2.2"/>
+                                        <circle cx="90" cy="91" r="2.2"/>
+                                        <circle cx="71" cy="102" r="2.2"/>
+                                        <circle cx="49" cy="102" r="2.2"/>
+                                        <circle cx="30" cy="91" r="2.2"/>
+                                        <circle cx="19" cy="71" r="2.2"/>
+                                        <circle cx="19" cy="49" r="2.2"/>
+                                        <circle cx="30" cy="29" r="2.2"/>
+                                        <circle cx="49" cy="18" r="2.2"/>
+                                    </g>
+                                </svg>
                             </div>
                         </div>
                     </div>
@@ -701,21 +741,29 @@
         </div>
     </div>
 
-    <!-- H. 记忆图鉴 · 角色专属分支弹窗 (Persona Log Modal) -->
+    <!-- H. 记忆图鉴 · 残响收录 -->
     <div id="modal-persona-log" class="modal-backdrop hidden">
-        <div class="modal-box persona-modal-box">
-            <div class="modal-header">
+        <div class="modal-box persona-modal-box archive-modal-box">
+            <div class="modal-header archive-modal-header">
                 <div>
-                    <h3>👤 记忆图鉴 · 角色专属档案 (Persona Log)</h3>
-                    <div class="modal-subtitle-hint">在循环中达成特定经历解构深层档案，集齐后解锁专属保命技能与专属剧情分支</div>
+                    <h3>记忆图鉴</h3>
+                    <div class="modal-subtitle-hint">探索中收录的日记与舰船事件 · 可随时回看</div>
                 </div>
                 <button id="btn-close-persona-log" class="modal-close-btn">✕</button>
             </div>
-            <div class="modal-body persona-modal-body">
-                <!-- 角色选择切换栏 -->
-                <div id="persona-char-tabs" class="persona-char-tabs"></div>
-                <!-- 角色档案详细面板 -->
-                <div id="persona-char-detail" class="persona-char-detail"></div>
+            <div class="modal-body persona-modal-body archive-modal-body">
+                <div class="archive-shell">
+                    <aside class="archive-rail" aria-label="残响分类">
+                        <div class="archive-progress" id="archive-progress-text">0 / 0</div>
+                        <nav id="persona-char-tabs" class="persona-char-tabs archive-cat-tabs" role="tablist"></nav>
+                    </aside>
+                    <section class="archive-main">
+                        <div id="archive-entry-list" class="archive-entry-list"></div>
+                        <div id="persona-char-detail" class="persona-char-detail archive-detail-pane">
+                            <div class="archive-empty-hint">从左侧选择一条残响，展开你已收录的记忆。</div>
+                        </div>
+                    </section>
+                </div>
             </div>
         </div>
     </div>
@@ -731,14 +779,19 @@
                 <button id="btn-close-talent-tree" class="modal-close-btn">✕</button>
             </div>
             <div class="talent-points-bar">
-                <span class="talent-points-label">当前持有</span>
-                <span id="talent-points-text" class="talent-points-value">0 定锚点</span>
+                <div class="talent-points-left">
+                    <span class="talent-points-label">当前持有</span>
+                    <span id="talent-points-text" class="talent-points-value">0 定锚点</span>
+                </div>
+                <button type="button" id="btn-talent-reset" class="talent-reset-btn" title="清空已点亮科技并返还定锚点">
+                    重置科技树
+                </button>
             </div>
             <div class="modal-body talent-modal-body">
                 <div id="talent-tree-root" class="talent-tree-root">
                     <!-- 动态渲染三支科技树 -->
                 </div>
-                <p class="talent-footer-hint">每首次完成一关获得 1 定锚点。下层天赋需先点亮，方可解锁上层（1 点 → 3 点）。</p>
+                <p class="talent-footer-hint">每首次完成一关获得 1 定锚点。下层天赋需先点亮，方可解锁上层（1 点 → 3 点）。可用「重置科技树」清空已点并全额返还定锚点。</p>
             </div>
         </div>
     </div>
@@ -881,7 +934,7 @@
     <div id="app-toast" class="app-toast" role="status" aria-live="polite"></div>
 
     <!-- 游戏启动引导脚本 (defer + BootLoader 回调；虎扑等宿主友好) -->
-    <script defer src="js/app.bundle.js?v=1789314050362" onload="window.__BootLoader && window.__BootLoader.onBundleLoaded && window.__BootLoader.onBundleLoaded()" onerror="window.__BootLoader && window.__BootLoader.onBundleError && window.__BootLoader.onBundleError()"></script>
+    <script defer src="js/app.bundle.js?v=1789365901435" onload="window.__BootLoader && window.__BootLoader.onBundleLoaded && window.__BootLoader.onBundleLoaded()" onerror="window.__BootLoader && window.__BootLoader.onBundleError && window.__BootLoader.onBundleError()"></script>
 </body>
 </html>
 

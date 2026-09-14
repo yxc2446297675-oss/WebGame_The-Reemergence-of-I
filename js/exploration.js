@@ -273,6 +273,11 @@ export class ExplorationEngine {
         // 更新左上角区域名称与UI
         this.gameEngine.updateHeaderUI();
 
+        // 记忆图鉴：首次踏入维生环境总控 → 收录「芯片被偷」
+        if (node?.id === "room_life_support" && typeof this.gameEngine.unlockArchiveChipStolen === "function") {
+            this.gameEngine.unlockArchiveChipStolen();
+        }
+
         // 第二十二关专属：踏入全舰停电始发地立即失败（开局地图高亮禁区）
         if (this.gameEngine?.currentLevel?.levelId === 22 && node.id === "room_west_end") {
             this.gameEngine.level22AvoidedOutageOrigin = false;
@@ -1274,6 +1279,9 @@ export class ExplorationEngine {
             if (this.gameEngine.diaryUI) {
                 setTimeout(() => {
                     this.gameEngine.diaryUI.open(ownerName, ownerColor, node.diary);
+                    if (typeof this.gameEngine.unlockArchiveDiary === "function") {
+                        this.gameEngine.unlockArchiveDiary(node.npcOwnerId);
+                    }
                 }, 200);
             }
         }
@@ -1532,28 +1540,11 @@ export class ExplorationEngine {
             `【快速往返】经由已探明路线快速返回至 [${targetNode.name}]（不计入面临选择次数，安全折返）`
         );
 
-        // 立即更新顶部状态栏与罗盘方向控制面板
+        // 立即更新顶部状态栏
         this.gameEngine.updateHeaderUI();
-        this.gameEngine.renderExplorationControls();
 
-        // 检查目标房间是否有未消耗的事件（如之前暂缓救助的NPC或物资）
-        const eventKey = `${targetNode.id}_event`;
-        if (targetNode.event && !this.consumedEvents.has(eventKey)) {
-            if (targetNode.event.type === "npc") {
-                const npc = this.gameEngine.getNpcById(targetNode.event.npcId);
-                if (npc && npc.status === "unmet") {
-                    this.gameEngine.showNpcEncounterModal(npc, targetNode, (joined) => {
-                        if (joined) {
-                            this.consumedEvents.add(eventKey);
-                        }
-                    });
-                }
-            } else if (targetNode.event.type === "food") {
-                this.handleFoodEvent(targetNode, eventKey, () => {
-                    this.gameEngine.renderExplorationControls();
-                });
-            }
-        }
+        // 抵达目标后仍需处理终点通关 / 未救助 NPC / 物资等（isAlreadyExplored=true 可跳过傍晚检定）
+        this.handleNodeEvents(targetNode, true);
 
         return path;
     }

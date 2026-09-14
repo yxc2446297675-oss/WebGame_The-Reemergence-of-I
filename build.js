@@ -15,6 +15,7 @@ const files = [
     'level1Tutorial.js',
     'dialogueUI.js',
     'diaryUI.js',
+    'memoryArchive.js',
     'saveSystem.js',
     'talentTree.js',
     'mapRenderer.js',
@@ -22,6 +23,7 @@ const files = [
     'exploration.js',
     'kazeConfession.js',
     'level15Interrogation.js',
+    'menuSkyShader.js',
     'gameEngine.js'
 ];
 

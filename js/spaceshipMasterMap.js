@@ -151,12 +151,12 @@ export const MASTER_ROOM_DEFS = {
     },
     "room_decon_airlock": {
         id: "room_decon_airlock",
-        name: "【前沿技术科室】黑匣子神经定格站（二号芯片失窃点）",
+        name: "【前沿技术科室】黑匣子神经定格站",
         zone: "research",
         coord: { x: 7, y: 1 },
         shape: "airlock_dock",
         equipment: "server_rack",
-        desc: "休眠舱隔壁的绝密新技术科室。这里研发了【黑匣子时空定格技术】——可在停电与受创瞬间全景记录全员位置！然而中央控制台的【二号校验芯片】已被盗走，残留下的恶性数据 Bug 阻碍着真相重现！"
+        desc: "休眠舱隔壁的绝密新技术科室。这里研发了【黑匣子时空定格技术】——可在停电与受创瞬间全景记录全员位置。控制台仍在运转，但残余数据流紊乱，像有人强行打断了定格演算的最后一帧。"
     },
 
     // =========================================================================
@@ -290,7 +290,7 @@ export const MASTER_ROOM_DEFS = {
         coord: { x: 3, y: 3 },
         shape: "hub_central_oct",
         equipment: "airlock_dock",
-        desc: "主角在神经接驳中意识投影的初始落脚点。由于关键芯片失窃与程序 Bug，记忆发生严重逆向断片，只记得周围剧烈的震荡、火光与烧焦味道。"
+        desc: "主角在神经接驳中意识投影的初始落脚点。由于维生环境总控芯片失窃引发的连锁故障与程序 Bug，记忆发生严重逆向断片，只记得周围剧烈的震荡、火光与烧焦味道。"
     },
     // Level 1 原版节点 2: 右下拐角
     "room_corner_se": {
@@ -398,12 +398,12 @@ export const MASTER_ROOM_DEFS = {
     },
     "room_life_support": {
         id: "room_life_support",
-        name: "【维生环境总控机房】一号核心芯片失窃点",
+        name: "【维生环境总控机房】核心芯片失窃点",
         zone: "ecology",
         coord: { x: 6, y: 4 },
         shape: "life_support_hex",
         equipment: "server_rack",
-        desc: "维生循环主机机柜被暴力撬开，原本控制全舰大气与主冷却配比的【一号核心芯片】已被拔走！气流紊乱，直接诱发了底层聚变堆的严重失衡与连锁过热！"
+        desc: "维生循环主机机柜被暴力撬开，原本控制全舰大气与主冷却配比的【核心温控芯片】已被拔走！气流紊乱，直接诱发了底层聚变堆的严重失衡与连锁过热！"
     },
     "room_air_recycler": {
         id: "room_air_recycler",
@@ -738,7 +738,7 @@ export const NPC_PRIVATE_QUARTERS = [
         diary: [
             {
                 title: "系统自检 · 异常中断",
-                content: "时间戳 00:14:22。超导中枢检测到底层硬件协议被强行绕过。有人从环境机房拔出了01号温控芯片，并试图用二号校验芯片伪造系统心跳。\n\n我的安全防火墙在0.003秒内被注入了自相矛盾的递归死循环。这不是暴力破解，是对底层架构极其熟悉的内部权限所为。"
+                content: "时间戳 00:14:22。超导中枢检测到底层硬件协议被强行绕过。有人从环境机房拔出了核心温控芯片，并用伪造的心跳脉冲欺骗了维生总线。\n\n我的安全防火墙在0.003秒内被注入了自相矛盾的递归死循环。这不是暴力破解，是对底层架构极其熟悉的内部权限所为。"
             },
             {
                 title: "伦理冲突 · 仿生人悖论",
@@ -2028,6 +2028,8 @@ export function buildSpaceshipLevelMap(levelId) {
             node.event = { type: "exit", name: (id === "room_npc1" ? "动力操作台" : "终点气密大门") };
         } else {
             node.isExit = false;
+            // 本关终点不在此房时，去掉名称里误导性的「(终点)」标记
+            node.name = String(node.name || "").replace(/\s*[（(]终点[）)]\s*/g, "").trim();
             if (node.event && node.event.type === "exit") {
                 delete node.event;
             }

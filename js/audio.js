@@ -378,11 +378,99 @@ class SoundEngine {
         this.playAudioFile(soundUrl, volume, this.synthesizeMoveStep, "移动音效");
     }
 
-    // 11. 第四关专属通关异象音效 (X实体逼近贴合时触发)
+    // 11. 第四关专属通关异象音效 (主异象冲击，倒地后 / 兼容旧调用)
     playLevel4EndingSound(customUrl = null) {
         const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.level4EndingSoundUrl) || "assets/audio/level4_ending.mp3";
         const volume = (typeof AudioConfig !== 'undefined' && AudioConfig.level4EndingSoundVolume !== undefined) ? AudioConfig.level4EndingSoundVolume : 0.90;
         this.playAudioFile(soundUrl, volume, this.synthesizeLevel4Glitch, "第四关异象音效");
+    }
+
+    /** 圆圈逼近：低频压迫嗡鸣 */
+    playLevel4ApproachHum() {
+        this.init();
+        if (this.isMuted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const lfo = this.ctx.createOscillator();
+        const lfoGain = this.ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(46, now);
+        osc.frequency.linearRampToValueAtTime(38, now + 2.8);
+        lfo.type = "sine";
+        lfo.frequency.setValueAtTime(0.55, now);
+        lfoGain.gain.setValueAtTime(7, now);
+        lfo.connect(lfoGain);
+        lfoGain.connect(osc.frequency);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(0.22, now + 0.45);
+        gain.gain.setValueAtTime(0.22, now + 2.2);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 3.2);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        lfo.start(now);
+        osc.stop(now + 3.25);
+        lfo.stop(now + 3.25);
+    }
+
+    /** 倒地瞬间：短促刺穿冲击 */
+    playLevel4FallSpike() {
+        this.init();
+        if (this.isMuted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const noiseDur = 0.18;
+        const bufferSize = Math.floor(this.ctx.sampleRate * noiseDur);
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2.2);
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        const noiseFilter = this.ctx.createBiquadFilter();
+        noiseFilter.type = "bandpass";
+        noiseFilter.frequency.setValueAtTime(1800, now);
+        noiseFilter.Q.setValueAtTime(0.8, now);
+        const noiseGain = this.ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.28, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + noiseDur);
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(this.ctx.destination);
+        noise.start(now);
+        noise.stop(now + noiseDur);
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.exponentialRampToValueAtTime(55, now + 0.35);
+        gain.gain.setValueAtTime(0.32, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.42);
+    }
+
+    /** 终焉暗幕压下：低频压力 */
+    playLevel4BlackoutPressure() {
+        this.init();
+        if (this.isMuted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(70, now);
+        osc.frequency.exponentialRampToValueAtTime(28, now + 1.4);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(0.3, now + 0.25);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.6);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 1.65);
     }
 
     // 过程式实时合成：深邃未知的低频脉冲与异化共鸣 (Eerie Sub-bass Pulse & Metallic Glitch)

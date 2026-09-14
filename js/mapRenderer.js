@@ -1731,7 +1731,9 @@ export class MapRenderer {
             // 根据所属分区选取专属地面色彩主题
             let themeKey = node.zone || "hub";
             if (node.isStart || node.id === "room_start" || (levelMap && node.id === levelMap.startNodeId)) themeKey = "start";
-            else if (node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit")))) themeKey = "exit";
+            else if (node.isExit || (levelMap && levelMap.exitNodeId
+                ? node.id === levelMap.exitNodeId
+                : (node.id === "room_exit" || (node.event && node.event.type === "exit")))) themeKey = "exit";
             const theme = DECK_THEMES[themeKey] || DECK_THEMES.hub;
 
             ctx.save();
@@ -1834,7 +1836,10 @@ export class MapRenderer {
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
-            const cleanName = (node.name || "").replace(/【.*?】/, "").trim() || (node.name || "").replace(/[【】]/g, "").trim() || "舱室";
+            const cleanName = (node.name || "")
+                .replace(/【.*?】/, "")
+                .replace(/\s*[（(]终点[）)]\s*/g, "")
+                .trim() || (node.name || "").replace(/[【】]/g, "").replace(/\s*[（(]终点[）)]\s*/g, "").trim() || "舱室";
 
             let label = "";
             let subLabel = "";
@@ -1843,11 +1848,17 @@ export class MapRenderer {
             const showSub = boxSize >= 38;
 
             const isStartAndExit = !!(levelMap && levelMap.startNodeId === levelMap.exitNodeId && node.id === levelMap.startNodeId);
+            const isExitRoom = !!(node.isExit || (levelMap && levelMap.exitNodeId
+                ? node.id === levelMap.exitNodeId
+                : (node.id === "room_exit" || (node.event && node.event.type === "exit"))));
 
             if (isCurrent) {
                 if (isStartAndExit) {
                     label = "起终点";
                     subLabel = showSub ? "当前 · 主反应堆" : "";
+                } else if (isExitRoom) {
+                    label = "终点";
+                    subLabel = showSub ? "当前位置" : "";
                 } else {
                     label = (node.id === "room_start" || node.isStart || (levelMap && node.id === levelMap.startNodeId)) ? "起点" : cleanName;
                     subLabel = showSub ? "当前位置" : "";
@@ -1870,7 +1881,6 @@ export class MapRenderer {
                     reactor_quartet: "#fb923c"
                 };
                 const roomNpcId = (node.event && node.event.type === "npc" && node.event.npcId) || node.npcId;
-                const isExitRoom = !!(node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit"))));
 
                 if (isStartAndExit) {
                     label = "起终点";
@@ -1936,9 +1946,11 @@ export class MapRenderer {
                     reactor_quartet: "#fb923c"
                 };
                 const roomNpcId = (node.event && node.event.type === "npc" && node.event.npcId) || node.npcId;
-                const isExitRoom = !!(node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit"))));
+                const isExitRoomFog = !!(node.isExit || (levelMap && levelMap.exitNodeId
+                    ? node.id === levelMap.exitNodeId
+                    : (node.id === "room_exit" || (node.event && node.event.type === "exit"))));
 
-                if (isExitRoom && roomNpcId && ownerNames[roomNpcId]) {
+                if (isExitRoomFog && roomNpcId && ownerNames[roomNpcId]) {
                     // 未探索的终点且有 NPC (例如第五关重核聚变主反应堆的伊莲)
                     const nName = ownerNames[roomNpcId];
                     const nColor = ownerColors[roomNpcId] || "#fb923c";
@@ -1959,6 +1971,11 @@ export class MapRenderer {
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · ${nName}` : `${nName} · 昏迷`) : nName;
                     tagColor = adjacentDir ? "#ffffff" : "rgba(203, 213, 225, 0.85)";
                     subTagColor = nColor;
+                } else if (isExitRoomFog) {
+                    label = "终点";
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 终点` : "终点") : "";
+                    tagColor = adjacentDir ? "#ffffff" : "#86efac";
+                    subTagColor = "#4ade80";
                 } else {
                     label = cleanName;
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 未探索` : "未探索") : "";
@@ -2399,7 +2416,9 @@ export class MapRenderer {
             ctx.textBaseline = "middle";
             ctx.font = "bold 9px 'PingFang SC', sans-serif";
             if (isNVisited) {
-                if (nNode.isExit || (nNode.event && nNode.event.type === 'exit')) {
+                if (nNode.isExit || (levelMap && levelMap.exitNodeId
+                    ? nNode.id === levelMap.exitNodeId
+                    : (nNode.event && nNode.event.type === "exit"))) {
                     ctx.fillStyle = "#4ade80";
                     ctx.fillText("终", nx, ny);
                 } else if (nNode.event && nNode.event.type === 'food') {

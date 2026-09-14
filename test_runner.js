@@ -1411,7 +1411,7 @@ if (kazeNpc) kazeNpc.role = "wolf";
 app.updateMiniRadar();
 console.log("   【已验证】小地图雷达及邵可欣第六感侦测逻辑测试通过！");
 
-console.log('\n26. 验证人物特征与秘密图鉴 (Persona Log) 全流程与专属分支启动...');
+console.log('\n26. 验证记忆图鉴残响收录与角色被动后台逻辑...');
 // 测试图鉴弹窗
 const btnMenuPersonaLog = global.document.getElementById("btn-menu-persona-log");
 if (!btnMenuPersonaLog) {
@@ -1426,13 +1426,32 @@ if (!modalPersonaLog || modalPersonaLog.classList.contains("hidden")) {
 
 const personaTabs = global.document.getElementById("persona-char-tabs");
 const personaDetail = global.document.getElementById("persona-char-detail");
-if (!personaTabs || !personaDetail) {
-    throw new Error("图鉴弹窗缺少 tabs 或 detail 插槽！");
+const archiveEntryList = global.document.getElementById("archive-entry-list");
+if (!personaTabs || !personaDetail || !archiveEntryList) {
+    throw new Error("图鉴弹窗缺少分类轨、条目列表或详情插槽！");
+}
+if (!app.memoryArchive) {
+    throw new Error("GameEngine 未初始化 MemoryArchive！");
 }
 
-console.log("   图鉴当前活跃角色:", app.activePersonaCharId);
+// 收录事件与日记
+app.unlockArchivePowerOutage();
+app.unlockArchiveChipStolen();
+app.unlockArchiveDiary("kaze");
+if (!app.memoryArchive.isUnlocked("event_power_outage") ||
+    !app.memoryArchive.isUnlocked("event_chip_stolen") ||
+    !app.memoryArchive.isUnlocked("diary_kaze")) {
+    throw new Error("记忆图鉴收录触发失败！");
+}
+app.renderPersonaLogModal();
+if (!archiveEntryList.querySelector(".archive-entry-btn.is-unlocked")) {
+    throw new Error("图鉴列表未渲染已收录条目！");
+}
+console.log("   【已验证】停电 / 芯片 / 日记残响收录与图鉴 UI 渲染通过！");
 
-// 验证卡罗战术反制与秘密解锁
+console.log("   图鉴当前分类:", app.activeArchiveCategory);
+
+// 验证卡罗战术反制与秘密解锁（被动仍在后台生效）
 app.saveSystem.resetPersonaSecrets();
 if (app.saveSystem.isCharacterPassiveUnlocked("kaze")) {
     throw new Error("重置后卡罗被动不应为解锁状态！");
@@ -1480,16 +1499,12 @@ if (!app.saveSystem.isCharacterPassiveUnlocked("kaze")) {
 }
 console.log("   【已验证】卡罗达成全 4 项记忆拼合，专属特质【战术反制】觉醒！");
 
-// 重新渲染图鉴面板并点击进入专属分支
-app.renderPersonaLogModal("kaze");
-const btnLaunchExclusive = global.document.getElementById("btn-launch-exclusive-branch");
-if (!btnLaunchExclusive || !btnLaunchExclusive.classList.contains("enabled")) {
-    throw new Error("达成全部解构后专属分支启动按钮未能激活！");
-}
-btnLaunchExclusive.click();
+// 专属分支改为由引擎直接启航（图鉴 UI 不再挂载分支按钮）
+app.modalPersonaLog?.classList.add("hidden");
+app.startExclusiveBranch(101);
 
 if (app.currentLevel?.levelId !== 101) {
-    throw new Error("点击启动卡罗专属分支未能成功加载扇区 101！当前关卡: " + app.currentLevel?.levelId);
+    throw new Error("启动卡罗专属分支未能成功加载扇区 101！当前关卡: " + app.currentLevel?.levelId);
 }
 console.log("   【已验证】成功一键启动卡罗专属分支剧情关卡：", app.currentLevel.title);
 

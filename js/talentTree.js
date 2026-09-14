@@ -182,6 +182,52 @@ export const TalentSystem = {
     },
 
     /**
+     * 重置科技树：清空已点亮技能，按节点 cost 全额返还定锚点。
+     * 不改动 awardedLevels（已通关发放记录保留）。
+     */
+    resetAll() {
+        const state = this._readState();
+        const unlocked = Array.isArray(state.unlocked) ? state.unlocked.slice() : [];
+        if (unlocked.length === 0) {
+            return {
+                success: false,
+                refunded: 0,
+                cleared: 0,
+                total: Number(state.points) || 0,
+                message: "当前没有已点亮的科技"
+            };
+        }
+        let refunded = 0;
+        unlocked.forEach((id) => {
+            const found = this.getNode(id);
+            if (found && found.node) {
+                refunded += Number(found.node.cost) || 0;
+            }
+        });
+        state.points = (Number(state.points) || 0) + refunded;
+        state.unlocked = [];
+        this._writeState(state);
+        this.resetRunFlags();
+        return {
+            success: true,
+            refunded,
+            cleared: unlocked.length,
+            total: state.points,
+            message: `已重置科技树：清空 ${unlocked.length} 项，返还 ${refunded} ${TalentCurrency.name}（当前持有 ${state.points}）`
+        };
+    },
+
+    /**
+     * 已投入到科技树上的定锚点合计（用于 UI 提示）
+     */
+    getSpentPoints() {
+        return this.getUnlockedIds().reduce((sum, id) => {
+            const found = this.getNode(id);
+            return sum + (found ? (Number(found.node.cost) || 0) : 0);
+        }, 0);
+    },
+
+    /**
      * 首次通关某关奖励 1 定锚点
      */
     awardForLevelClear(levelId) {

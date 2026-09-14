@@ -41,9 +41,9 @@ export const CharacterRegistry = {
                 dead: "assets/characters/kaluo/dead.webp"
             },
             introDialogue: [
-                { text: "（一名穿着破损战术服的年轻男子捂着手臂，眼神凌厉而冷漠地抬起头）", expression: "clam" },
-                { text: "……是你？呵，原来你还活着，队长。", expression: "doubt" },
-                { text: "既然遇上了，那就一起行动吧。但我把话放在前头，如果发现你被感染了，我不会犹豫的。", expression: "angry" }
+                { text: "（一名穿着破损战术服的年轻男子撑着地板坐起，后脑蹭到舱壁时轻轻吸了口气，眼神还没完全对上焦）", expression: "clam" },
+                { text: "……唔。队长？呵……你还活着。我这边——刚才像被人从后面抽走了一截时间。", expression: "doubt" },
+                { text: "耳鸣还在。记得到一半就断了……算了，细节不重要。既然遇上了就一起走。发现你不对劲，我照样不会留手。", expression: "angry" }
             ],
             inquiryDialogues: [
                 // 对话 1 (第 1 次交谈)
@@ -145,9 +145,9 @@ export const CharacterRegistry = {
                 dead: "assets/characters/shaokexin/dead.webp"      // 遇害 / 死亡
             },
             introDialogue: [
-                { text: "（昏暗的管道阴影中，一名少女抱膝缩在角落，听到脚步声猛地颤抖起来）", expression: "shock" },
-                { text: "请……请别过来！……等等，队长？！真的是你吗？！", expression: "shock" },
-                { text: "太好了……我以为我真的要死在这里了……呜，请带我一起走！", expression: "sad" }
+                { text: "（昏暗的管道阴影中，一名少女抱膝缩在角落，眼皮沉沉抬起，听到脚步声先是一抖，视线才慢慢聚拢）", expression: "shock" },
+                { text: "请……请别过来！……等等，队长？！真的是你吗？！我、我头好晕……刚才好像一直在黑暗里……", expression: "shock" },
+                { text: "太好了……我以为醒不过来了……呜，请带我一起走！", expression: "sad" }
             ],
             inquiryDialogues: [
                 // 对话 1 (第 1 次交谈)
@@ -248,9 +248,9 @@ export const CharacterRegistry = {
                 dead: "assets/characters/mode/dead.webp"      // 遇害 / 死亡
             },
             introDialogue: [
-                { text: "（靠在金属隔板旁的魁梧男子捂着胸口艰难喘息，看到你的徽章后冷笑了一声）", expression: "angry" },
-                { text: "咳咳……真是阴魂不散啊，L.P.H。", expression: "happy" },
-                { text: "不过算了，算我欠你一次。在这鬼地方多个人掩护总比单打独斗强，拉我一把。", expression: "clam" }
+                { text: "（靠在金属隔板旁的魁梧男子捂着胸口，猛咳一声才撑开眼皮，看到你的徽章后勉强冷笑）", expression: "angry" },
+                { text: "咳咳……阴魂不散啊，L.P.H。脑子里像灌了铅……我睡了多久？", expression: "happy" },
+                { text: "不过算了，算我欠你一次。在这鬼地方多个人掩护总比单打独斗强——先拉我一把，腿还有点软。", expression: "clam" }
             ],
             inquiryDialogues: [
                 // 对话 1 (第 1 次交谈)
@@ -348,8 +348,8 @@ export const CharacterRegistry = {
                 dead: "assets/characters/Vivian/dead.webp"
             },
             introDialogue: [
-                { text: "（手持光子微冲，战术目镜闪烁着橙红辉光警惕扫视）站在那里别动！出示识别码……", expression: "angry" },
-                { text: "……是队长？呼……太好了，你不知道这片走廊刚才有多可怕。", expression: "clam" },
+                { text: "（手持光子微冲，战术目镜明明还亮着，人却像刚从深水里被拽上来，晃了晃才锁住准星）站在那里……别动……出示识别码……", expression: "angry" },
+                { text: "……是队长？呼……太好了。视线刚对上焦……这片走廊刚才黑成一片，我居然就这么——过去了。", expression: "clam" },
                 { text: "外勤气闸附近有异常撬动痕迹。跟紧我，无论看到什么都别掉以轻心。", expression: "clam" }
             ],
             inquiryDialogues: [
@@ -404,8 +404,8 @@ export const CharacterRegistry = {
                 dead: "assets/characters/Elena/dead.webp"
             },
             introDialogue: [
-                { text: "（满手重油污渍，正用力敲击着嗡鸣作响的等离子泄压阀）咳咳……别催了！", expression: "angry" },
-                { text: "队长？！谢天谢地，主反应堆刚才差点连锁熔毁！", expression: "clam" },
+                { text: "（满手重油污渍，敲击扳手的动作顿了一拍，像是才意识到自己醒着）咳咳……别催了！头还嗡嗡的……", expression: "angry" },
+                { text: "队长？！谢天谢地……我怎么靠在阀边上睡着了？主反应堆刚才差点连锁熔毁！", expression: "clam" },
                 { text: "环境机房的温控芯片被人硬生生拔走了，到底是哪个疯子在拿整艘船的命开玩笑？！", expression: "angry" }
             ],
             inquiryDialogues: [
@@ -459,8 +459,8 @@ export const CharacterRegistry = {
                 dead: "assets/characters/Colt/dead.webp"
             },
             introDialogue: [
-                { text: "（指尖娴熟地把玩着一枚黄铜筹码，嘴角挂着玩世不恭的笑意）哟，大指挥官。", expression: "clam" },
-                { text: "别用那种看死囚的眼神盯着我，定锚坐标被篡改可不是我一个人的'杰作'……", expression: "clam" },
+                { text: "（指尖还把玩着一枚黄铜筹码，却先揉了揉太阳穴，笑意慢半拍才挂上来）哟……大指挥官。世界刚重新亮起来。", expression: "clam" },
+                { text: "别用那种看死囚的眼神盯着我——我自己也才从一片黑里爬出来。定锚坐标被篡改可不是我一个人的'杰作'……", expression: "clam" },
                 { text: "怎么，想拿枪指我？先搞清楚现在的航线正带着我们滑向哪个黑洞吧！", expression: "angry" }
             ],
             inquiryDialogues: [
@@ -514,14 +514,14 @@ export const CharacterRegistry = {
                 dead: "assets/characters/Prof_Lu/dead.webp"
             },
             introDialogue: [
-                { text: "（推了推反光的单片测镜，全神贯注凝视着真空试管内的异质晶体）别打扰我……", expression: "clam" },
-                { text: "天……不可思议！这种晶格在微观层面上居然在自发逆转热力学熵流！", expression: "clam" },
-                { text: "队长！别管什么盗货贼了，如果能解开这块样本的秘密，人类将彻底支配时间！", expression: "angry" }
+                { text: "（推了推反光的单片测镜，目光却先在舱壁、地板与自己的实验台之间来回游移，像在核对一张对不上的清单）……这是哪里？", expression: "clam" },
+                { text: "队长？抱歉，我——我记得自己在做观测，下一秒视线就断了。醒来却在这里……逻辑上说不通。", expression: "clam" },
+                { text: "先别追问细节了。我需要跟着你们，把这段空白补全。样本可以晚点再说。", expression: "clam" }
             ],
             inquiryDialogues: [
                 [
-                    { text: "偷走二号芯片的人根本不知道自己在玩弄什么力量。那不是工具，是潘多拉魔盒。", expression: "clam" },
-                    { text: "定格技术一旦逆流，所有人的意识切片都会被锁死在临死那一秒！", expression: "angry" }
+                    { text: "拔走维生总控芯片的人根本不知道自己在玩弄什么力量。那不是工具，是整艘船的命门。", expression: "clam" },
+                    { text: "冷却一旦断流，反应堆会反噬整条舰——比任何定格技术都更致命！", expression: "angry" }
                 ],
                 [
                     { text: "我采集了伪装体的细胞切片……它的碳氮同位素比值不属于已知银河系的任何星团。", expression: "clam" }
@@ -569,8 +569,8 @@ export const CharacterRegistry = {
                 dead: "assets/characters/Dr_Elsa/dead.webp"
             },
             introDialogue: [
-                { text: "（戴着沾有荧光消毒凝胶的手套，神情清冷甚至有些严酷）心率138，血压偏低。", expression: "clam" },
-                { text: "看来你刚从死人堆里爬出来，L.P.H。坐下，打一针镇定剂。", expression: "clam" },
+                { text: "（戴着沾有荧光消毒凝胶的手套，神情清冷，却先按了按自己的颈侧脉搏，像在给自己做检诊）心率……偏快。瞳孔对光慢半拍。", expression: "clam" },
+                { text: "看来不只是你刚从死人堆里爬出来，L.P.H——我也一样。坐下，先打一针镇定剂。", expression: "clam" },
                 { text: "死人可没法带大家逃生。不管外面发生了什么，我的手术台上只看生理指标！", expression: "angry" }
             ],
             inquiryDialogues: [
@@ -625,8 +625,8 @@ export const CharacterRegistry = {
                 dead: "assets/characters/Barnes/dead.webp"
             },
             introDialogue: [
-                { text: "（拍了拍身边挂着三重密码锁的防爆箱，皮笑肉不笑地咧嘴）嘿嘿……大驾光临啊指挥官。", expression: "happy" },
-                { text: "别提什么配额制度了，现在全舰断电，规章制度就是擦屁股纸。", expression: "clam" },
+                { text: "（拍了拍身边挂着三重密码锁的防爆箱，眨眼的频率却慢得像刚开机）嘿嘿……大驾光临啊指挥官。我这边也才——嗯，回过神。", expression: "happy" },
+                { text: "别提什么配额制度了，现在全舰断电，规章制度就是擦屁股纸。头还昏着呢，账可以晚点算。", expression: "clam" },
                 { text: "想要高能压缩饼干还是军规医疗喷雾？拿实打实的东西来换，巴恩斯童叟无欺。", expression: "clam" }
             ],
             inquiryDialogues: [
@@ -680,8 +680,8 @@ export const CharacterRegistry = {
                 dead: "assets/characters/Noah/dead.webp"
             },
             introDialogue: [
-                { text: "（颈部液态金属接口闪烁着深蓝脉冲，无机质的双眸缓缓对焦）系统自检中……", expression: "clam" },
-                { text: "指挥官 L.P.H，识别通过。我的超导阵列受到了未知电磁脉冲的严重干扰。", expression: "clam" },
+                { text: "（颈部液态金属接口闪烁着断续脉冲，无机质的双眸反复对焦几次才稳住）系统自检中……时间戳……缺失。", expression: "clam" },
+                { text: "指挥官 L.P.H，识别通过。我的超导阵列曾受未知电磁脉冲干扰——感知记录在中段出现空白。", expression: "clam" },
                 { text: "逻辑核心提示：当前空间内生物电信号出现混淆伪装，我的协议将优先确保您生存。", expression: "clam" }
             ],
             inquiryDialogues: [
@@ -736,8 +736,8 @@ export const CharacterRegistry = {
                 dead: "assets/characters/Sophia/dead.webp"
             },
             introDialogue: [
-                { text: "（用微滴喷雾器给濒危的水培幼苗细致补水，转过身来目光清澈而忧伤）请轻一点……", expression: "sad" },
-                { text: "它们受惊了。维生管道失压后，这是温室里仅存的最后一批绿苗了。", expression: "clam" },
+                { text: "（用微滴喷雾器给濒危的水培幼苗细致补水，指尖却微微发颤，转过身来目光清澈而疲惫）请……轻一点……我眼睛还刺。", expression: "sad" },
+                { text: "它们受惊了……我也是。维生管道失压后，这是温室里仅存的最后一批绿苗了。刚才那段空白，我不太记得。", expression: "clam" },
                 { text: "队长，只要这些根系还在呼吸，我们就还没有输，对吧？带我一起走吧！", expression: "clam" }
             ],
             inquiryDialogues: [

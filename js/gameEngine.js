@@ -13,11 +13,13 @@ import { SaveSystem } from "./saveSystem.js";
 import { MapRenderer } from "./mapRenderer.js";
 import { UnlockEvaluator } from "./unlockEvaluator.js";
 import { DiaryUI } from "./diaryUI.js";
+import { MemoryArchive, DEBUG_UNLOCK_ALL_ARCHIVE } from "./memoryArchive.js";
 import { TalentSystem, TalentCurrency, TalentTreeConfig } from "./talentTree.js";
 import { KazeConfessionScene } from "./kazeConfession.js";
-import { getNpcRoomDefs, getRelativeDirection, buildSpaceshipLevelMap, LEVEL_SECTOR_SPECS, MASTER_ROOM_DEFS, MASTER_CONNECTIONS } from "./spaceshipMasterMap.js";
+import { getNpcRoomDefs, getRelativeDirection, buildSpaceshipLevelMap, LEVEL_SECTOR_SPECS, MASTER_ROOM_DEFS, MASTER_CONNECTIONS, NPC_PRIVATE_QUARTERS } from "./spaceshipMasterMap.js";
 import { Level1TutorialPages, Level1ExploreTutorialSequence } from "./level1Tutorial.js";
 import { Level15InterrogationScene } from "./level15Interrogation.js";
+import { MenuSkyShader } from "./menuSkyShader.js";
 
 export class GameEngine {
     constructor() {
@@ -27,6 +29,11 @@ export class GameEngine {
         }
         this.dialogueUI = new DialogueUI();
         this.diaryUI = new DiaryUI();
+        this.memoryArchive = new MemoryArchive(this.saveSystem, () => NPC_PRIVATE_QUARTERS);
+        if (DEBUG_UNLOCK_ALL_ARCHIVE) {
+            const n = this.memoryArchive.unlockAll();
+            console.log(`[DEBUG] 记忆图鉴已全收集（新增 ${n} 条，合计 ${this.memoryArchive.countProgress().unlocked}/${this.memoryArchive.countProgress().total}）`);
+        }
         this.explorationEngine = new ExplorationEngine(this);
         this.mapRenderer = null;
         this.hoveredMapNodeId = null;
@@ -56,8 +63,10 @@ export class GameEngine {
         this.nightTargetVictimId = null; // 伪人预定袭击目标
         this.witchSaved = false;         // 歌咏者是否施救
 
-        // 人物特征/秘密图鉴与专属被动状态
+        // 人物特征/秘密图鉴与专属被动状态（被动仍在后台生效；图鉴 UI 改为残响收录）
         this.activePersonaCharId = "kaze";
+        this.activeArchiveCategory = "all";
+        this.activeArchiveEntryId = null;
         this.stepsWithNpc = {};
         this.nightCounterDeflected = false;
         this.nightModeDefended = false;
@@ -155,11 +164,14 @@ export class GameEngine {
         this.btnMenuTalentTree = document.getElementById("btn-menu-talent-tree");
         this.modalTalentTree = document.getElementById("modal-talent-tree");
         this.btnCloseTalentTree = document.getElementById("btn-close-talent-tree");
+        this.btnTalentReset = document.getElementById("btn-talent-reset");
         this.talentTreeRoot = document.getElementById("talent-tree-root");
         this.talentPointsText = document.getElementById("talent-points-text");
         this.btnClosePersonaLog = document.getElementById("btn-close-persona-log");
         this.personaCharTabs = document.getElementById("persona-char-tabs");
         this.personaCharDetail = document.getElementById("persona-char-detail");
+        this.archiveEntryList = document.getElementById("archive-entry-list");
+        this.archiveProgressText = document.getElementById("archive-progress-text");
 
         // 第一关新手教程弹窗 + 可视化 Coach
         this.modalLevel1Tutorial = document.getElementById("modal-level1-tutorial");
@@ -330,6 +342,9 @@ export class GameEngine {
                 this.screenLoading.classList.add("hidden");
             }, 400);
         }
+
+        // 首次进入主菜单不会走 showMenu()，必须在此启动云间飞船背景
+        this.ensureMenuSky(true);
     }
 
     bindEvents() {
@@ -357,7 +372,7 @@ export class GameEngine {
             this.modalLevelSelect?.classList.add("hidden");
         });
 
-        // 主菜单：记忆图鉴 · 角色专属分支入口
+        // 主菜单：记忆图鉴 · 残响收录
         this.btnMenuPersonaLog?.addEventListener("click", () => {
             this.showPersonaLogModal();
         });
@@ -371,6 +386,9 @@ export class GameEngine {
         });
         this.btnCloseTalentTree?.addEventListener("click", () => {
             this.modalTalentTree?.classList.add("hidden");
+        });
+        this.btnTalentReset?.addEventListener("click", () => {
+            this.handleTalentTreeReset();
         });
 
         // 小地图战术微型雷达快捷交互
@@ -644,6 +662,7 @@ export class GameEngine {
         this.modalResult?.classList.add("hidden");
         this.hudMiniRadar?.classList.add("hidden");
         this.updateMenuButtons();
+        this.ensureMenuSky(true);
     }
 
     // =========================================================================
@@ -674,10 +693,49 @@ export class GameEngine {
         return wolvesInTeam.filter(w => !this.isNpcConfined(w.id));
     }
 
+    /**
+     * 主菜单弹窗：半透遮罩，保留云间飞船背景
+     */
+    applyMenuSkyBackdrop(modalEl) {
+        if (!modalEl) return;
+        const onMenu = this.phase === "menu"
+            || (this.screenMenu && !this.screenMenu.classList.contains("hidden"));
+        modalEl.classList.toggle("over-menu-sky", !!onMenu);
+        if (onMenu) {
+            this.ensureMenuSky(true);
+        }
+    }
+
     showTalentTreeModal() {
         if (!this.modalTalentTree) return;
         this.renderTalentTreeUI();
+        this.applyMenuSkyBackdrop(this.modalTalentTree);
         this.modalTalentTree.classList.remove("hidden");
+    }
+
+    async handleTalentTreeReset() {
+        if (typeof TalentSystem === "undefined" || !TalentSystem.resetAll) return;
+        const spent = TalentSystem.getSpentPoints ? TalentSystem.getSpentPoints() : 0;
+        const unlockedCount = TalentSystem.getUnlockedIds ? TalentSystem.getUnlockedIds().length : 0;
+        if (unlockedCount <= 0) {
+            this.showStageToast("当前没有已点亮的科技");
+            return;
+        }
+        const currencyName = (typeof TalentCurrency !== "undefined") ? TalentCurrency.name : "定锚点";
+        const confirmed = await this.showSystemConfirm(
+            `确定重置科技树？\n\n将清空全部已点亮技能（${unlockedCount} 项），\n并返还 ${spent} ${currencyName}。\n\n通关已获得的定锚点总量不会减少。`,
+            "⚓ 重置定锚科技树"
+        );
+        if (!confirmed) return;
+        this.hideSystemDialog?.();
+        const result = TalentSystem.resetAll();
+        if (result.success) {
+            this.logAction(`【定锚科技】${result.message}`);
+            this.showStageToast(`已返还 ${result.refunded} ${currencyName}`);
+            this.renderTalentTreeUI();
+        } else {
+            this.showStageToast(result.message || "无法重置");
+        }
     }
 
     renderTalentTreeUI() {
@@ -685,6 +743,13 @@ export class GameEngine {
         const currencyName = (typeof TalentCurrency !== "undefined") ? TalentCurrency.name : "定锚点";
         if (this.talentPointsText) {
             this.talentPointsText.textContent = `${points} ${currencyName}`;
+        }
+        if (this.btnTalentReset && typeof TalentSystem !== "undefined") {
+            const spent = TalentSystem.getSpentPoints ? TalentSystem.getSpentPoints() : 0;
+            this.btnTalentReset.disabled = spent <= 0;
+            this.btnTalentReset.textContent = spent > 0
+                ? `重置科技树（返还 ${spent}）`
+                : "重置科技树";
         }
         if (!this.talentTreeRoot || typeof TalentTreeConfig === "undefined") return;
 
@@ -1060,6 +1125,7 @@ export class GameEngine {
         if (!this.modalLevelSelect) return;
         this.applyLevel15MetaUnlock();
         this.renderLevelSelectGrid();
+        this.applyMenuSkyBackdrop(this.modalLevelSelect);
         this.modalLevelSelect.classList.remove("hidden");
     }
 
@@ -1456,8 +1522,23 @@ export class GameEngine {
         }
     }
 
+    ensureMenuSky(alsoStart = false) {
+        if (typeof MenuSkyShader === "undefined") return;
+        const canvas = document.getElementById("menu-sky-canvas");
+        if (!canvas) return;
+        if (!this._menuSkyReady) {
+            this._menuSkyReady = !!MenuSkyShader.mount(canvas);
+        }
+        if (alsoStart || this.phase === "menu" || !this.screenMenu?.classList.contains("hidden")) {
+            MenuSkyShader.start();
+        }
+    }
+
     enterQ1BlackScreen() {
         this.phase = "q1_black";
+        if (typeof MenuSkyShader !== "undefined" && MenuSkyShader.stop) {
+            MenuSkyShader.stop();
+        }
         this.screenMenu.classList.add("hidden");
         this.screenGame.classList.add("hidden");
         this.screenBlack.classList.remove("hidden");
@@ -2221,6 +2302,9 @@ export class GameEngine {
             }
             if (this.btnPowerRestoreConfirm) {
                 this.btnPowerRestoreConfirm.onclick = null;
+            }
+            if (typeof this.unlockArchivePowerOutage === "function") {
+                this.unlockArchivePowerOutage();
             }
             if (onConfirmed) onConfirmed();
         };
@@ -3427,6 +3511,7 @@ export class GameEngine {
         const textElem = document.getElementById("l4-cutscene-text");
         const stageLayer = document.getElementById("l4-cutscene-stage-layer");
         const entityX = document.getElementById("l4-entity-x");
+        const kazeIcon = document.getElementById("l4-kaze-npc-icon");
         const screenGame = document.getElementById("screen-game");
 
         if (!screenCutscene || !blackoutLayer || !textElem || !stageLayer || !entityX) {
@@ -3440,12 +3525,13 @@ export class GameEngine {
         if (screenGame) screenGame.classList.add("cinematic-mode");
 
         // 确保舞台大地图精准居中并聚焦在【西区整备间】动力操作台 (room_npc1)
-        if (this.stageMapRenderer && this.currentLevel && this.currentLevel.map) {
-            this.stageMapRenderer.viewMode = "focus";
-            this.stageMapRenderer.panX = 0;
-            this.stageMapRenderer.panY = 0;
-            this.stageMapRenderer.zoom = 1.0;
-            this.stageMapRenderer.render(
+        const mapRenderer = this.stageMapRenderer;
+        if (mapRenderer && this.currentLevel && this.currentLevel.map) {
+            mapRenderer.viewMode = "focus";
+            mapRenderer.panX = 0;
+            mapRenderer.panY = 0;
+            mapRenderer.zoom = 1.35;
+            mapRenderer.render(
                 this.currentLevel.map,
                 "room_npc1",
                 this.visitedNodes,
@@ -3458,6 +3544,7 @@ export class GameEngine {
         blackoutLayer.classList.remove("hidden");
         stageLayer.classList.remove("hidden");
         entityX.classList.remove("approaching");
+        kazeIcon?.classList.remove("fallen");
         textElem.innerHTML = "";
         textElem.classList.remove("show-text");
 
@@ -3498,28 +3585,43 @@ export class GameEngine {
             textElem.classList.remove("show-text");
             await waitOrClick(500);
 
-            // 渐变解除黑屏！直接显露出底层的星舰战术大地图！
-            // 此时动力操作台中心正有卡罗专属NPC图标与主视角标记
-            blackoutLayer.classList.add("blackout-transparent");
-            await waitOrClick(600);
+            // 镜头先推向动力操作台，再揭开黑幕（可见后半段推进）
+            if (mapRenderer && typeof mapRenderer.animateCameraTo === "function") {
+                mapRenderer.animateCameraTo({ panX: 0, panY: 0, zoom: 2.2 }, 2000);
+            }
+            await waitOrClick(700);
 
-            // 阶段 2：未知X实体从屏幕右侧渐变显现并滑入，贴近主视角，局部重叠时停下
+            // 渐变解除黑屏，露出被推进的星舰战术大地图
+            blackoutLayer.classList.add("blackout-transparent");
+            await waitOrClick(1300);
+
+            // 阶段 2：圆圈逼近（嗡鸣）→ 贴近停 1 秒 → 失重倒地（刺穿）
+            if (typeof Sound !== "undefined" && Sound.playLevel4ApproachHum) {
+                Sound.playLevel4ApproachHum();
+            }
             entityX.classList.add("approaching");
             await waitOrClick(2600);
-
-            // 停下后立即播放异象音频（预留音频接口，放入 assets/audio/ 即可生效）
+            await waitOrClick(1000);
+            kazeIcon?.classList.add("fallen");
+            if (typeof Sound !== "undefined" && Sound.playLevel4FallSpike) {
+                Sound.playLevel4FallSpike();
+            }
             if (typeof Sound !== "undefined" && Sound.playLevel4EndingSound) {
                 Sound.playLevel4EndingSound();
             }
+            await waitOrClick(2400);
 
-            // 2秒之后再渐变黑屏
-            await waitOrClick(2000);
+            // 稍停后再压下终焉暗幕
+            await waitOrClick(900);
 
-            // 渐变黑屏重临（将地图覆盖进终焉暗幕）
+            // 渐变黑屏重临
+            if (typeof Sound !== "undefined" && Sound.playLevel4BlackoutPressure) {
+                Sound.playLevel4BlackoutPressure();
+            }
             blackoutLayer.classList.remove("blackout-transparent");
             await waitOrClick(900);
 
-            // 阶段 3：终焉暗幕中显现第二组文字“看来....” “的确有些不一样...” "来不及回头...便陷入无尽的黑暗之中..."
+            // 阶段 3：终焉暗幕中显现第二组文字
             await showFlashText("看来....", 1600);
             await showFlashText("的确有些不一样...", 1800);
             await showFlashText("来不及回头...便陷入无尽的黑暗之中...", 2400);
@@ -3529,8 +3631,15 @@ export class GameEngine {
 
             // 演出完毕，恢复环境
             screenCutscene.onclick = null;
+            entityX.classList.remove("approaching");
+            kazeIcon?.classList.remove("fallen");
             screenCutscene.classList.add("hidden");
             if (screenGame) screenGame.classList.remove("cinematic-mode");
+            if (mapRenderer) {
+                mapRenderer.zoom = 1.0;
+                mapRenderer.panX = 0;
+                mapRenderer.panY = 0;
+            }
             if (onComplete) onComplete();
         })();
     }
@@ -5399,6 +5508,11 @@ export class GameEngine {
         });
 
         this.modalSystemDialog.classList.remove("hidden");
+        // 提到 DOM 末尾并抬升层级，确保盖过科技树等其它弹窗
+        try {
+            document.body.appendChild(this.modalSystemDialog);
+        } catch (_) {}
+        this.modalSystemDialog.style.zIndex = "100000";
 
         return new Promise((resolve) => {
             this._systemDialogResolver = resolve;
@@ -5665,11 +5779,13 @@ export class GameEngine {
             this.renderStageMap();
             this.renderExplorationControls();
 
-            // 视觉小说对白反馈
-            this.dialogueUI.say(
-                { name: "区域指引", themeColor: "#4ade80" },
-                `已快速返回至 [${destName}]。${destNode?.desc || ""} 请选择下一步行动方向。`
-            );
+            // 若已通关/失败，不再追加“区域指引”对白
+            if (this.phase === "q3_explore") {
+                this.dialogueUI.say(
+                    { name: "区域指引", themeColor: "#4ade80" },
+                    `已快速返回至 [${destName}]。${destNode?.desc || ""} 请选择下一步行动方向。`
+                );
+            }
         };
 
         const skipHandler = () => {
@@ -5855,6 +5971,13 @@ export class GameEngine {
 
                         if (this.saveSystem.isCharacterPassiveUnlocked(char.id)) {
                             this.logAction(`【特质完全觉醒】[${char.name}] 达成全记忆解构！觉醒专属被动【${char.persona.passiveSkill.name}】并开启专属剧情分支！`);
+                            const branchId = char.persona.exclusiveBranch?.levelId;
+                            if (branchId) {
+                                this.saveSystem.unlockLevels([branchId]);
+                                if (this.showStageToast) {
+                                    this.showStageToast(`专属航线已解锁：请在【关卡选择】进入扇区 ${branchId}`);
+                                }
+                            }
                         }
                     }
                 }
@@ -5876,12 +5999,12 @@ export class GameEngine {
         const isFullyAwakened = this.saveSystem.isCharacterPassiveUnlocked(char.id);
         toast.innerHTML = `
             <div class="persona-toast-title">
-                <span>✨ 记忆图鉴解构 · ${char.name}</span>
+                <span>记忆残响 · ${char.name}</span>
             </div>
             <div class="persona-toast-body">
                 <span>解锁档案：<b>【${secret.title}】</b></span><br>
                 <span style="font-size:0.75rem; color:#94a3b8;">${secret.desc.slice(0, 36)}...</span>
-                ${isFullyAwakened ? `<div style="color:#fbbf24; font-weight:bold; margin-top:4px;">🌟 达成全部解构！觉醒被动【${char.persona.passiveSkill.name}】！</div>` : ''}
+                ${isFullyAwakened ? `<div style="color:#fbbf24; font-weight:bold; margin-top:4px;">达成全部解构！觉醒被动【${char.persona.passiveSkill.name}】！</div>` : ''}
             </div>
         `;
 
@@ -5898,139 +6021,192 @@ export class GameEngine {
         }, 3600);
     }
 
-    showPersonaLogModal(selectedCharId = null) {
-        if (!this.modalPersonaLog) return;
-        if (selectedCharId) {
-            this.activePersonaCharId = selectedCharId;
-        } else if (!this.activePersonaCharId) {
-            this.activePersonaCharId = "kaze";
+    /**
+     * 收录记忆图鉴条目；仅首次成功时弹出提示
+     * @param {string} entryId
+     * @returns {boolean}
+     */
+    tryUnlockArchive(entryId) {
+        if (!this.memoryArchive || !entryId) return false;
+        const wasNew = this.memoryArchive.unlock(entryId);
+        if (!wasNew) return false;
+        const entry = this.memoryArchive.getEntry(entryId);
+        this.showArchiveUnlockToast(entry);
+        return true;
+    }
+
+    unlockArchiveDiary(ownerId) {
+        if (!ownerId || !this.memoryArchive) return false;
+        return this.tryUnlockArchive(this.memoryArchive.diaryId(ownerId));
+    }
+
+    unlockArchivePowerOutage() {
+        return this.tryUnlockArchive("event_power_outage");
+    }
+
+    unlockArchiveChipStolen() {
+        return this.tryUnlockArchive("event_chip_stolen");
+    }
+
+    /** 调试：控制台可调 gameApp.debugUnlockAllArchive() */
+    debugUnlockAllArchive() {
+        if (!this.memoryArchive) return 0;
+        const n = this.memoryArchive.unlockAll();
+        if (this.modalPersonaLog && !this.modalPersonaLog.classList.contains("hidden")) {
+            this.renderPersonaLogModal();
         }
-        this.renderPersonaLogModal(this.activePersonaCharId);
+        return n;
+    }
+
+    showArchiveUnlockToast(entry) {
+        if (typeof document === "undefined" || !entry) return;
+
+        let toast = document.getElementById("archive-unlock-toast");
+        if (!toast) {
+            toast = document.createElement("div");
+            toast.id = "archive-unlock-toast";
+            toast.className = "persona-toast archive-toast";
+            document.body.appendChild(toast);
+        }
+
+        const catLabel = entry.category === "diary" ? "私人日记" : "舰船事件";
+        toast.innerHTML = `
+            <div class="persona-toast-title">
+                <span>记忆图鉴收录 · ${catLabel}</span>
+            </div>
+            <div class="persona-toast-body">
+                <span><b>${entry.title}</b></span><br>
+                <span style="font-size:0.75rem; color:#94a3b8;">${(entry.summary || "").slice(0, 48)}</span>
+            </div>
+        `;
+
+        toast.classList.remove("fade-out", "hidden");
+        if (this.archiveToastTimeout) {
+            clearTimeout(this.archiveToastTimeout);
+        }
+        this.archiveToastTimeout = setTimeout(() => {
+            toast.classList.add("fade-out");
+            setTimeout(() => toast.classList.add("hidden"), 450);
+        }, 3200);
+    }
+
+    showPersonaLogModal(selectedEntryId = null) {
+        if (!this.modalPersonaLog) return;
+        if (selectedEntryId) {
+            this.activeArchiveEntryId = selectedEntryId;
+        }
+        this.renderPersonaLogModal();
+        this.applyMenuSkyBackdrop(this.modalPersonaLog);
         this.modalPersonaLog.classList.remove("hidden");
     }
 
-    renderPersonaLogModal(selectedCharId = "kaze") {
-        if (!this.personaCharTabs || !this.personaCharDetail) return;
-        this.activePersonaCharId = selectedCharId;
+    renderPersonaLogModal(_selectedCharId) {
+        // 兼容旧调用签名；图鉴已改为残响收录
+        if (!this.personaCharTabs || !this.personaCharDetail || !this.memoryArchive) return;
 
-        const npcs = CharacterRegistry.npcs;
-        const charKeys = ["kaze", "shaokexin", "mode"];
+        const catalog = this.memoryArchive.buildCatalog();
+        const unlockedSet = new Set(this.memoryArchive.getUnlockedIds());
+        const progress = this.memoryArchive.countProgress();
+        const categories = this.memoryArchive.getCategories();
 
-        // 1. 渲染角色切换 Tab 按钮
+        if (this.archiveProgressText) {
+            this.archiveProgressText.textContent = `${progress.unlocked} / ${progress.total}`;
+        }
+
+        // 分类轨
         this.personaCharTabs.innerHTML = "";
-        charKeys.forEach(key => {
-            const char = npcs[key];
-            if (!char || !char.persona) return;
-
-            const unlockedList = this.saveSystem.getUnlockedSecrets(char.id);
-            const count = unlockedList.length;
-            const total = char.persona.secrets.length;
-            const isFull = count >= total;
-
+        categories.forEach((cat) => {
+            const count = cat.id === "all"
+                ? unlockedSet.size
+                : catalog.filter((e) => e.category === cat.id && unlockedSet.has(e.id)).length;
             const tab = document.createElement("button");
-            tab.className = `persona-tab-btn ${key === this.activePersonaCharId ? "active" : ""}`;
-            tab.style.borderColor = key === this.activePersonaCharId ? char.themeColor : "";
-            tab.innerHTML = `
-                <span class="tab-char-name" style="color:${char.themeColor}">${char.name}</span>
-                <span class="tab-char-count ${isFull ? 'count-complete' : ''}">(${count}/${total})</span>
-            `;
-
+            tab.type = "button";
+            tab.className = `archive-cat-btn ${this.activeArchiveCategory === cat.id ? "active" : ""}`;
+            tab.setAttribute("role", "tab");
+            tab.setAttribute("aria-selected", this.activeArchiveCategory === cat.id ? "true" : "false");
+            tab.innerHTML = `<span class="archive-cat-label">${cat.label}</span><span class="archive-cat-count">${count}</span>`;
             tab.addEventListener("click", () => {
-                this.renderPersonaLogModal(key);
+                this.activeArchiveCategory = cat.id;
+                this.renderPersonaLogModal();
             });
             this.personaCharTabs.appendChild(tab);
         });
 
-        // 2. 渲染选定角色的完整档案面
-        const activeChar = npcs[this.activePersonaCharId];
-        if (!activeChar || !activeChar.persona) return;
-
-        const persona = activeChar.persona;
-        const unlockedList = this.saveSystem.getUnlockedSecrets(activeChar.id);
-        const unlockedCount = unlockedList.length;
-        const totalSecrets = persona.secrets.length;
-        const pct = Math.round((unlockedCount / totalSecrets) * 100);
-        const isPassiveUnlocked = this.saveSystem.isCharacterPassiveUnlocked(activeChar.id);
-
-        let secretsHtml = "";
-        persona.secrets.forEach((s, idx) => {
-            const isUnlocked = this.saveSystem.isPersonaSecretUnlocked(activeChar.id, s.id);
-            secretsHtml += `
-                <div class="persona-secret-card ${isUnlocked ? 'secret-unlocked' : 'secret-locked'}">
-                    <div class="persona-secret-top">
-                        <span class="persona-secret-title">
-                            ${isUnlocked ? `✦ ${s.title}` : `🔒 深度记忆 #${idx + 1}`}
-                        </span>
-                        <span class="persona-secret-status ${isUnlocked ? 'status-unlocked' : 'status-locked'}">
-                            ${isUnlocked ? '已解构' : '待探明'}
-                        </span>
-                    </div>
-                    <div class="persona-secret-desc">
-                        ${isUnlocked ? s.desc : '……此处记忆神经回路发生熵阻断裂，无法读取。'}
-                    </div>
-                    ${!isUnlocked ? `<div class="persona-secret-hint">💡 解锁线索：${s.hint}</div>` : ''}
-                </div>
-            `;
+        const filtered = catalog.filter((e) => {
+            if (this.activeArchiveCategory === "all") return true;
+            return e.category === this.activeArchiveCategory;
         });
 
-        const branch = persona.exclusiveBranch;
+        // 默认选中：优先已解锁条目
+        if (!this.activeArchiveEntryId || !filtered.some((e) => e.id === this.activeArchiveEntryId)) {
+            const firstUnlocked = filtered.find((e) => unlockedSet.has(e.id));
+            this.activeArchiveEntryId = firstUnlocked ? firstUnlocked.id : (filtered[0]?.id || null);
+        }
+
+        if (this.archiveEntryList) {
+            this.archiveEntryList.innerHTML = "";
+            if (filtered.length === 0) {
+                this.archiveEntryList.innerHTML = `<div class="archive-list-empty">尚无条目</div>`;
+            } else {
+                filtered.forEach((entry) => {
+                    const unlocked = unlockedSet.has(entry.id);
+                    const btn = document.createElement("button");
+                    btn.type = "button";
+                    btn.className = `archive-entry-btn ${entry.id === this.activeArchiveEntryId ? "active" : ""} ${unlocked ? "is-unlocked" : "is-locked"}`;
+                    btn.style.setProperty("--entry-accent", entry.theme || "#38bdf8");
+                    btn.innerHTML = `
+                        <span class="archive-entry-mark" aria-hidden="true"></span>
+                        <span class="archive-entry-copy">
+                            <span class="archive-entry-title">${unlocked ? entry.title : "未收录残响"}</span>
+                            <span class="archive-entry-sub">${unlocked ? (entry.subtitle || "") : "探索舰船后收录"}</span>
+                        </span>
+                    `;
+                    btn.addEventListener("click", () => {
+                        this.activeArchiveEntryId = entry.id;
+                        this.renderPersonaLogModal();
+                    });
+                    this.archiveEntryList.appendChild(btn);
+                });
+            }
+        }
+
+        const active = catalog.find((e) => e.id === this.activeArchiveEntryId);
+        if (!active) {
+            this.personaCharDetail.innerHTML = `<div class="archive-empty-hint">从左侧选择一条残响，展开你已收录的记忆。</div>`;
+            return;
+        }
+
+        const unlocked = unlockedSet.has(active.id);
+        if (!unlocked) {
+            this.personaCharDetail.innerHTML = `
+                <article class="archive-detail archive-detail-locked">
+                    <header class="archive-detail-header">
+                        <h4>未收录残响</h4>
+                        <p class="archive-detail-sub">${active.hint || "继续探索以收录此记忆。"}</p>
+                    </header>
+                    <div class="archive-detail-body">
+                        <p class="archive-locked-copy">信号尚未写入图鉴。抵达对应现场或首次翻开私人记录后，残响才会在此定格。</p>
+                    </div>
+                </article>
+            `;
+            return;
+        }
+
+        const bodyHtml = (active.body || "")
+            .split(/\n\n+/)
+            .map((para) => `<p>${para.replace(/\n/g, "<br>")}</p>`)
+            .join("");
 
         this.personaCharDetail.innerHTML = `
-            <!-- 头部概览卡 -->
-            <div class="persona-hero-card" style="border-left-color: ${activeChar.themeColor};">
-                <div class="persona-hero-avatar" style="border-color: ${activeChar.themeColor};">
-                    <img src="${activeChar.svgAvatar}" alt="${activeChar.name}">
-                </div>
-                <div class="persona-hero-info">
-                    <div class="persona-hero-title-row">
-                        <span class="persona-hero-name" style="color:${activeChar.themeColor};">${activeChar.name}</span>
-                        <span class="persona-hero-role-tag" style="background:${activeChar.themeColor}26; border-color:${activeChar.themeColor}; color:${activeChar.themeColor};">${persona.title}</span>
-                    </div>
-                    <div class="persona-progress-wrap">
-                        <div class="persona-progress-bar-bg">
-                            <div class="persona-progress-bar-fill" style="width:${pct}%; background:${activeChar.themeColor};"></div>
-                        </div>
-                        <span class="persona-progress-text">记忆拼合进度: ${unlockedCount} / ${totalSecrets} (${pct}%)</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 4 条核心深层记忆卡片网格 -->
-            <div class="persona-secrets-grid">
-                ${secretsHtml}
-            </div>
-
-            <!-- 专属保命被动技能与专属分支启航栏 -->
-            <div class="persona-reward-deck">
-                <div class="persona-passive-box ${isPassiveUnlocked ? 'active-skill' : ''}">
-                    <div class="persona-passive-header">
-                        <span>${persona.passiveSkill.icon}</span>
-                        <span>专属特质：${persona.passiveSkill.name}</span>
-                        <span style="font-size:0.75rem; margin-left:auto; color:${isPassiveUnlocked ? '#4ade80' : '#94a3b8'};">
-                            ${isPassiveUnlocked ? '【✨ 已激活】' : '【🔒 需集齐4项记忆】'}
-                        </span>
-                    </div>
-                    <div class="persona-passive-desc">${persona.passiveSkill.desc}</div>
-                </div>
-
-                <div class="persona-branch-action">
-                    <button id="btn-launch-exclusive-branch" 
-                            class="btn-launch-branch ${isPassiveUnlocked ? 'enabled' : 'disabled'}"
-                            ${isPassiveUnlocked ? '' : 'disabled'}>
-                        ${isPassiveUnlocked ? `🚀 开启专属分支：${branch.badge}` : `🔒 需完整拼合记忆解锁分支`}
-                    </button>
-                </div>
-            </div>
+            <article class="archive-detail" style="--entry-accent:${active.theme || "#38bdf8"}">
+                <header class="archive-detail-header">
+                    <h4>${active.title}</h4>
+                    <p class="archive-detail-sub">${active.category === "diary" ? "私人日记" : "舰船事件"}${active.subtitle ? ` · ${active.subtitle}` : ""}</p>
+                </header>
+                <div class="archive-detail-summary">${active.summary || ""}</div>
+                <div class="archive-detail-body">${bodyHtml}</div>
+            </article>
         `;
-
-        // 绑定专属分支进入按钮
-        const btnLaunch = document.getElementById("btn-launch-exclusive-branch");
-        if (btnLaunch && isPassiveUnlocked) {
-            btnLaunch.onclick = () => {
-                this.modalPersonaLog?.classList.add("hidden");
-                this.startExclusiveBranch(branch.levelId);
-            };
-        }
     }
 
     startExclusiveBranch(levelId) {

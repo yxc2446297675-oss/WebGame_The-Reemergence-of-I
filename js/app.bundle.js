@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-13T15:40:50.323Z
+ * 自动生成于 2026-09-14T06:05:01.402Z
  */
 (function() {
     'use strict';
@@ -538,11 +538,99 @@ class SoundEngine {
         this.playAudioFile(soundUrl, volume, this.synthesizeMoveStep, "移动音效");
     }
 
-    // 11. 第四关专属通关异象音效 (X实体逼近贴合时触发)
+    // 11. 第四关专属通关异象音效 (主异象冲击，倒地后 / 兼容旧调用)
     playLevel4EndingSound(customUrl = null) {
         const soundUrl = customUrl || (typeof AudioConfig !== 'undefined' && AudioConfig.level4EndingSoundUrl) || "assets/audio/level4_ending.mp3";
         const volume = (typeof AudioConfig !== 'undefined' && AudioConfig.level4EndingSoundVolume !== undefined) ? AudioConfig.level4EndingSoundVolume : 0.90;
         this.playAudioFile(soundUrl, volume, this.synthesizeLevel4Glitch, "第四关异象音效");
+    }
+
+    /** 圆圈逼近：低频压迫嗡鸣 */
+    playLevel4ApproachHum() {
+        this.init();
+        if (this.isMuted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const lfo = this.ctx.createOscillator();
+        const lfoGain = this.ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(46, now);
+        osc.frequency.linearRampToValueAtTime(38, now + 2.8);
+        lfo.type = "sine";
+        lfo.frequency.setValueAtTime(0.55, now);
+        lfoGain.gain.setValueAtTime(7, now);
+        lfo.connect(lfoGain);
+        lfoGain.connect(osc.frequency);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(0.22, now + 0.45);
+        gain.gain.setValueAtTime(0.22, now + 2.2);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 3.2);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        lfo.start(now);
+        osc.stop(now + 3.25);
+        lfo.stop(now + 3.25);
+    }
+
+    /** 倒地瞬间：短促刺穿冲击 */
+    playLevel4FallSpike() {
+        this.init();
+        if (this.isMuted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const noiseDur = 0.18;
+        const bufferSize = Math.floor(this.ctx.sampleRate * noiseDur);
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2.2);
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        const noiseFilter = this.ctx.createBiquadFilter();
+        noiseFilter.type = "bandpass";
+        noiseFilter.frequency.setValueAtTime(1800, now);
+        noiseFilter.Q.setValueAtTime(0.8, now);
+        const noiseGain = this.ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.28, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + noiseDur);
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(this.ctx.destination);
+        noise.start(now);
+        noise.stop(now + noiseDur);
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.exponentialRampToValueAtTime(55, now + 0.35);
+        gain.gain.setValueAtTime(0.32, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.42);
+    }
+
+    /** 终焉暗幕压下：低频压力 */
+    playLevel4BlackoutPressure() {
+        this.init();
+        if (this.isMuted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(70, now);
+        osc.frequency.exponentialRampToValueAtTime(28, now + 1.4);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(0.3, now + 0.25);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.6);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 1.65);
     }
 
     // 过程式实时合成：深邃未知的低频脉冲与异化共鸣 (Eerie Sub-bass Pulse & Metallic Glitch)
@@ -783,9 +871,9 @@ const CharacterRegistry = {
                 dead: "assets/characters/kaluo/dead.webp"
             },
             introDialogue: [
-                { text: "（一名穿着破损战术服的年轻男子捂着手臂，眼神凌厉而冷漠地抬起头）", expression: "clam" },
-                { text: "……是你？呵，原来你还活着，队长。", expression: "doubt" },
-                { text: "既然遇上了，那就一起行动吧。但我把话放在前头，如果发现你被感染了，我不会犹豫的。", expression: "angry" }
+                { text: "（一名穿着破损战术服的年轻男子撑着地板坐起，后脑蹭到舱壁时轻轻吸了口气，眼神还没完全对上焦）", expression: "clam" },
+                { text: "……唔。队长？呵……你还活着。我这边——刚才像被人从后面抽走了一截时间。", expression: "doubt" },
+                { text: "耳鸣还在。记得到一半就断了……算了，细节不重要。既然遇上了就一起走。发现你不对劲，我照样不会留手。", expression: "angry" }
             ],
             inquiryDialogues: [
                 // 对话 1 (第 1 次交谈)
@@ -887,9 +975,9 @@ const CharacterRegistry = {
                 dead: "assets/characters/shaokexin/dead.webp"      // 遇害 / 死亡
             },
             introDialogue: [
-                { text: "（昏暗的管道阴影中，一名少女抱膝缩在角落，听到脚步声猛地颤抖起来）", expression: "shock" },
-                { text: "请……请别过来！……等等，队长？！真的是你吗？！", expression: "shock" },
-                { text: "太好了……我以为我真的要死在这里了……呜，请带我一起走！", expression: "sad" }
+                { text: "（昏暗的管道阴影中，一名少女抱膝缩在角落，眼皮沉沉抬起，听到脚步声先是一抖，视线才慢慢聚拢）", expression: "shock" },
+                { text: "请……请别过来！……等等，队长？！真的是你吗？！我、我头好晕……刚才好像一直在黑暗里……", expression: "shock" },
+                { text: "太好了……我以为醒不过来了……呜，请带我一起走！", expression: "sad" }
             ],
             inquiryDialogues: [
                 // 对话 1 (第 1 次交谈)
@@ -990,9 +1078,9 @@ const CharacterRegistry = {
                 dead: "assets/characters/mode/dead.webp"      // 遇害 / 死亡
             },
             introDialogue: [
-                { text: "（靠在金属隔板旁的魁梧男子捂着胸口艰难喘息，看到你的徽章后冷笑了一声）", expression: "angry" },
-                { text: "咳咳……真是阴魂不散啊，L.P.H。", expression: "happy" },
-                { text: "不过算了，算我欠你一次。在这鬼地方多个人掩护总比单打独斗强，拉我一把。", expression: "clam" }
+                { text: "（靠在金属隔板旁的魁梧男子捂着胸口，猛咳一声才撑开眼皮，看到你的徽章后勉强冷笑）", expression: "angry" },
+                { text: "咳咳……阴魂不散啊，L.P.H。脑子里像灌了铅……我睡了多久？", expression: "happy" },
+                { text: "不过算了，算我欠你一次。在这鬼地方多个人掩护总比单打独斗强——先拉我一把，腿还有点软。", expression: "clam" }
             ],
             inquiryDialogues: [
                 // 对话 1 (第 1 次交谈)
@@ -1090,8 +1178,8 @@ const CharacterRegistry = {
                 dead: "assets/characters/Vivian/dead.webp"
             },
             introDialogue: [
-                { text: "（手持光子微冲，战术目镜闪烁着橙红辉光警惕扫视）站在那里别动！出示识别码……", expression: "angry" },
-                { text: "……是队长？呼……太好了，你不知道这片走廊刚才有多可怕。", expression: "clam" },
+                { text: "（手持光子微冲，战术目镜明明还亮着，人却像刚从深水里被拽上来，晃了晃才锁住准星）站在那里……别动……出示识别码……", expression: "angry" },
+                { text: "……是队长？呼……太好了。视线刚对上焦……这片走廊刚才黑成一片，我居然就这么——过去了。", expression: "clam" },
                 { text: "外勤气闸附近有异常撬动痕迹。跟紧我，无论看到什么都别掉以轻心。", expression: "clam" }
             ],
             inquiryDialogues: [
@@ -1146,8 +1234,8 @@ const CharacterRegistry = {
                 dead: "assets/characters/Elena/dead.webp"
             },
             introDialogue: [
-                { text: "（满手重油污渍，正用力敲击着嗡鸣作响的等离子泄压阀）咳咳……别催了！", expression: "angry" },
-                { text: "队长？！谢天谢地，主反应堆刚才差点连锁熔毁！", expression: "clam" },
+                { text: "（满手重油污渍，敲击扳手的动作顿了一拍，像是才意识到自己醒着）咳咳……别催了！头还嗡嗡的……", expression: "angry" },
+                { text: "队长？！谢天谢地……我怎么靠在阀边上睡着了？主反应堆刚才差点连锁熔毁！", expression: "clam" },
                 { text: "环境机房的温控芯片被人硬生生拔走了，到底是哪个疯子在拿整艘船的命开玩笑？！", expression: "angry" }
             ],
             inquiryDialogues: [
@@ -1201,8 +1289,8 @@ const CharacterRegistry = {
                 dead: "assets/characters/Colt/dead.webp"
             },
             introDialogue: [
-                { text: "（指尖娴熟地把玩着一枚黄铜筹码，嘴角挂着玩世不恭的笑意）哟，大指挥官。", expression: "clam" },
-                { text: "别用那种看死囚的眼神盯着我，定锚坐标被篡改可不是我一个人的'杰作'……", expression: "clam" },
+                { text: "（指尖还把玩着一枚黄铜筹码，却先揉了揉太阳穴，笑意慢半拍才挂上来）哟……大指挥官。世界刚重新亮起来。", expression: "clam" },
+                { text: "别用那种看死囚的眼神盯着我——我自己也才从一片黑里爬出来。定锚坐标被篡改可不是我一个人的'杰作'……", expression: "clam" },
                 { text: "怎么，想拿枪指我？先搞清楚现在的航线正带着我们滑向哪个黑洞吧！", expression: "angry" }
             ],
             inquiryDialogues: [
@@ -1256,14 +1344,14 @@ const CharacterRegistry = {
                 dead: "assets/characters/Prof_Lu/dead.webp"
             },
             introDialogue: [
-                { text: "（推了推反光的单片测镜，全神贯注凝视着真空试管内的异质晶体）别打扰我……", expression: "clam" },
-                { text: "天……不可思议！这种晶格在微观层面上居然在自发逆转热力学熵流！", expression: "clam" },
-                { text: "队长！别管什么盗货贼了，如果能解开这块样本的秘密，人类将彻底支配时间！", expression: "angry" }
+                { text: "（推了推反光的单片测镜，目光却先在舱壁、地板与自己的实验台之间来回游移，像在核对一张对不上的清单）……这是哪里？", expression: "clam" },
+                { text: "队长？抱歉，我——我记得自己在做观测，下一秒视线就断了。醒来却在这里……逻辑上说不通。", expression: "clam" },
+                { text: "先别追问细节了。我需要跟着你们，把这段空白补全。样本可以晚点再说。", expression: "clam" }
             ],
             inquiryDialogues: [
                 [
-                    { text: "偷走二号芯片的人根本不知道自己在玩弄什么力量。那不是工具，是潘多拉魔盒。", expression: "clam" },
-                    { text: "定格技术一旦逆流，所有人的意识切片都会被锁死在临死那一秒！", expression: "angry" }
+                    { text: "拔走维生总控芯片的人根本不知道自己在玩弄什么力量。那不是工具，是整艘船的命门。", expression: "clam" },
+                    { text: "冷却一旦断流，反应堆会反噬整条舰——比任何定格技术都更致命！", expression: "angry" }
                 ],
                 [
                     { text: "我采集了伪装体的细胞切片……它的碳氮同位素比值不属于已知银河系的任何星团。", expression: "clam" }
@@ -1311,8 +1399,8 @@ const CharacterRegistry = {
                 dead: "assets/characters/Dr_Elsa/dead.webp"
             },
             introDialogue: [
-                { text: "（戴着沾有荧光消毒凝胶的手套，神情清冷甚至有些严酷）心率138，血压偏低。", expression: "clam" },
-                { text: "看来你刚从死人堆里爬出来，L.P.H。坐下，打一针镇定剂。", expression: "clam" },
+                { text: "（戴着沾有荧光消毒凝胶的手套，神情清冷，却先按了按自己的颈侧脉搏，像在给自己做检诊）心率……偏快。瞳孔对光慢半拍。", expression: "clam" },
+                { text: "看来不只是你刚从死人堆里爬出来，L.P.H——我也一样。坐下，先打一针镇定剂。", expression: "clam" },
                 { text: "死人可没法带大家逃生。不管外面发生了什么，我的手术台上只看生理指标！", expression: "angry" }
             ],
             inquiryDialogues: [
@@ -1367,8 +1455,8 @@ const CharacterRegistry = {
                 dead: "assets/characters/Barnes/dead.webp"
             },
             introDialogue: [
-                { text: "（拍了拍身边挂着三重密码锁的防爆箱，皮笑肉不笑地咧嘴）嘿嘿……大驾光临啊指挥官。", expression: "happy" },
-                { text: "别提什么配额制度了，现在全舰断电，规章制度就是擦屁股纸。", expression: "clam" },
+                { text: "（拍了拍身边挂着三重密码锁的防爆箱，眨眼的频率却慢得像刚开机）嘿嘿……大驾光临啊指挥官。我这边也才——嗯，回过神。", expression: "happy" },
+                { text: "别提什么配额制度了，现在全舰断电，规章制度就是擦屁股纸。头还昏着呢，账可以晚点算。", expression: "clam" },
                 { text: "想要高能压缩饼干还是军规医疗喷雾？拿实打实的东西来换，巴恩斯童叟无欺。", expression: "clam" }
             ],
             inquiryDialogues: [
@@ -1422,8 +1510,8 @@ const CharacterRegistry = {
                 dead: "assets/characters/Noah/dead.webp"
             },
             introDialogue: [
-                { text: "（颈部液态金属接口闪烁着深蓝脉冲，无机质的双眸缓缓对焦）系统自检中……", expression: "clam" },
-                { text: "指挥官 L.P.H，识别通过。我的超导阵列受到了未知电磁脉冲的严重干扰。", expression: "clam" },
+                { text: "（颈部液态金属接口闪烁着断续脉冲，无机质的双眸反复对焦几次才稳住）系统自检中……时间戳……缺失。", expression: "clam" },
+                { text: "指挥官 L.P.H，识别通过。我的超导阵列曾受未知电磁脉冲干扰——感知记录在中段出现空白。", expression: "clam" },
                 { text: "逻辑核心提示：当前空间内生物电信号出现混淆伪装，我的协议将优先确保您生存。", expression: "clam" }
             ],
             inquiryDialogues: [
@@ -1478,8 +1566,8 @@ const CharacterRegistry = {
                 dead: "assets/characters/Sophia/dead.webp"
             },
             introDialogue: [
-                { text: "（用微滴喷雾器给濒危的水培幼苗细致补水，转过身来目光清澈而忧伤）请轻一点……", expression: "sad" },
-                { text: "它们受惊了。维生管道失压后，这是温室里仅存的最后一批绿苗了。", expression: "clam" },
+                { text: "（用微滴喷雾器给濒危的水培幼苗细致补水，指尖却微微发颤，转过身来目光清澈而疲惫）请……轻一点……我眼睛还刺。", expression: "sad" },
+                { text: "它们受惊了……我也是。维生管道失压后，这是温室里仅存的最后一批绿苗了。刚才那段空白，我不太记得。", expression: "clam" },
                 { text: "队长，只要这些根系还在呼吸，我们就还没有输，对吧？带我一起走吧！", expression: "clam" }
             ],
             inquiryDialogues: [
@@ -2076,12 +2164,12 @@ const MASTER_ROOM_DEFS = {
     },
     "room_decon_airlock": {
         id: "room_decon_airlock",
-        name: "【前沿技术科室】黑匣子神经定格站（二号芯片失窃点）",
+        name: "【前沿技术科室】黑匣子神经定格站",
         zone: "research",
         coord: { x: 7, y: 1 },
         shape: "airlock_dock",
         equipment: "server_rack",
-        desc: "休眠舱隔壁的绝密新技术科室。这里研发了【黑匣子时空定格技术】——可在停电与受创瞬间全景记录全员位置！然而中央控制台的【二号校验芯片】已被盗走，残留下的恶性数据 Bug 阻碍着真相重现！"
+        desc: "休眠舱隔壁的绝密新技术科室。这里研发了【黑匣子时空定格技术】——可在停电与受创瞬间全景记录全员位置。控制台仍在运转，但残余数据流紊乱，像有人强行打断了定格演算的最后一帧。"
     },
 
     // =========================================================================
@@ -2215,7 +2303,7 @@ const MASTER_ROOM_DEFS = {
         coord: { x: 3, y: 3 },
         shape: "hub_central_oct",
         equipment: "airlock_dock",
-        desc: "主角在神经接驳中意识投影的初始落脚点。由于关键芯片失窃与程序 Bug，记忆发生严重逆向断片，只记得周围剧烈的震荡、火光与烧焦味道。"
+        desc: "主角在神经接驳中意识投影的初始落脚点。由于维生环境总控芯片失窃引发的连锁故障与程序 Bug，记忆发生严重逆向断片，只记得周围剧烈的震荡、火光与烧焦味道。"
     },
     // Level 1 原版节点 2: 右下拐角
     "room_corner_se": {
@@ -2323,12 +2411,12 @@ const MASTER_ROOM_DEFS = {
     },
     "room_life_support": {
         id: "room_life_support",
-        name: "【维生环境总控机房】一号核心芯片失窃点",
+        name: "【维生环境总控机房】核心芯片失窃点",
         zone: "ecology",
         coord: { x: 6, y: 4 },
         shape: "life_support_hex",
         equipment: "server_rack",
-        desc: "维生循环主机机柜被暴力撬开，原本控制全舰大气与主冷却配比的【一号核心芯片】已被拔走！气流紊乱，直接诱发了底层聚变堆的严重失衡与连锁过热！"
+        desc: "维生循环主机机柜被暴力撬开，原本控制全舰大气与主冷却配比的【核心温控芯片】已被拔走！气流紊乱，直接诱发了底层聚变堆的严重失衡与连锁过热！"
     },
     "room_air_recycler": {
         id: "room_air_recycler",
@@ -2663,7 +2751,7 @@ const NPC_PRIVATE_QUARTERS = [
         diary: [
             {
                 title: "系统自检 · 异常中断",
-                content: "时间戳 00:14:22。超导中枢检测到底层硬件协议被强行绕过。有人从环境机房拔出了01号温控芯片，并试图用二号校验芯片伪造系统心跳。\n\n我的安全防火墙在0.003秒内被注入了自相矛盾的递归死循环。这不是暴力破解，是对底层架构极其熟悉的内部权限所为。"
+                content: "时间戳 00:14:22。超导中枢检测到底层硬件协议被强行绕过。有人从环境机房拔出了核心温控芯片，并用伪造的心跳脉冲欺骗了维生总线。\n\n我的安全防火墙在0.003秒内被注入了自相矛盾的递归死循环。这不是暴力破解，是对底层架构极其熟悉的内部权限所为。"
             },
             {
                 title: "伦理冲突 · 仿生人悖论",
@@ -3953,6 +4041,8 @@ function buildSpaceshipLevelMap(levelId) {
             node.event = { type: "exit", name: (id === "room_npc1" ? "动力操作台" : "终点气密大门") };
         } else {
             node.isExit = false;
+            // 本关终点不在此房时，去掉名称里误导性的「(终点)」标记
+            node.name = String(node.name || "").replace(/\s*[（(]终点[）)]\s*/g, "").trim();
             if (node.event && node.event.type === "exit") {
                 delete node.event;
             }
@@ -6356,6 +6446,191 @@ class DiaryUI {
 
 
     // =========================================================================
+    // 模块: memoryArchive.js
+    // =========================================================================
+/**
+ * 记忆图鉴 · 残响收录（Memory Archive）
+ * 记录探索中收集到的日记与舰船事件，可扩展。
+ */
+
+/** @typedef {{ id: string, category: 'diary'|'event', title: string, subtitle?: string, summary: string, body: string, hint: string, theme?: string }} ArchiveEntryDef */
+
+const ARCHIVE_OWNER_NAMES = {
+    lph: "L.P.H",
+    kaze: "卡罗",
+    shaokexin: "邵可欣",
+    mode: "莫德",
+    prof_lu: "陆知行",
+    noah: "诺亚",
+    sophia: "索菲亚",
+    vivian: "薇薇安",
+    elena: "伊莲",
+    elsa: "艾尔莎",
+    dr_elsa: "艾尔莎",
+    colt: "柯尔特",
+    barnes: "巴恩斯"
+};
+
+/** 固定事件条目（日记条目由私人舱室动态生成） */
+const ARCHIVE_EVENT_DEFS = [
+    {
+        id: "event_power_outage",
+        category: "event",
+        title: "全舰停电",
+        subtitle: "主配电值班舱 · 合闸记录",
+        summary: "你亲手合上了高压母线总断路器。",
+        body: "主配电值班舱内焦糊味未散。闸刀自「断开」位咬合回通电位的瞬间，逃生舱气动锁与主电网同时苏醒。\n\n这不是一次普通的过载跳闸——有人在爆炸前切断了整艘船的呼吸。",
+        hint: "首次在停电始发地完成合闸修复后收录",
+        theme: "#fbbf24"
+    },
+    {
+        id: "event_chip_stolen",
+        category: "event",
+        title: "芯片被偷",
+        subtitle: "维生环境总控机房 · 失窃现场",
+        summary: "核心温控芯片只失踪这一枚。",
+        body: "维生循环主机机柜被暴力撬开。控制全舰大气与主冷却配比的【核心温控芯片】已被拔走，插槽锁扣呈液压钳夹断状。\n\n气流紊乱由此开始，并一路传导至底层聚变堆的过热崩溃——全舰只失踪这一枚芯片，却足以改写所有人的命运。",
+        hint: "首次踏入维生环境总控机房后收录",
+        theme: "#38bdf8"
+    }
+];
+
+/** 调试：启动时一键收齐全部残响（正式发布前改回 false） */
+const DEBUG_UNLOCK_ALL_ARCHIVE = true;
+
+class MemoryArchive {
+    /**
+     * @param {import('./saveSystem.js').SaveSystem} saveSystem
+     * @param {() => any[]} getPrivateQuarters - 返回 NPC_PRIVATE_QUARTERS
+     */
+    constructor(saveSystem, getPrivateQuarters) {
+        this.saveSystem = saveSystem;
+        this.getPrivateQuarters = getPrivateQuarters;
+        this.archiveKey = "DOPPELGANGER_MEMORY_ARCHIVE_V1";
+    }
+
+    getUnlockedIds() {
+        try {
+            let raw = null;
+            if (this.saveSystem.isLocalStorageAvailable) {
+                raw = window.localStorage.getItem(this.archiveKey);
+            }
+            if (!raw) raw = this.saveSystem.memoryStore[this.archiveKey];
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    isUnlocked(id) {
+        return this.getUnlockedIds().includes(id);
+    }
+
+    _persist(list) {
+        const serialized = JSON.stringify(list);
+        this.saveSystem.memoryStore[this.archiveKey] = serialized;
+        try {
+            if (this.saveSystem.isLocalStorageAvailable) {
+                window.localStorage.setItem(this.archiveKey, serialized);
+            }
+        } catch (_) { /* sandbox */ }
+    }
+
+    /**
+     * @returns {boolean} 是否为新收录
+     */
+    unlock(id) {
+        if (!id) return false;
+        const list = this.getUnlockedIds();
+        if (list.includes(id)) return false;
+        list.push(id);
+        this._persist(list);
+        return true;
+    }
+
+    /**
+     * 调试/作弊：一次收齐当前图鉴目录全部条目
+     * @returns {number} 新收录条数
+     */
+    unlockAll() {
+        const catalog = this.buildCatalog();
+        const set = new Set(this.getUnlockedIds());
+        let added = 0;
+        catalog.forEach((e) => {
+            if (!e?.id || set.has(e.id)) return;
+            set.add(e.id);
+            added += 1;
+        });
+        this._persist([...set]);
+        return added;
+    }
+
+    diaryId(ownerId) {
+        return `diary_${ownerId}`;
+    }
+
+    /** 从私人舱室表构建全部可收录条目 */
+    buildCatalog() {
+        /** @type {ArchiveEntryDef[]} */
+        const entries = [];
+        const quarters = typeof this.getPrivateQuarters === "function"
+            ? this.getPrivateQuarters()
+            : [];
+
+        (quarters || []).forEach((q) => {
+            if (!q || !q.npcOwnerId || !Array.isArray(q.diary) || q.diary.length === 0) return;
+            const ownerId = q.npcOwnerId;
+            const name = ARCHIVE_OWNER_NAMES[ownerId] || ownerId;
+            const pages = q.diary.map((p, i) => {
+                const t = p.title || `第 ${i + 1} 页`;
+                const c = p.content || "";
+                return `【${t}】\n${c}`;
+            }).join("\n\n————\n\n");
+            entries.push({
+                id: this.diaryId(ownerId),
+                category: "diary",
+                title: `${name}的日记`,
+                subtitle: q.name || "私人舱室记录",
+                summary: `收录自${name}的私人舱室手记。`,
+                body: pages,
+                hint: `首次接触并阅读${name}的私人记录后收录`,
+                theme: "#94a3b8",
+                ownerId
+            });
+        });
+
+        ARCHIVE_EVENT_DEFS.forEach((e) => entries.push({ ...e }));
+        return entries;
+    }
+
+    getCategories() {
+        return [
+            { id: "all", label: "全部" },
+            { id: "diary", label: "私人日记" },
+            { id: "event", label: "舰船事件" }
+        ];
+    }
+
+    getEntry(id) {
+        return this.buildCatalog().find((e) => e.id === id) || null;
+    }
+
+    getUnlockedEntries() {
+        const unlocked = new Set(this.getUnlockedIds());
+        return this.buildCatalog().filter((e) => unlocked.has(e.id));
+    }
+
+    countProgress() {
+        const all = this.buildCatalog();
+        const unlocked = this.getUnlockedIds();
+        return { total: all.length, unlocked: unlocked.length };
+    }
+}
+
+
+    // =========================================================================
     // 模块: saveSystem.js
     // =========================================================================
 /**
@@ -6880,6 +7155,52 @@ const TalentSystem = {
             success: true,
             message: `已点亮【${found.node.name}】，消耗 ${found.node.cost} ${TalentCurrency.name}`
         };
+    },
+
+    /**
+     * 重置科技树：清空已点亮技能，按节点 cost 全额返还定锚点。
+     * 不改动 awardedLevels（已通关发放记录保留）。
+     */
+    resetAll() {
+        const state = this._readState();
+        const unlocked = Array.isArray(state.unlocked) ? state.unlocked.slice() : [];
+        if (unlocked.length === 0) {
+            return {
+                success: false,
+                refunded: 0,
+                cleared: 0,
+                total: Number(state.points) || 0,
+                message: "当前没有已点亮的科技"
+            };
+        }
+        let refunded = 0;
+        unlocked.forEach((id) => {
+            const found = this.getNode(id);
+            if (found && found.node) {
+                refunded += Number(found.node.cost) || 0;
+            }
+        });
+        state.points = (Number(state.points) || 0) + refunded;
+        state.unlocked = [];
+        this._writeState(state);
+        this.resetRunFlags();
+        return {
+            success: true,
+            refunded,
+            cleared: unlocked.length,
+            total: state.points,
+            message: `已重置科技树：清空 ${unlocked.length} 项，返还 ${refunded} ${TalentCurrency.name}（当前持有 ${state.points}）`
+        };
+    },
+
+    /**
+     * 已投入到科技树上的定锚点合计（用于 UI 提示）
+     */
+    getSpentPoints() {
+        return this.getUnlockedIds().reduce((sum, id) => {
+            const found = this.getNode(id);
+            return sum + (found ? (Number(found.node.cost) || 0) : 0);
+        }, 0);
     },
 
     /**
@@ -8701,7 +9022,9 @@ class MapRenderer {
             // 根据所属分区选取专属地面色彩主题
             let themeKey = node.zone || "hub";
             if (node.isStart || node.id === "room_start" || (levelMap && node.id === levelMap.startNodeId)) themeKey = "start";
-            else if (node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit")))) themeKey = "exit";
+            else if (node.isExit || (levelMap && levelMap.exitNodeId
+                ? node.id === levelMap.exitNodeId
+                : (node.id === "room_exit" || (node.event && node.event.type === "exit")))) themeKey = "exit";
             const theme = DECK_THEMES[themeKey] || DECK_THEMES.hub;
 
             ctx.save();
@@ -8804,7 +9127,10 @@ class MapRenderer {
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
-            const cleanName = (node.name || "").replace(/【.*?】/, "").trim() || (node.name || "").replace(/[【】]/g, "").trim() || "舱室";
+            const cleanName = (node.name || "")
+                .replace(/【.*?】/, "")
+                .replace(/\s*[（(]终点[）)]\s*/g, "")
+                .trim() || (node.name || "").replace(/[【】]/g, "").replace(/\s*[（(]终点[）)]\s*/g, "").trim() || "舱室";
 
             let label = "";
             let subLabel = "";
@@ -8813,11 +9139,17 @@ class MapRenderer {
             const showSub = boxSize >= 38;
 
             const isStartAndExit = !!(levelMap && levelMap.startNodeId === levelMap.exitNodeId && node.id === levelMap.startNodeId);
+            const isExitRoom = !!(node.isExit || (levelMap && levelMap.exitNodeId
+                ? node.id === levelMap.exitNodeId
+                : (node.id === "room_exit" || (node.event && node.event.type === "exit"))));
 
             if (isCurrent) {
                 if (isStartAndExit) {
                     label = "起终点";
                     subLabel = showSub ? "当前 · 主反应堆" : "";
+                } else if (isExitRoom) {
+                    label = "终点";
+                    subLabel = showSub ? "当前位置" : "";
                 } else {
                     label = (node.id === "room_start" || node.isStart || (levelMap && node.id === levelMap.startNodeId)) ? "起点" : cleanName;
                     subLabel = showSub ? "当前位置" : "";
@@ -8840,7 +9172,6 @@ class MapRenderer {
                     reactor_quartet: "#fb923c"
                 };
                 const roomNpcId = (node.event && node.event.type === "npc" && node.event.npcId) || node.npcId;
-                const isExitRoom = !!(node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit"))));
 
                 if (isStartAndExit) {
                     label = "起终点";
@@ -8906,9 +9237,11 @@ class MapRenderer {
                     reactor_quartet: "#fb923c"
                 };
                 const roomNpcId = (node.event && node.event.type === "npc" && node.event.npcId) || node.npcId;
-                const isExitRoom = !!(node.isExit || (levelMap && node.id === levelMap.exitNodeId) || (!levelMap?.exitNodeId && (node.id === "room_exit" || (node.event && node.event.type === "exit"))));
+                const isExitRoomFog = !!(node.isExit || (levelMap && levelMap.exitNodeId
+                    ? node.id === levelMap.exitNodeId
+                    : (node.id === "room_exit" || (node.event && node.event.type === "exit"))));
 
-                if (isExitRoom && roomNpcId && ownerNames[roomNpcId]) {
+                if (isExitRoomFog && roomNpcId && ownerNames[roomNpcId]) {
                     // 未探索的终点且有 NPC (例如第五关重核聚变主反应堆的伊莲)
                     const nName = ownerNames[roomNpcId];
                     const nColor = ownerColors[roomNpcId] || "#fb923c";
@@ -8929,6 +9262,11 @@ class MapRenderer {
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · ${nName}` : `${nName} · 昏迷`) : nName;
                     tagColor = adjacentDir ? "#ffffff" : "rgba(203, 213, 225, 0.85)";
                     subTagColor = nColor;
+                } else if (isExitRoomFog) {
+                    label = "终点";
+                    subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 终点` : "终点") : "";
+                    tagColor = adjacentDir ? "#ffffff" : "#86efac";
+                    subTagColor = "#4ade80";
                 } else {
                     label = cleanName;
                     subLabel = showSub ? (adjacentDir ? `${adjacentDir} · 未探索` : "未探索") : "";
@@ -9369,7 +9707,9 @@ class MapRenderer {
             ctx.textBaseline = "middle";
             ctx.font = "bold 9px 'PingFang SC', sans-serif";
             if (isNVisited) {
-                if (nNode.isExit || (nNode.event && nNode.event.type === 'exit')) {
+                if (nNode.isExit || (levelMap && levelMap.exitNodeId
+                    ? nNode.id === levelMap.exitNodeId
+                    : (nNode.event && nNode.event.type === "exit"))) {
                     ctx.fillStyle = "#4ade80";
                     ctx.fillText("终", nx, ny);
                 } else if (nNode.event && nNode.event.type === 'food') {
@@ -9951,6 +10291,11 @@ class ExplorationEngine {
     handleNodeEvents(node, isAlreadyExplored = false) {
         // 更新左上角区域名称与UI
         this.gameEngine.updateHeaderUI();
+
+        // 记忆图鉴：首次踏入维生环境总控 → 收录「芯片被偷」
+        if (node?.id === "room_life_support" && typeof this.gameEngine.unlockArchiveChipStolen === "function") {
+            this.gameEngine.unlockArchiveChipStolen();
+        }
 
         // 第二十二关专属：踏入全舰停电始发地立即失败（开局地图高亮禁区）
         if (this.gameEngine?.currentLevel?.levelId === 22 && node.id === "room_west_end") {
@@ -10953,6 +11298,9 @@ class ExplorationEngine {
             if (this.gameEngine.diaryUI) {
                 setTimeout(() => {
                     this.gameEngine.diaryUI.open(ownerName, ownerColor, node.diary);
+                    if (typeof this.gameEngine.unlockArchiveDiary === "function") {
+                        this.gameEngine.unlockArchiveDiary(node.npcOwnerId);
+                    }
                 }, 200);
             }
         }
@@ -11211,28 +11559,11 @@ class ExplorationEngine {
             `【快速往返】经由已探明路线快速返回至 [${targetNode.name}]（不计入面临选择次数，安全折返）`
         );
 
-        // 立即更新顶部状态栏与罗盘方向控制面板
+        // 立即更新顶部状态栏
         this.gameEngine.updateHeaderUI();
-        this.gameEngine.renderExplorationControls();
 
-        // 检查目标房间是否有未消耗的事件（如之前暂缓救助的NPC或物资）
-        const eventKey = `${targetNode.id}_event`;
-        if (targetNode.event && !this.consumedEvents.has(eventKey)) {
-            if (targetNode.event.type === "npc") {
-                const npc = this.gameEngine.getNpcById(targetNode.event.npcId);
-                if (npc && npc.status === "unmet") {
-                    this.gameEngine.showNpcEncounterModal(npc, targetNode, (joined) => {
-                        if (joined) {
-                            this.consumedEvents.add(eventKey);
-                        }
-                    });
-                }
-            } else if (targetNode.event.type === "food") {
-                this.handleFoodEvent(targetNode, eventKey, () => {
-                    this.gameEngine.renderExplorationControls();
-                });
-            }
-        }
+        // 抵达目标后仍需处理终点通关 / 未救助 NPC / 物资等（isAlreadyExplored=true 可跳过傍晚检定）
+        this.handleNodeEvents(targetNode, true);
 
         return path;
     }
@@ -12395,12 +12726,367 @@ if (typeof window !== "undefined") {
 
 
     // =========================================================================
+    // 模块: menuSkyShader.js
+    // =========================================================================
+/**
+ * 主菜单背景：云间飞船（优先 WebGL，失败则用 Canvas2D）
+ * 首次进菜单不会调用 showMenu，因此必须在加载完成时主动 start。
+ */
+const MenuSkyShader = (() => {
+    let canvas = null;
+    let gl = null;
+    let program = null;
+    let buf = null;
+    let uTime = null;
+    let uRes = null;
+    let raf = 0;
+    let running = false;
+    let startMs = 0;
+    let mode = "none"; // webgl | canvas2d | none
+    let ctx2d = null;
+    let resizeObs = null;
+    let visibilityBound = false;
+
+    const VS = `
+attribute vec2 a_pos;
+void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); }
+`;
+
+    // 高对比云海 + 大飞船剪影（刻意做显眼）
+    const FS = `
+precision mediump float;
+uniform float u_time;
+uniform vec2 u_res;
+
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p){
+  vec2 i = floor(p); vec2 f = fract(p);
+  float a = hash(i), b = hash(i+vec2(1.,0.)), c = hash(i+vec2(0.,1.)), d = hash(i+vec2(1.,1.));
+  vec2 u = f*f*(3.-2.*f);
+  return mix(a,b,u.x)+(c-a)*u.y*(1.-u.x)+(d-b)*u.x*u.y;
+}
+float fbm(vec2 p){
+  float v=0., a=.5;
+  v+=a*noise(p); p*=2.02; a*=.5;
+  v+=a*noise(p); p*=2.02; a*=.5;
+  v+=a*noise(p); p*=2.02; a*=.5;
+  v+=a*noise(p);
+  return v;
+}
+float sdCapsule(vec2 p, vec2 a, vec2 b, float r){
+  vec2 pa=p-a, ba=b-a;
+  float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);
+  return length(pa-ba*h)-r;
+}
+float sdEllipse(vec2 p, vec2 r){ return (length(p/r)-1.)*min(r.x,r.y); }
+float shipSDF(vec2 p){
+  float hull = sdCapsule(p, vec2(-.34,.0), vec2(.42,.02), .07);
+  float bridge = sdEllipse(p-vec2(.06,.09), vec2(.14,.055));
+  float finT = sdCapsule(p, vec2(-.28,.03), vec2(-.48,.18), .02);
+  float finB = sdCapsule(p, vec2(-.28,-.03), vec2(-.46,-.16), .02);
+  float nose = sdEllipse(p-vec2(.46,.02), vec2(.11,.04));
+  float eng = sdEllipse(p-vec2(-.40,.0), vec2(.08,.06));
+  return min(hull, min(bridge, min(finT, min(finB, min(nose, eng)))));
+}
+
+void main(){
+  vec2 uv = gl_FragCoord.xy / u_res.xy;
+  float aspect = u_res.x / max(u_res.y, 1.);
+  vec2 p = uv*2.-1.;
+  p.x *= aspect;
+  float t = u_time;
+
+  // 鲜艳暮色天空
+  vec3 c0 = vec3(0.05, 0.07, 0.18);
+  vec3 c1 = vec3(0.18, 0.28, 0.55);
+  vec3 c2 = vec3(0.95, 0.45, 0.22);
+  vec3 c3 = vec3(1.0, 0.72, 0.35);
+  vec3 sky = mix(c3, c2, smoothstep(0.0, 0.32, uv.y));
+  sky = mix(sky, c1, smoothstep(0.25, 0.62, uv.y));
+  sky = mix(sky, c0, smoothstep(0.55, 1.0, uv.y));
+
+  // 星
+  vec2 sp = uv * vec2(70.*aspect, 70.);
+  float sn = hash(floor(sp));
+  if (sn > 0.97 && uv.y > 0.42) {
+    sky += (0.5+0.5*sin(t*3.+sn*50.)) * smoothstep(0.97,1.,sn) * vec3(0.8,0.9,1.2);
+  }
+
+  // 厚云（更亮、更实）
+  float drift = t * 0.08;
+  float cloud = fbm(vec2(uv.x*2.6*aspect + drift, uv.y*1.8));
+  cloud += 0.45 * fbm(vec2(uv.x*4.2*aspect - drift*0.6, uv.y*2.8 + 3.));
+  cloud = smoothstep(0.42, 0.78, cloud);
+  float band = smoothstep(0.02, 0.28, uv.y) * (1. - smoothstep(0.48, 0.88, uv.y));
+  cloud *= band;
+  vec3 cloudCol = mix(vec3(0.55,0.35,0.4), vec3(1.0,0.88,0.75), cloud);
+  sky = mix(sky, cloudCol, cloud * 0.92);
+
+  // 地平线强光
+  sky += exp(-abs(uv.y-0.24)*10.) * vec3(1.0, 0.55, 0.2) * 0.55;
+
+  // 大飞船（更靠中、更大）
+  float shipX = sin(t*0.25)*0.18;
+  float shipY = 0.02 + sin(t*0.35)*0.04;
+  vec2 su = p - vec2(shipX, shipY);
+  su *= 0.95;
+  float sd = shipSDF(su);
+  float ship = 1. - smoothstep(0., 0.018, sd);
+  float soft = 1. - smoothstep(0., 0.07, sd);
+
+  // 引擎焰
+  vec2 ep = su - vec2(-0.52, 0.0);
+  float ex = exp(-dot(ep*vec2(1.6,5.5), ep*vec2(1.6,5.5)));
+  ex *= 0.65 + 0.35*sin(t*22. + ep.x*30.);
+  sky += ex * vec3(0.3, 0.85, 1.2) * 0.95;
+  sky += ex * vec3(1.0, 0.5, 0.15) * 0.45;
+
+  sky = mix(sky, vec3(0.02,0.03,0.06), ship);
+  // 舷窗
+  float win = 1. - smoothstep(0., 0.01, length(su-vec2(0.08,0.08))-0.018);
+  sky += win * ship * vec3(0.45, 0.95, 1.2) * 1.2;
+  sky = mix(sky, sky*0.9, soft*0.2*(1.-ship));
+
+  // 轻暗角（别压没）
+  float vig = smoothstep(1.5, 0.25, length(p*vec2(0.65,1.0)));
+  sky *= mix(0.75, 1.0, vig);
+
+  gl_FragColor = vec4(sky, 1.0);
+}
+`;
+
+    function compile(type, src) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+            console.warn("[MenuSky]", gl.getShaderInfoLog(s));
+            gl.deleteShader(s);
+            return null;
+        }
+        return s;
+    }
+
+    function isMobile() {
+        return window.matchMedia("(max-width: 900px), (hover: none) and (pointer: coarse)").matches;
+    }
+
+    function resize() {
+        if (!canvas) return;
+        // fixed 全屏：以视口为准，避免被半透明弹窗盖住后尺寸算错
+        const w = Math.max(2, window.innerWidth || document.documentElement.clientWidth || 2);
+        const h = Math.max(2, window.innerHeight || document.documentElement.clientHeight || 2);
+        const scale = isMobile() ? 0.55 : 0.75;
+        const bw = Math.max(2, Math.floor(w * scale));
+        const bh = Math.max(2, Math.floor(h * scale));
+        if (canvas.width !== bw || canvas.height !== bh) {
+            canvas.width = bw;
+            canvas.height = bh;
+        }
+        if (mode === "webgl" && gl) {
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            gl.useProgram(program);
+            if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
+        }
+    }
+
+    function draw2d(t) {
+        if (!ctx2d) return;
+        const w = canvas.width;
+        const h = canvas.height;
+        const g = ctx2d.createLinearGradient(0, h, 0, 0);
+        g.addColorStop(0, "#ffb85a");
+        g.addColorStop(0.28, "#e86a3a");
+        g.addColorStop(0.55, "#3a5a8c");
+        g.addColorStop(1, "#0c1228");
+        ctx2d.fillStyle = g;
+        ctx2d.fillRect(0, 0, w, h);
+
+        // 云团
+        const drift = t * 28;
+        for (let i = 0; i < 10; i++) {
+            const y = h * (0.22 + (i % 5) * 0.08);
+            const x = ((i * 137 + drift * (0.4 + (i % 3) * 0.2)) % (w + 200)) - 100;
+            const rw = 80 + (i % 4) * 40;
+            const rh = 28 + (i % 3) * 14;
+            const grd = ctx2d.createRadialGradient(x, y, 4, x, y, rw);
+            grd.addColorStop(0, "rgba(255,230,200,0.75)");
+            grd.addColorStop(1, "rgba(255,180,140,0)");
+            ctx2d.fillStyle = grd;
+            ctx2d.beginPath();
+            ctx2d.ellipse(x, y, rw, rh, 0, 0, Math.PI * 2);
+            ctx2d.fill();
+        }
+
+        // 飞船剪影
+        const sx = w * (0.5 + Math.sin(t * 0.35) * 0.12);
+        const sy = h * (0.48 + Math.sin(t * 0.45) * 0.03);
+        const s = Math.min(w, h) * 0.22;
+        ctx2d.save();
+        ctx2d.translate(sx, sy);
+        // 引擎
+        const flame = ctx2d.createRadialGradient(-s * 0.55, 0, 0, -s * 0.55, 0, s * 0.45);
+        flame.addColorStop(0, "rgba(180,240,255,0.95)");
+        flame.addColorStop(0.4, "rgba(80,180,255,0.55)");
+        flame.addColorStop(1, "rgba(40,100,255,0)");
+        ctx2d.fillStyle = flame;
+        ctx2d.beginPath();
+        ctx2d.ellipse(-s * 0.55, 0, s * (0.35 + 0.08 * Math.sin(t * 20)), s * 0.12, 0, 0, Math.PI * 2);
+        ctx2d.fill();
+        ctx2d.fillStyle = "#05070e";
+        ctx2d.beginPath();
+        ctx2d.moveTo(-s * 0.45, 0);
+        ctx2d.quadraticCurveTo(-s * 0.2, -s * 0.12, s * 0.15, -s * 0.08);
+        ctx2d.quadraticCurveTo(s * 0.45, -s * 0.02, s * 0.55, 0.02 * s);
+        ctx2d.quadraticCurveTo(s * 0.4, s * 0.08, s * 0.05, s * 0.07);
+        ctx2d.quadraticCurveTo(-s * 0.25, s * 0.1, -s * 0.45, 0);
+        ctx2d.fill();
+        // 翼
+        ctx2d.beginPath();
+        ctx2d.moveTo(-s * 0.25, -s * 0.02);
+        ctx2d.lineTo(-s * 0.5, -s * 0.22);
+        ctx2d.lineTo(-s * 0.15, -s * 0.05);
+        ctx2d.fill();
+        ctx2d.beginPath();
+        ctx2d.moveTo(-s * 0.25, s * 0.02);
+        ctx2d.lineTo(-s * 0.48, s * 0.2);
+        ctx2d.lineTo(-s * 0.15, s * 0.05);
+        ctx2d.fill();
+        // 窗
+        ctx2d.fillStyle = "#7cf0ff";
+        ctx2d.beginPath();
+        ctx2d.arc(s * 0.12, -s * 0.04, s * 0.035, 0, Math.PI * 2);
+        ctx2d.fill();
+        ctx2d.restore();
+    }
+
+    function frame(now) {
+        if (!running) return;
+        raf = requestAnimationFrame(frame);
+        if (document.hidden) return;
+        const menu = document.getElementById("screen-menu");
+        if (menu && menu.classList.contains("hidden")) return;
+
+        const t = (now - startMs) * 0.001;
+        if (mode === "webgl" && gl && program) {
+            gl.useProgram(program);
+            gl.uniform1f(uTime, t);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+        } else if (mode === "canvas2d") {
+            draw2d(t);
+        }
+    }
+
+    function tryWebGL() {
+        gl = canvas.getContext("webgl", {
+            alpha: false,
+            antialias: false,
+            depth: false,
+            powerPreference: "low-power",
+        });
+        if (!gl) return false;
+        const vs = compile(gl.VERTEX_SHADER, VS);
+        const fs = compile(gl.FRAGMENT_SHADER, FS);
+        if (!vs || !fs) return false;
+        program = gl.createProgram();
+        gl.attachShader(program, vs);
+        gl.attachShader(program, fs);
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            console.warn("[MenuSky]", gl.getProgramInfoLog(program));
+            return false;
+        }
+        gl.useProgram(program);
+        buf = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
+        const loc = gl.getAttribLocation(program, "a_pos");
+        gl.enableVertexAttribArray(loc);
+        gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+        uTime = gl.getUniformLocation(program, "u_time");
+        uRes = gl.getUniformLocation(program, "u_res");
+        mode = "webgl";
+        return true;
+    }
+
+    function tryCanvas2d() {
+        ctx2d = canvas.getContext("2d");
+        if (!ctx2d) return false;
+        mode = "canvas2d";
+        return true;
+    }
+
+    function mount(targetCanvas) {
+        canvas = targetCanvas || document.getElementById("menu-sky-canvas");
+        if (!canvas) {
+            console.warn("[MenuSky] canvas missing");
+            return false;
+        }
+        if (mode !== "none") return true;
+
+        if (!tryWebGL()) {
+            gl = null;
+            program = null;
+            if (!tryCanvas2d()) {
+                console.warn("[MenuSky] no renderer");
+                canvas.classList.add("menu-sky-fallback");
+                return false;
+            }
+            console.info("[MenuSky] using Canvas2D fallback");
+        } else {
+            console.info("[MenuSky] WebGL ready");
+        }
+
+        if (!visibilityBound) {
+            document.addEventListener("visibilitychange", () => {
+                if (!document.hidden && running) resize();
+            });
+            visibilityBound = true;
+        }
+        if (typeof ResizeObserver !== "undefined") {
+            resizeObs = new ResizeObserver(() => resize());
+            resizeObs.observe(canvas.parentElement || canvas);
+        } else {
+            window.addEventListener("resize", resize);
+        }
+        resize();
+        return true;
+    }
+
+    function start() {
+        if (!mount()) return;
+        if (running) {
+            resize();
+            return;
+        }
+        running = true;
+        startMs = performance.now();
+        resize();
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(frame);
+        // 立刻画一帧，避免空白
+        frame(startMs);
+    }
+
+    function stop() {
+        running = false;
+        cancelAnimationFrame(raf);
+        raf = 0;
+    }
+
+    return { mount, start, stop, resize };
+})();
+
+
+    // =========================================================================
     // 模块: gameEngine.js
     // =========================================================================
 /**
  * 游戏主循环引擎与状态机 (Game Engine & State Machine)
  * 严格管理 q1 -> q2 -> q3 -> q4 -> q5 -> q6 -> q7 完整闭环
  */
+
+
 
 
 
@@ -12426,6 +13112,11 @@ class GameEngine {
         }
         this.dialogueUI = new DialogueUI();
         this.diaryUI = new DiaryUI();
+        this.memoryArchive = new MemoryArchive(this.saveSystem, () => NPC_PRIVATE_QUARTERS);
+        if (DEBUG_UNLOCK_ALL_ARCHIVE) {
+            const n = this.memoryArchive.unlockAll();
+            console.log(`[DEBUG] 记忆图鉴已全收集（新增 ${n} 条，合计 ${this.memoryArchive.countProgress().unlocked}/${this.memoryArchive.countProgress().total}）`);
+        }
         this.explorationEngine = new ExplorationEngine(this);
         this.mapRenderer = null;
         this.hoveredMapNodeId = null;
@@ -12455,8 +13146,10 @@ class GameEngine {
         this.nightTargetVictimId = null; // 伪人预定袭击目标
         this.witchSaved = false;         // 歌咏者是否施救
 
-        // 人物特征/秘密图鉴与专属被动状态
+        // 人物特征/秘密图鉴与专属被动状态（被动仍在后台生效；图鉴 UI 改为残响收录）
         this.activePersonaCharId = "kaze";
+        this.activeArchiveCategory = "all";
+        this.activeArchiveEntryId = null;
         this.stepsWithNpc = {};
         this.nightCounterDeflected = false;
         this.nightModeDefended = false;
@@ -12554,11 +13247,14 @@ class GameEngine {
         this.btnMenuTalentTree = document.getElementById("btn-menu-talent-tree");
         this.modalTalentTree = document.getElementById("modal-talent-tree");
         this.btnCloseTalentTree = document.getElementById("btn-close-talent-tree");
+        this.btnTalentReset = document.getElementById("btn-talent-reset");
         this.talentTreeRoot = document.getElementById("talent-tree-root");
         this.talentPointsText = document.getElementById("talent-points-text");
         this.btnClosePersonaLog = document.getElementById("btn-close-persona-log");
         this.personaCharTabs = document.getElementById("persona-char-tabs");
         this.personaCharDetail = document.getElementById("persona-char-detail");
+        this.archiveEntryList = document.getElementById("archive-entry-list");
+        this.archiveProgressText = document.getElementById("archive-progress-text");
 
         // 第一关新手教程弹窗 + 可视化 Coach
         this.modalLevel1Tutorial = document.getElementById("modal-level1-tutorial");
@@ -12729,6 +13425,9 @@ class GameEngine {
                 this.screenLoading.classList.add("hidden");
             }, 400);
         }
+
+        // 首次进入主菜单不会走 showMenu()，必须在此启动云间飞船背景
+        this.ensureMenuSky(true);
     }
 
     bindEvents() {
@@ -12756,7 +13455,7 @@ class GameEngine {
             this.modalLevelSelect?.classList.add("hidden");
         });
 
-        // 主菜单：记忆图鉴 · 角色专属分支入口
+        // 主菜单：记忆图鉴 · 残响收录
         this.btnMenuPersonaLog?.addEventListener("click", () => {
             this.showPersonaLogModal();
         });
@@ -12770,6 +13469,9 @@ class GameEngine {
         });
         this.btnCloseTalentTree?.addEventListener("click", () => {
             this.modalTalentTree?.classList.add("hidden");
+        });
+        this.btnTalentReset?.addEventListener("click", () => {
+            this.handleTalentTreeReset();
         });
 
         // 小地图战术微型雷达快捷交互
@@ -13043,6 +13745,7 @@ class GameEngine {
         this.modalResult?.classList.add("hidden");
         this.hudMiniRadar?.classList.add("hidden");
         this.updateMenuButtons();
+        this.ensureMenuSky(true);
     }
 
     // =========================================================================
@@ -13073,10 +13776,49 @@ class GameEngine {
         return wolvesInTeam.filter(w => !this.isNpcConfined(w.id));
     }
 
+    /**
+     * 主菜单弹窗：半透遮罩，保留云间飞船背景
+     */
+    applyMenuSkyBackdrop(modalEl) {
+        if (!modalEl) return;
+        const onMenu = this.phase === "menu"
+            || (this.screenMenu && !this.screenMenu.classList.contains("hidden"));
+        modalEl.classList.toggle("over-menu-sky", !!onMenu);
+        if (onMenu) {
+            this.ensureMenuSky(true);
+        }
+    }
+
     showTalentTreeModal() {
         if (!this.modalTalentTree) return;
         this.renderTalentTreeUI();
+        this.applyMenuSkyBackdrop(this.modalTalentTree);
         this.modalTalentTree.classList.remove("hidden");
+    }
+
+    async handleTalentTreeReset() {
+        if (typeof TalentSystem === "undefined" || !TalentSystem.resetAll) return;
+        const spent = TalentSystem.getSpentPoints ? TalentSystem.getSpentPoints() : 0;
+        const unlockedCount = TalentSystem.getUnlockedIds ? TalentSystem.getUnlockedIds().length : 0;
+        if (unlockedCount <= 0) {
+            this.showStageToast("当前没有已点亮的科技");
+            return;
+        }
+        const currencyName = (typeof TalentCurrency !== "undefined") ? TalentCurrency.name : "定锚点";
+        const confirmed = await this.showSystemConfirm(
+            `确定重置科技树？\n\n将清空全部已点亮技能（${unlockedCount} 项），\n并返还 ${spent} ${currencyName}。\n\n通关已获得的定锚点总量不会减少。`,
+            "⚓ 重置定锚科技树"
+        );
+        if (!confirmed) return;
+        this.hideSystemDialog?.();
+        const result = TalentSystem.resetAll();
+        if (result.success) {
+            this.logAction(`【定锚科技】${result.message}`);
+            this.showStageToast(`已返还 ${result.refunded} ${currencyName}`);
+            this.renderTalentTreeUI();
+        } else {
+            this.showStageToast(result.message || "无法重置");
+        }
     }
 
     renderTalentTreeUI() {
@@ -13084,6 +13826,13 @@ class GameEngine {
         const currencyName = (typeof TalentCurrency !== "undefined") ? TalentCurrency.name : "定锚点";
         if (this.talentPointsText) {
             this.talentPointsText.textContent = `${points} ${currencyName}`;
+        }
+        if (this.btnTalentReset && typeof TalentSystem !== "undefined") {
+            const spent = TalentSystem.getSpentPoints ? TalentSystem.getSpentPoints() : 0;
+            this.btnTalentReset.disabled = spent <= 0;
+            this.btnTalentReset.textContent = spent > 0
+                ? `重置科技树（返还 ${spent}）`
+                : "重置科技树";
         }
         if (!this.talentTreeRoot || typeof TalentTreeConfig === "undefined") return;
 
@@ -13459,6 +14208,7 @@ class GameEngine {
         if (!this.modalLevelSelect) return;
         this.applyLevel15MetaUnlock();
         this.renderLevelSelectGrid();
+        this.applyMenuSkyBackdrop(this.modalLevelSelect);
         this.modalLevelSelect.classList.remove("hidden");
     }
 
@@ -13855,8 +14605,23 @@ class GameEngine {
         }
     }
 
+    ensureMenuSky(alsoStart = false) {
+        if (typeof MenuSkyShader === "undefined") return;
+        const canvas = document.getElementById("menu-sky-canvas");
+        if (!canvas) return;
+        if (!this._menuSkyReady) {
+            this._menuSkyReady = !!MenuSkyShader.mount(canvas);
+        }
+        if (alsoStart || this.phase === "menu" || !this.screenMenu?.classList.contains("hidden")) {
+            MenuSkyShader.start();
+        }
+    }
+
     enterQ1BlackScreen() {
         this.phase = "q1_black";
+        if (typeof MenuSkyShader !== "undefined" && MenuSkyShader.stop) {
+            MenuSkyShader.stop();
+        }
         this.screenMenu.classList.add("hidden");
         this.screenGame.classList.add("hidden");
         this.screenBlack.classList.remove("hidden");
@@ -14620,6 +15385,9 @@ class GameEngine {
             }
             if (this.btnPowerRestoreConfirm) {
                 this.btnPowerRestoreConfirm.onclick = null;
+            }
+            if (typeof this.unlockArchivePowerOutage === "function") {
+                this.unlockArchivePowerOutage();
             }
             if (onConfirmed) onConfirmed();
         };
@@ -15826,6 +16594,7 @@ class GameEngine {
         const textElem = document.getElementById("l4-cutscene-text");
         const stageLayer = document.getElementById("l4-cutscene-stage-layer");
         const entityX = document.getElementById("l4-entity-x");
+        const kazeIcon = document.getElementById("l4-kaze-npc-icon");
         const screenGame = document.getElementById("screen-game");
 
         if (!screenCutscene || !blackoutLayer || !textElem || !stageLayer || !entityX) {
@@ -15839,12 +16608,13 @@ class GameEngine {
         if (screenGame) screenGame.classList.add("cinematic-mode");
 
         // 确保舞台大地图精准居中并聚焦在【西区整备间】动力操作台 (room_npc1)
-        if (this.stageMapRenderer && this.currentLevel && this.currentLevel.map) {
-            this.stageMapRenderer.viewMode = "focus";
-            this.stageMapRenderer.panX = 0;
-            this.stageMapRenderer.panY = 0;
-            this.stageMapRenderer.zoom = 1.0;
-            this.stageMapRenderer.render(
+        const mapRenderer = this.stageMapRenderer;
+        if (mapRenderer && this.currentLevel && this.currentLevel.map) {
+            mapRenderer.viewMode = "focus";
+            mapRenderer.panX = 0;
+            mapRenderer.panY = 0;
+            mapRenderer.zoom = 1.35;
+            mapRenderer.render(
                 this.currentLevel.map,
                 "room_npc1",
                 this.visitedNodes,
@@ -15857,6 +16627,7 @@ class GameEngine {
         blackoutLayer.classList.remove("hidden");
         stageLayer.classList.remove("hidden");
         entityX.classList.remove("approaching");
+        kazeIcon?.classList.remove("fallen");
         textElem.innerHTML = "";
         textElem.classList.remove("show-text");
 
@@ -15897,28 +16668,43 @@ class GameEngine {
             textElem.classList.remove("show-text");
             await waitOrClick(500);
 
-            // 渐变解除黑屏！直接显露出底层的星舰战术大地图！
-            // 此时动力操作台中心正有卡罗专属NPC图标与主视角标记
-            blackoutLayer.classList.add("blackout-transparent");
-            await waitOrClick(600);
+            // 镜头先推向动力操作台，再揭开黑幕（可见后半段推进）
+            if (mapRenderer && typeof mapRenderer.animateCameraTo === "function") {
+                mapRenderer.animateCameraTo({ panX: 0, panY: 0, zoom: 2.2 }, 2000);
+            }
+            await waitOrClick(700);
 
-            // 阶段 2：未知X实体从屏幕右侧渐变显现并滑入，贴近主视角，局部重叠时停下
+            // 渐变解除黑屏，露出被推进的星舰战术大地图
+            blackoutLayer.classList.add("blackout-transparent");
+            await waitOrClick(1300);
+
+            // 阶段 2：圆圈逼近（嗡鸣）→ 贴近停 1 秒 → 失重倒地（刺穿）
+            if (typeof Sound !== "undefined" && Sound.playLevel4ApproachHum) {
+                Sound.playLevel4ApproachHum();
+            }
             entityX.classList.add("approaching");
             await waitOrClick(2600);
-
-            // 停下后立即播放异象音频（预留音频接口，放入 assets/audio/ 即可生效）
+            await waitOrClick(1000);
+            kazeIcon?.classList.add("fallen");
+            if (typeof Sound !== "undefined" && Sound.playLevel4FallSpike) {
+                Sound.playLevel4FallSpike();
+            }
             if (typeof Sound !== "undefined" && Sound.playLevel4EndingSound) {
                 Sound.playLevel4EndingSound();
             }
+            await waitOrClick(2400);
 
-            // 2秒之后再渐变黑屏
-            await waitOrClick(2000);
+            // 稍停后再压下终焉暗幕
+            await waitOrClick(900);
 
-            // 渐变黑屏重临（将地图覆盖进终焉暗幕）
+            // 渐变黑屏重临
+            if (typeof Sound !== "undefined" && Sound.playLevel4BlackoutPressure) {
+                Sound.playLevel4BlackoutPressure();
+            }
             blackoutLayer.classList.remove("blackout-transparent");
             await waitOrClick(900);
 
-            // 阶段 3：终焉暗幕中显现第二组文字“看来....” “的确有些不一样...” "来不及回头...便陷入无尽的黑暗之中..."
+            // 阶段 3：终焉暗幕中显现第二组文字
             await showFlashText("看来....", 1600);
             await showFlashText("的确有些不一样...", 1800);
             await showFlashText("来不及回头...便陷入无尽的黑暗之中...", 2400);
@@ -15928,8 +16714,15 @@ class GameEngine {
 
             // 演出完毕，恢复环境
             screenCutscene.onclick = null;
+            entityX.classList.remove("approaching");
+            kazeIcon?.classList.remove("fallen");
             screenCutscene.classList.add("hidden");
             if (screenGame) screenGame.classList.remove("cinematic-mode");
+            if (mapRenderer) {
+                mapRenderer.zoom = 1.0;
+                mapRenderer.panX = 0;
+                mapRenderer.panY = 0;
+            }
             if (onComplete) onComplete();
         })();
     }
@@ -17798,6 +18591,11 @@ class GameEngine {
         });
 
         this.modalSystemDialog.classList.remove("hidden");
+        // 提到 DOM 末尾并抬升层级，确保盖过科技树等其它弹窗
+        try {
+            document.body.appendChild(this.modalSystemDialog);
+        } catch (_) {}
+        this.modalSystemDialog.style.zIndex = "100000";
 
         return new Promise((resolve) => {
             this._systemDialogResolver = resolve;
@@ -18064,11 +18862,13 @@ class GameEngine {
             this.renderStageMap();
             this.renderExplorationControls();
 
-            // 视觉小说对白反馈
-            this.dialogueUI.say(
-                { name: "区域指引", themeColor: "#4ade80" },
-                `已快速返回至 [${destName}]。${destNode?.desc || ""} 请选择下一步行动方向。`
-            );
+            // 若已通关/失败，不再追加“区域指引”对白
+            if (this.phase === "q3_explore") {
+                this.dialogueUI.say(
+                    { name: "区域指引", themeColor: "#4ade80" },
+                    `已快速返回至 [${destName}]。${destNode?.desc || ""} 请选择下一步行动方向。`
+                );
+            }
         };
 
         const skipHandler = () => {
@@ -18254,6 +19054,13 @@ class GameEngine {
 
                         if (this.saveSystem.isCharacterPassiveUnlocked(char.id)) {
                             this.logAction(`【特质完全觉醒】[${char.name}] 达成全记忆解构！觉醒专属被动【${char.persona.passiveSkill.name}】并开启专属剧情分支！`);
+                            const branchId = char.persona.exclusiveBranch?.levelId;
+                            if (branchId) {
+                                this.saveSystem.unlockLevels([branchId]);
+                                if (this.showStageToast) {
+                                    this.showStageToast(`专属航线已解锁：请在【关卡选择】进入扇区 ${branchId}`);
+                                }
+                            }
                         }
                     }
                 }
@@ -18275,12 +19082,12 @@ class GameEngine {
         const isFullyAwakened = this.saveSystem.isCharacterPassiveUnlocked(char.id);
         toast.innerHTML = `
             <div class="persona-toast-title">
-                <span>✨ 记忆图鉴解构 · ${char.name}</span>
+                <span>记忆残响 · ${char.name}</span>
             </div>
             <div class="persona-toast-body">
                 <span>解锁档案：<b>【${secret.title}】</b></span><br>
                 <span style="font-size:0.75rem; color:#94a3b8;">${secret.desc.slice(0, 36)}...</span>
-                ${isFullyAwakened ? `<div style="color:#fbbf24; font-weight:bold; margin-top:4px;">🌟 达成全部解构！觉醒被动【${char.persona.passiveSkill.name}】！</div>` : ''}
+                ${isFullyAwakened ? `<div style="color:#fbbf24; font-weight:bold; margin-top:4px;">达成全部解构！觉醒被动【${char.persona.passiveSkill.name}】！</div>` : ''}
             </div>
         `;
 
@@ -18297,139 +19104,192 @@ class GameEngine {
         }, 3600);
     }
 
-    showPersonaLogModal(selectedCharId = null) {
-        if (!this.modalPersonaLog) return;
-        if (selectedCharId) {
-            this.activePersonaCharId = selectedCharId;
-        } else if (!this.activePersonaCharId) {
-            this.activePersonaCharId = "kaze";
+    /**
+     * 收录记忆图鉴条目；仅首次成功时弹出提示
+     * @param {string} entryId
+     * @returns {boolean}
+     */
+    tryUnlockArchive(entryId) {
+        if (!this.memoryArchive || !entryId) return false;
+        const wasNew = this.memoryArchive.unlock(entryId);
+        if (!wasNew) return false;
+        const entry = this.memoryArchive.getEntry(entryId);
+        this.showArchiveUnlockToast(entry);
+        return true;
+    }
+
+    unlockArchiveDiary(ownerId) {
+        if (!ownerId || !this.memoryArchive) return false;
+        return this.tryUnlockArchive(this.memoryArchive.diaryId(ownerId));
+    }
+
+    unlockArchivePowerOutage() {
+        return this.tryUnlockArchive("event_power_outage");
+    }
+
+    unlockArchiveChipStolen() {
+        return this.tryUnlockArchive("event_chip_stolen");
+    }
+
+    /** 调试：控制台可调 gameApp.debugUnlockAllArchive() */
+    debugUnlockAllArchive() {
+        if (!this.memoryArchive) return 0;
+        const n = this.memoryArchive.unlockAll();
+        if (this.modalPersonaLog && !this.modalPersonaLog.classList.contains("hidden")) {
+            this.renderPersonaLogModal();
         }
-        this.renderPersonaLogModal(this.activePersonaCharId);
+        return n;
+    }
+
+    showArchiveUnlockToast(entry) {
+        if (typeof document === "undefined" || !entry) return;
+
+        let toast = document.getElementById("archive-unlock-toast");
+        if (!toast) {
+            toast = document.createElement("div");
+            toast.id = "archive-unlock-toast";
+            toast.className = "persona-toast archive-toast";
+            document.body.appendChild(toast);
+        }
+
+        const catLabel = entry.category === "diary" ? "私人日记" : "舰船事件";
+        toast.innerHTML = `
+            <div class="persona-toast-title">
+                <span>记忆图鉴收录 · ${catLabel}</span>
+            </div>
+            <div class="persona-toast-body">
+                <span><b>${entry.title}</b></span><br>
+                <span style="font-size:0.75rem; color:#94a3b8;">${(entry.summary || "").slice(0, 48)}</span>
+            </div>
+        `;
+
+        toast.classList.remove("fade-out", "hidden");
+        if (this.archiveToastTimeout) {
+            clearTimeout(this.archiveToastTimeout);
+        }
+        this.archiveToastTimeout = setTimeout(() => {
+            toast.classList.add("fade-out");
+            setTimeout(() => toast.classList.add("hidden"), 450);
+        }, 3200);
+    }
+
+    showPersonaLogModal(selectedEntryId = null) {
+        if (!this.modalPersonaLog) return;
+        if (selectedEntryId) {
+            this.activeArchiveEntryId = selectedEntryId;
+        }
+        this.renderPersonaLogModal();
+        this.applyMenuSkyBackdrop(this.modalPersonaLog);
         this.modalPersonaLog.classList.remove("hidden");
     }
 
-    renderPersonaLogModal(selectedCharId = "kaze") {
-        if (!this.personaCharTabs || !this.personaCharDetail) return;
-        this.activePersonaCharId = selectedCharId;
+    renderPersonaLogModal(_selectedCharId) {
+        // 兼容旧调用签名；图鉴已改为残响收录
+        if (!this.personaCharTabs || !this.personaCharDetail || !this.memoryArchive) return;
 
-        const npcs = CharacterRegistry.npcs;
-        const charKeys = ["kaze", "shaokexin", "mode"];
+        const catalog = this.memoryArchive.buildCatalog();
+        const unlockedSet = new Set(this.memoryArchive.getUnlockedIds());
+        const progress = this.memoryArchive.countProgress();
+        const categories = this.memoryArchive.getCategories();
 
-        // 1. 渲染角色切换 Tab 按钮
+        if (this.archiveProgressText) {
+            this.archiveProgressText.textContent = `${progress.unlocked} / ${progress.total}`;
+        }
+
+        // 分类轨
         this.personaCharTabs.innerHTML = "";
-        charKeys.forEach(key => {
-            const char = npcs[key];
-            if (!char || !char.persona) return;
-
-            const unlockedList = this.saveSystem.getUnlockedSecrets(char.id);
-            const count = unlockedList.length;
-            const total = char.persona.secrets.length;
-            const isFull = count >= total;
-
+        categories.forEach((cat) => {
+            const count = cat.id === "all"
+                ? unlockedSet.size
+                : catalog.filter((e) => e.category === cat.id && unlockedSet.has(e.id)).length;
             const tab = document.createElement("button");
-            tab.className = `persona-tab-btn ${key === this.activePersonaCharId ? "active" : ""}`;
-            tab.style.borderColor = key === this.activePersonaCharId ? char.themeColor : "";
-            tab.innerHTML = `
-                <span class="tab-char-name" style="color:${char.themeColor}">${char.name}</span>
-                <span class="tab-char-count ${isFull ? 'count-complete' : ''}">(${count}/${total})</span>
-            `;
-
+            tab.type = "button";
+            tab.className = `archive-cat-btn ${this.activeArchiveCategory === cat.id ? "active" : ""}`;
+            tab.setAttribute("role", "tab");
+            tab.setAttribute("aria-selected", this.activeArchiveCategory === cat.id ? "true" : "false");
+            tab.innerHTML = `<span class="archive-cat-label">${cat.label}</span><span class="archive-cat-count">${count}</span>`;
             tab.addEventListener("click", () => {
-                this.renderPersonaLogModal(key);
+                this.activeArchiveCategory = cat.id;
+                this.renderPersonaLogModal();
             });
             this.personaCharTabs.appendChild(tab);
         });
 
-        // 2. 渲染选定角色的完整档案面
-        const activeChar = npcs[this.activePersonaCharId];
-        if (!activeChar || !activeChar.persona) return;
-
-        const persona = activeChar.persona;
-        const unlockedList = this.saveSystem.getUnlockedSecrets(activeChar.id);
-        const unlockedCount = unlockedList.length;
-        const totalSecrets = persona.secrets.length;
-        const pct = Math.round((unlockedCount / totalSecrets) * 100);
-        const isPassiveUnlocked = this.saveSystem.isCharacterPassiveUnlocked(activeChar.id);
-
-        let secretsHtml = "";
-        persona.secrets.forEach((s, idx) => {
-            const isUnlocked = this.saveSystem.isPersonaSecretUnlocked(activeChar.id, s.id);
-            secretsHtml += `
-                <div class="persona-secret-card ${isUnlocked ? 'secret-unlocked' : 'secret-locked'}">
-                    <div class="persona-secret-top">
-                        <span class="persona-secret-title">
-                            ${isUnlocked ? `✦ ${s.title}` : `🔒 深度记忆 #${idx + 1}`}
-                        </span>
-                        <span class="persona-secret-status ${isUnlocked ? 'status-unlocked' : 'status-locked'}">
-                            ${isUnlocked ? '已解构' : '待探明'}
-                        </span>
-                    </div>
-                    <div class="persona-secret-desc">
-                        ${isUnlocked ? s.desc : '……此处记忆神经回路发生熵阻断裂，无法读取。'}
-                    </div>
-                    ${!isUnlocked ? `<div class="persona-secret-hint">💡 解锁线索：${s.hint}</div>` : ''}
-                </div>
-            `;
+        const filtered = catalog.filter((e) => {
+            if (this.activeArchiveCategory === "all") return true;
+            return e.category === this.activeArchiveCategory;
         });
 
-        const branch = persona.exclusiveBranch;
+        // 默认选中：优先已解锁条目
+        if (!this.activeArchiveEntryId || !filtered.some((e) => e.id === this.activeArchiveEntryId)) {
+            const firstUnlocked = filtered.find((e) => unlockedSet.has(e.id));
+            this.activeArchiveEntryId = firstUnlocked ? firstUnlocked.id : (filtered[0]?.id || null);
+        }
+
+        if (this.archiveEntryList) {
+            this.archiveEntryList.innerHTML = "";
+            if (filtered.length === 0) {
+                this.archiveEntryList.innerHTML = `<div class="archive-list-empty">尚无条目</div>`;
+            } else {
+                filtered.forEach((entry) => {
+                    const unlocked = unlockedSet.has(entry.id);
+                    const btn = document.createElement("button");
+                    btn.type = "button";
+                    btn.className = `archive-entry-btn ${entry.id === this.activeArchiveEntryId ? "active" : ""} ${unlocked ? "is-unlocked" : "is-locked"}`;
+                    btn.style.setProperty("--entry-accent", entry.theme || "#38bdf8");
+                    btn.innerHTML = `
+                        <span class="archive-entry-mark" aria-hidden="true"></span>
+                        <span class="archive-entry-copy">
+                            <span class="archive-entry-title">${unlocked ? entry.title : "未收录残响"}</span>
+                            <span class="archive-entry-sub">${unlocked ? (entry.subtitle || "") : "探索舰船后收录"}</span>
+                        </span>
+                    `;
+                    btn.addEventListener("click", () => {
+                        this.activeArchiveEntryId = entry.id;
+                        this.renderPersonaLogModal();
+                    });
+                    this.archiveEntryList.appendChild(btn);
+                });
+            }
+        }
+
+        const active = catalog.find((e) => e.id === this.activeArchiveEntryId);
+        if (!active) {
+            this.personaCharDetail.innerHTML = `<div class="archive-empty-hint">从左侧选择一条残响，展开你已收录的记忆。</div>`;
+            return;
+        }
+
+        const unlocked = unlockedSet.has(active.id);
+        if (!unlocked) {
+            this.personaCharDetail.innerHTML = `
+                <article class="archive-detail archive-detail-locked">
+                    <header class="archive-detail-header">
+                        <h4>未收录残响</h4>
+                        <p class="archive-detail-sub">${active.hint || "继续探索以收录此记忆。"}</p>
+                    </header>
+                    <div class="archive-detail-body">
+                        <p class="archive-locked-copy">信号尚未写入图鉴。抵达对应现场或首次翻开私人记录后，残响才会在此定格。</p>
+                    </div>
+                </article>
+            `;
+            return;
+        }
+
+        const bodyHtml = (active.body || "")
+            .split(/\n\n+/)
+            .map((para) => `<p>${para.replace(/\n/g, "<br>")}</p>`)
+            .join("");
 
         this.personaCharDetail.innerHTML = `
-            <!-- 头部概览卡 -->
-            <div class="persona-hero-card" style="border-left-color: ${activeChar.themeColor};">
-                <div class="persona-hero-avatar" style="border-color: ${activeChar.themeColor};">
-                    <img src="${activeChar.svgAvatar}" alt="${activeChar.name}">
-                </div>
-                <div class="persona-hero-info">
-                    <div class="persona-hero-title-row">
-                        <span class="persona-hero-name" style="color:${activeChar.themeColor};">${activeChar.name}</span>
-                        <span class="persona-hero-role-tag" style="background:${activeChar.themeColor}26; border-color:${activeChar.themeColor}; color:${activeChar.themeColor};">${persona.title}</span>
-                    </div>
-                    <div class="persona-progress-wrap">
-                        <div class="persona-progress-bar-bg">
-                            <div class="persona-progress-bar-fill" style="width:${pct}%; background:${activeChar.themeColor};"></div>
-                        </div>
-                        <span class="persona-progress-text">记忆拼合进度: ${unlockedCount} / ${totalSecrets} (${pct}%)</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 4 条核心深层记忆卡片网格 -->
-            <div class="persona-secrets-grid">
-                ${secretsHtml}
-            </div>
-
-            <!-- 专属保命被动技能与专属分支启航栏 -->
-            <div class="persona-reward-deck">
-                <div class="persona-passive-box ${isPassiveUnlocked ? 'active-skill' : ''}">
-                    <div class="persona-passive-header">
-                        <span>${persona.passiveSkill.icon}</span>
-                        <span>专属特质：${persona.passiveSkill.name}</span>
-                        <span style="font-size:0.75rem; margin-left:auto; color:${isPassiveUnlocked ? '#4ade80' : '#94a3b8'};">
-                            ${isPassiveUnlocked ? '【✨ 已激活】' : '【🔒 需集齐4项记忆】'}
-                        </span>
-                    </div>
-                    <div class="persona-passive-desc">${persona.passiveSkill.desc}</div>
-                </div>
-
-                <div class="persona-branch-action">
-                    <button id="btn-launch-exclusive-branch" 
-                            class="btn-launch-branch ${isPassiveUnlocked ? 'enabled' : 'disabled'}"
-                            ${isPassiveUnlocked ? '' : 'disabled'}>
-                        ${isPassiveUnlocked ? `🚀 开启专属分支：${branch.badge}` : `🔒 需完整拼合记忆解锁分支`}
-                    </button>
-                </div>
-            </div>
+            <article class="archive-detail" style="--entry-accent:${active.theme || "#38bdf8"}">
+                <header class="archive-detail-header">
+                    <h4>${active.title}</h4>
+                    <p class="archive-detail-sub">${active.category === "diary" ? "私人日记" : "舰船事件"}${active.subtitle ? ` · ${active.subtitle}` : ""}</p>
+                </header>
+                <div class="archive-detail-summary">${active.summary || ""}</div>
+                <div class="archive-detail-body">${bodyHtml}</div>
+            </article>
         `;
-
-        // 绑定专属分支进入按钮
-        const btnLaunch = document.getElementById("btn-launch-exclusive-branch");
-        if (btnLaunch && isPassiveUnlocked) {
-            btnLaunch.onclick = () => {
-                this.modalPersonaLog?.classList.add("hidden");
-                this.startExclusiveBranch(branch.levelId);
-            };
-        }
     }
 
     startExclusiveBranch(levelId) {
