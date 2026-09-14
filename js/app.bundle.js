@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-14T07:14:16.756Z
+ * 自动生成于 2026-09-14T07:21:40.966Z
  */
 (function() {
     'use strict';
@@ -12063,12 +12063,25 @@ class Level15InterrogationScene {
 
     start() {
         this.ensureDom();
+        // 二次开局：先拆掉上一轮监听与拖拽残留，避免卡死关卡槽
+        this._teardownDrag();
+        this._teardownMapZoom();
+        this._unsubs.forEach((fn) => {
+            try { fn(); } catch (e) { /* ignore */ }
+        });
+        this._unsubs = [];
+
         this.root.classList.remove("hidden");
         this.phase = "intro";
         this.introIndex = 0;
         this.questionIndex = 0;
         this.placedSlots.clear();
         this.locked = false;
+        this._finishArmed = false;
+        this._loreDismiss = null;
+        this._drag = null;
+        this._mapView = { scale: 1, x: 0, y: 0 };
+        this.resetMapUiArtifacts();
 
         this.root.querySelectorAll(".l15-phase").forEach((el) => el.classList.add("hidden"));
         const intro = this.root.querySelector("#l15-phase-intro");
@@ -12081,6 +12094,52 @@ class Level15InterrogationScene {
         }
     }
 
+    /**
+     * 重置墨染/立绘/关卡槽交互态（通关后会 dim 槽位，二次进入必须清掉）
+     */
+    resetMapUiArtifacts() {
+        if (!this.root) return;
+
+        const art = this.root.querySelector("#l15-ship-art");
+        if (art) {
+            art.classList.add("hidden");
+            art.classList.remove("is-revealing", "is-visible");
+        }
+
+        const rail = this.root.querySelector("#l15-slot-rail");
+        rail?.classList.remove("is-dimmed");
+
+        const dropZone = this.root.querySelector("#l15-drop-zone");
+        dropZone?.classList.remove("hidden", "is-active", "is-hot");
+
+        const guide = this.root.querySelector("#l15-map-guide");
+        if (guide) {
+            guide.textContent = "将右侧关卡槽拖入地图中心 · 双指缩放";
+            guide.style.opacity = "";
+        }
+
+        const banner = this.root.querySelector("#l15-lore-banner");
+        if (banner) {
+            banner.classList.remove("is-show");
+            banner.hidden = true;
+            banner.style.opacity = "";
+        }
+
+        this.root.querySelectorAll(".l15-map-reveal").forEach((el) => {
+            el.classList.remove("is-open");
+            el.style.setProperty("--ink", "0%");
+            el.style.opacity = "";
+        });
+
+        const vp = this.root.querySelector("#l15-map-viewport");
+        if (vp) vp.style.transform = "";
+
+        document.querySelectorAll(".l15-slot-ghost").forEach((n) => n.remove());
+        this.root.querySelectorAll(".l15-slot.is-dragging-source").forEach((el) => {
+            el.classList.remove("is-dragging-source");
+        });
+    }
+
     stop() {
         this._teardownDrag();
         this._teardownMapZoom();
@@ -12089,6 +12148,9 @@ class Level15InterrogationScene {
         });
         this._unsubs = [];
         this._loreDismiss = null;
+        this._drag = null;
+        this.locked = false;
+        this._finishArmed = false;
         if (this.root) this.root.classList.add("hidden");
         this.phase = "idle";
     }
@@ -12432,6 +12494,10 @@ class Level15InterrogationScene {
 
     enterMap() {
         this.phase = "map";
+        this.placedSlots.clear();
+        this._finishArmed = false;
+        this.resetMapUiArtifacts();
+
         this.root.querySelector("#l15-phase-quiz")?.classList.add("hidden");
         const mapPhase = this.root.querySelector("#l15-phase-map");
         mapPhase?.classList.remove("hidden");
@@ -12462,7 +12528,7 @@ class Level15InterrogationScene {
             const pre = new Image();
             pre.src = shipUrl;
             const art = this.root.querySelector("#l15-ship-art");
-            if (art && !art.src) art.src = shipUrl;
+            if (art) art.src = shipUrl;
         } catch (e) { /* ignore */ }
 
         this.renderSlots();
