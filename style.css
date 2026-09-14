@@ -977,6 +977,8 @@ html, body {
     padding: 0 18px;
     z-index: 50;
     flex-shrink: 0;
+    position: relative;
+    overflow: visible;
 }
 
 .top-left-status {
@@ -1194,12 +1196,13 @@ html, body {
 
 .stage-map-floating-controls {
     position: absolute;
-    top: 10px;
+    top: calc(100% + 8px);
     right: 14px;
     display: flex;
     align-items: center;
     gap: 6px;
-    z-index: 25;
+    z-index: 55;
+    pointer-events: auto;
 }
 
 .stage-floating-btn {
@@ -3079,6 +3082,29 @@ html, body {
         background: rgba(56, 189, 248, 0.35) !important;
         border-color: #38bdf8 !important;
         transform: scale(0.97) !important;
+    }
+
+    /* 第三层：地图微控固定在顶栏，不随地图滚动 */
+    .stage-map-floating-controls {
+        position: static !important;
+        top: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        width: 100% !important;
+        justify-content: space-between !important;
+        gap: 4px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        z-index: 55 !important;
+    }
+
+    .stage-floating-btn {
+        flex: 1 !important;
+        min-height: 40px !important;
+        padding: 6px 4px !important;
+        font-size: 0.76rem !important;
+        border-radius: 8px !important;
+        white-space: nowrap !important;
     }
 
     /* 移动端抽屉式侧边栏 (彻底消灭顶部黑块遮挡) */
@@ -6006,8 +6032,27 @@ html, body {
     }
 
     .stage-map-floating-controls {
-        bottom: max(10px, env(safe-area-inset-bottom, 0px));
-        right: max(10px, env(safe-area-inset-right, 0px));
+        position: static !important;
+        top: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        left: auto !important;
+        width: 100% !important;
+        justify-content: flex-end !important;
+        gap: 6px !important;
+        z-index: 55 !important;
+        margin: 0 !important;
+        padding: 0 2px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .stage-floating-btn {
+        min-height: 36px !important;
+        min-width: 40px !important;
+        padding: 6px 10px !important;
+        font-size: 0.78rem !important;
+        border-radius: 8px !important;
+        flex: 0 0 auto !important;
     }
 
     .action-log-sidebar {

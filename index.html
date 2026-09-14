@@ -12,7 +12,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>拟态残响 (视觉小说·肉鸽探索·AI伪人杀)</title>
-    <link rel="stylesheet" href="./style.css?v=1789367008996">
+    <link rel="stylesheet" href="./style.css?v=1789367345307">
     <script>
     /* 竖屏全屏：用真实可视高度驱动 --app-height，避免地址栏裁切背景/界面 */
     (function () {
@@ -300,6 +300,14 @@
                 <button id="btn-save-progress" class="tool-btn">💾 存档</button>
                 <button id="btn-exit-to-menu" class="tool-btn">🚪 退出</button>
             </div>
+
+            <!-- 地图微控：挂在顶栏内，不随地图滚动挡视野 -->
+            <div class="stage-map-floating-controls" aria-label="地图视野控制">
+                <button id="btn-stage-map-focus" class="stage-floating-btn" title="切换：扇区聚焦 / 全舰全景">🔭 聚焦</button>
+                <button id="btn-stage-map-zoom-in" class="stage-floating-btn" title="放大 (+)">➕</button>
+                <button id="btn-stage-map-zoom-out" class="stage-floating-btn" title="缩小 (-)">➖</button>
+                <button id="btn-stage-map-reset" class="stage-floating-btn" title="回正视野 (🎯)">🎯</button>
+            </div>
         </header>
 
         <!-- 中部视口：左侧行动记录 + 中部探索操作台与立绘 -->
@@ -339,13 +347,6 @@
                 <!-- 0. 舞台全景战术地图直绘交互层 (直接铺满背景，支持点击房间直达移动) -->
                 <div id="stage-map-viewport" class="stage-map-viewport">
                     <canvas id="stage-map-canvas" class="stage-map-canvas"></canvas>
-                    <!-- 舞台地图悬浮微控工具 -->
-                    <div class="stage-map-floating-controls">
-                        <button id="btn-stage-map-focus" class="stage-floating-btn" title="切换：扇区聚焦 / 全舰全景">🔭 聚焦</button>
-                        <button id="btn-stage-map-zoom-in" class="stage-floating-btn" title="放大 (+)">➕</button>
-                        <button id="btn-stage-map-zoom-out" class="stage-floating-btn" title="缩小 (-)">➖</button>
-                        <button id="btn-stage-map-reset" class="stage-floating-btn" title="回正视野 (🎯)">🎯</button>
-                    </div>
 
                     <!-- 第四关专属：直接在星舰地图上演示的异象剧情演出层 -->
                     <div id="screen-level4-cutscene" class="map-cutscene-overlay hidden">
