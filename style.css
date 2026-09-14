@@ -1917,6 +1917,105 @@ html, body {
     -webkit-backdrop-filter: blur(5px);
 }
 
+/* 舰体舷窗态：遮罩更透，弹窗像嵌在舰身中央 */
+.modal-backdrop.over-menu-sky.ship-docked {
+    background: rgba(2, 6, 14, 0.22);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-backdrop.over-menu-sky.ship-docked .modal-box,
+.modal-backdrop.over-menu-sky.ship-docked .level-select-modal-box,
+.modal-backdrop.over-menu-sky.ship-docked .persona-modal-box,
+.modal-backdrop.over-menu-sky.ship-docked .talent-modal-box {
+    width: min(92vw, 720px);
+    max-height: min(68dvh, 620px);
+    border-radius: 14px;
+    border: 1px solid rgba(125, 211, 252, 0.55);
+    background:
+        linear-gradient(165deg, rgba(6, 16, 28, 0.94) 0%, rgba(8, 20, 34, 0.96) 55%, rgba(4, 10, 18, 0.97) 100%);
+    box-shadow:
+        0 0 0 1px rgba(56, 189, 248, 0.18) inset,
+        0 0 40px rgba(56, 189, 248, 0.28),
+        0 18px 48px rgba(0, 0, 0, 0.55);
+    transform-origin: 50% 45%;
+}
+
+.modal-backdrop.ship-docked.ship-window-enter .modal-box,
+.modal-backdrop.ship-docked.ship-window-enter .level-select-modal-box,
+.modal-backdrop.ship-docked.ship-window-enter .persona-modal-box,
+.modal-backdrop.ship-docked.ship-window-enter .talent-modal-box {
+    animation: shipWindowReveal 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.modal-backdrop.ship-docked.ship-window-exit .modal-box,
+.modal-backdrop.ship-docked.ship-window-exit .level-select-modal-box,
+.modal-backdrop.ship-docked.ship-window-exit .persona-modal-box,
+.modal-backdrop.ship-docked.ship-window-exit .talent-modal-box {
+    animation: shipWindowHide 0.42s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes shipWindowReveal {
+    from {
+        opacity: 0;
+        transform: translateY(18%) scale(0.86, 0.72);
+        filter: blur(8px);
+        clip-path: inset(42% 8% 42% 8% round 12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+        clip-path: inset(0 0 0 0 round 12px);
+    }
+}
+
+@keyframes shipWindowHide {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+        clip-path: inset(0 0 0 0 round 12px);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(12%) scale(0.9, 0.78);
+        filter: blur(6px);
+        clip-path: inset(38% 10% 38% 10% round 12px);
+    }
+}
+
+#screen-menu.menu-cinematic-focus .menu-container {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(10px) scale(0.98);
+    filter: blur(4px);
+    transition:
+        opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+        filter 0.45s ease;
+}
+
+#screen-menu .menu-container {
+    transition:
+        opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+        filter 0.45s ease;
+}
+
+@media (max-width: 768px) {
+    .modal-backdrop.over-menu-sky.ship-docked .modal-box,
+    .modal-backdrop.over-menu-sky.ship-docked .level-select-modal-box,
+    .modal-backdrop.over-menu-sky.ship-docked .persona-modal-box,
+    .modal-backdrop.over-menu-sky.ship-docked .talent-modal-box {
+        width: min(96vw, 520px);
+        max-height: min(62dvh, 560px);
+        padding: 12px 10px;
+    }
+}
+
 .modal-box {
     background: rgba(12, 18, 34, 0.98);
     border: 1px solid var(--border-cyan);

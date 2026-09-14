@@ -369,7 +369,7 @@ export class GameEngine {
             this.showLevelSelectModal();
         });
         document.getElementById("btn-close-level-select")?.addEventListener("click", () => {
-            this.modalLevelSelect?.classList.add("hidden");
+            this.closeMenuShipModal(this.modalLevelSelect);
         });
 
         // 主菜单：记忆图鉴 · 残响收录
@@ -377,7 +377,7 @@ export class GameEngine {
             this.showPersonaLogModal();
         });
         this.btnClosePersonaLog?.addEventListener("click", () => {
-            this.modalPersonaLog?.classList.add("hidden");
+            this.closeMenuShipModal(this.modalPersonaLog);
         });
 
         // 主菜单：定锚科技树入口
@@ -385,7 +385,7 @@ export class GameEngine {
             this.showTalentTreeModal();
         });
         this.btnCloseTalentTree?.addEventListener("click", () => {
-            this.modalTalentTree?.classList.add("hidden");
+            this.closeMenuShipModal(this.modalTalentTree);
         });
         this.btnTalentReset?.addEventListener("click", () => {
             this.handleTalentTreeReset();
@@ -652,9 +652,12 @@ export class GameEngine {
         this.screenLevel4Cutscene?.classList.add("hidden");
         this.screenGame.classList.add("hidden");
         this.modalLevelSelect?.classList.add("hidden");
+        this.modalLevelSelect?.classList.remove("ship-docked", "ship-window-enter", "ship-window-exit");
         this.modalMissions?.classList.add("hidden");
         this.modalPersonaLog?.classList.add("hidden");
+        this.modalPersonaLog?.classList.remove("ship-docked", "ship-window-enter", "ship-window-exit");
         this.modalTalentTree?.classList.add("hidden");
+        this.modalTalentTree?.classList.remove("ship-docked", "ship-window-enter", "ship-window-exit");
         this.modalEncounter?.classList.add("hidden");
         this.modalPowerRestore?.classList.add("hidden");
         this.modalInquiry?.classList.add("hidden");
@@ -662,6 +665,10 @@ export class GameEngine {
         this.modalNight?.classList.add("hidden");
         this.modalResult?.classList.add("hidden");
         this.hudMiniRadar?.classList.add("hidden");
+        this.setMenuCinematicFocus(false);
+        if (typeof MenuSkyShader !== "undefined" && MenuSkyShader.resetPose) {
+            MenuSkyShader.resetPose(true);
+        }
         this.updateMenuButtons();
         this.ensureMenuSky(true);
     }
@@ -707,11 +714,76 @@ export class GameEngine {
         }
     }
 
+    setMenuCinematicFocus(on) {
+        this.screenMenu?.classList.toggle("menu-cinematic-focus", !!on);
+    }
+
+    waitMs(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    /**
+     * 菜单舰体动效：推近 → 转向 → 舷窗浮现面板
+     * @param {"levels"|"archive"|"talent"} kind
+     */
+    async openMenuShipModal(modalEl, kind = "levels") {
+        if (!modalEl || this._menuShipBusy) return;
+        this._menuShipBusy = true;
+        try {
+            this.ensureMenuSky(true);
+            this.setMenuCinematicFocus(true);
+
+            const sky = (typeof MenuSkyShader !== "undefined") ? MenuSkyShader : null;
+            if (sky) {
+                if (kind === "archive" && sky.approachArchive) await sky.approachArchive();
+                else if (kind === "talent" && sky.approachTalent) await sky.approachTalent();
+                else if (sky.approachLevels) await sky.approachLevels();
+                else if (sky.animatePose) {
+                    await sky.animatePose({ zoom: 2.2, yaw: -0.5, face: 1, window: 1 }, { duration: 820 });
+                }
+            } else {
+                await this.waitMs(420);
+            }
+
+            this.applyMenuSkyBackdrop(modalEl);
+            modalEl.classList.add("ship-docked");
+            modalEl.classList.remove("ship-window-exit", "hidden");
+            modalEl.classList.add("ship-window-enter");
+            await this.waitMs(520);
+            modalEl.classList.remove("ship-window-enter");
+        } finally {
+            this._menuShipBusy = false;
+        }
+    }
+
+    /**
+     * 关闭舷窗并回退舰体姿态到初始闲置
+     */
+    async closeMenuShipModal(modalEl, { skipShipReset = false } = {}) {
+        if (!modalEl || modalEl.classList.contains("hidden")) return;
+        if (this._menuShipBusy) return;
+        this._menuShipBusy = true;
+        try {
+            modalEl.classList.remove("ship-window-enter");
+            modalEl.classList.add("ship-window-exit");
+            await this.waitMs(400);
+            modalEl.classList.add("hidden");
+            modalEl.classList.remove("ship-window-exit", "ship-docked");
+
+            if (!skipShipReset) {
+                const sky = (typeof MenuSkyShader !== "undefined") ? MenuSkyShader : null;
+                if (sky?.resetPose) await sky.resetPose(false);
+                this.setMenuCinematicFocus(false);
+            }
+        } finally {
+            this._menuShipBusy = false;
+        }
+    }
+
     showTalentTreeModal() {
         if (!this.modalTalentTree) return;
         this.renderTalentTreeUI();
-        this.applyMenuSkyBackdrop(this.modalTalentTree);
-        this.modalTalentTree.classList.remove("hidden");
+        this.openMenuShipModal(this.modalTalentTree, "talent");
     }
 
     async handleTalentTreeReset() {
@@ -1120,14 +1192,13 @@ export class GameEngine {
     }
 
     /**
-     * 打开扇区观测弹窗
+     * 打开扇区观测弹窗（先推近飞船再滑出舷窗）
      */
     showLevelSelectModal() {
         if (!this.modalLevelSelect) return;
         this.applyLevel15MetaUnlock();
         this.renderLevelSelectGrid();
-        this.applyMenuSkyBackdrop(this.modalLevelSelect);
-        this.modalLevelSelect.classList.remove("hidden");
+        this.openMenuShipModal(this.modalLevelSelect, "levels");
     }
 
     /**
@@ -1230,7 +1301,13 @@ export class GameEngine {
 
             card.addEventListener("click", () => {
                 if (isUnlocked) {
+                    // 进关卡：收起舷窗即可，不必回退舰体（即将离开菜单）
                     this.modalLevelSelect?.classList.add("hidden");
+                    this.modalLevelSelect?.classList.remove("ship-docked", "ship-window-enter", "ship-window-exit");
+                    this.setMenuCinematicFocus(false);
+                    if (typeof MenuSkyShader !== "undefined" && MenuSkyShader.stop) {
+                        MenuSkyShader.stop();
+                    }
                     this.startNewGame(i);
                 } else {
                     if (typeof Sound !== "undefined" && Sound.playTick) Sound.playTick();
@@ -6102,8 +6179,7 @@ export class GameEngine {
             this.activeArchiveEntryId = selectedEntryId;
         }
         this.renderPersonaLogModal();
-        this.applyMenuSkyBackdrop(this.modalPersonaLog);
-        this.modalPersonaLog.classList.remove("hidden");
+        this.openMenuShipModal(this.modalPersonaLog, "archive");
     }
 
     renderPersonaLogModal(_selectedCharId) {
