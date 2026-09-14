@@ -2032,12 +2032,34 @@ html, body {
     border-radius: 6px;
     background: linear-gradient(180deg, rgba(56, 189, 248, 0.18), rgba(14, 165, 233, 0.04));
     opacity: 0;
+    transform: scale(0.12);
+    transform-origin: 50% 85%;
     transition: opacity 0.35s ease;
 }
 
-.menu-hangar-fx.phase-hatch .hangar-slot-glow,
+.menu-hangar-fx.phase-hatch .hangar-slot-glow {
+    opacity: 0.55;
+    transform: scale(0.35);
+}
+
 .menu-hangar-fx.phase-tray .hangar-slot-glow {
     opacity: 1;
+    animation: hangarSlotBloom 0.72s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes hangarSlotBloom {
+    0% {
+        opacity: 0;
+        transform: scale(0.08);
+    }
+    45% {
+        opacity: 1;
+        transform: scale(1.08);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 .hangar-door {
@@ -2122,15 +2144,79 @@ html, body {
 @keyframes hangarTrayEject {
     0% {
         opacity: 0;
-        transform: translateY(42%) scale(0.72) rotateX(28deg);
+        transform: translateY(52%) scale(0.28) rotateX(32deg);
     }
     55% {
         opacity: 1;
-        transform: translateY(-4%) scale(1.02) rotateX(-2deg);
+        transform: translateY(-3%) scale(1.02) rotateX(-2deg);
     }
     100% {
         opacity: 1;
         transform: translateY(0) scale(1) rotateX(0deg);
+    }
+}
+
+/* 关卡槽：自舰舱口由小渐大、逐枚飞出 */
+.level-select-grid.slots-ejecting .level-card,
+#level-select-grid.slots-ejecting .level-card {
+    animation: slotFlyFromShip 0.52s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(0.16s + var(--slot-i, 0) * 0.024s);
+    transform-origin: 50% 115%;
+    will-change: transform, opacity;
+}
+
+.level-select-grid.slots-ejecting .level-sector-head,
+#level-select-grid.slots-ejecting .level-sector-head {
+    animation: slotSectorReveal 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(0.08s + var(--sector-i, 0) * 0.12s);
+}
+
+.level-sector-group:nth-child(1) { --sector-i: 0; }
+.level-sector-group:nth-child(2) { --sector-i: 1; }
+.level-sector-group:nth-child(3) { --sector-i: 2; }
+
+@keyframes slotFlyFromShip {
+    0% {
+        opacity: 0;
+        transform: translateY(72px) scale(0.06) rotateX(26deg);
+    }
+    55% {
+        opacity: 1;
+        transform: translateY(-4px) scale(1.05) rotateX(-3deg);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1) rotateX(0deg);
+    }
+}
+
+@keyframes slotFlyFromShipLocked {
+    0% {
+        opacity: 0;
+        transform: translateY(72px) scale(0.06) rotateX(26deg);
+    }
+    55% {
+        opacity: 0.42;
+        transform: translateY(-4px) scale(1.05) rotateX(-3deg);
+    }
+    100% {
+        opacity: 0.48;
+        transform: translateY(0) scale(1) rotateX(0deg);
+    }
+}
+
+#level-select-grid.slots-ejecting .level-card.level-locked {
+    animation-name: slotFlyFromShipLocked;
+}
+
+@keyframes slotSectorReveal {
+    0% {
+        opacity: 0;
+        transform: translateY(16px) scale(0.92);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
     }
 }
 
@@ -2185,8 +2271,13 @@ html, body {
     .hangar-ship-rig,
     .hangar-door,
     .menu-hangar-fx,
+    .hangar-slot-glow,
     .modal-backdrop.ship-docked.ship-window-enter .modal-box,
-    .modal-backdrop.ship-docked.ship-window-exit .modal-box {
+    .modal-backdrop.ship-docked.ship-window-exit .modal-box,
+    .level-select-grid.slots-ejecting .level-card,
+    #level-select-grid.slots-ejecting .level-card,
+    .level-select-grid.slots-ejecting .level-sector-head,
+    #level-select-grid.slots-ejecting .level-sector-head {
         transition: none !important;
         animation: none !important;
     }
@@ -3765,6 +3856,7 @@ html, body {
     display: flex;
     flex-direction: column;
     min-height: 0;
+    perspective: 900px;
 }
 
 .level-select-board {

@@ -479,7 +479,6 @@ export class GameEngine {
         // 主舞台大地图浮动微控工具
         document.getElementById("btn-stage-map-focus")?.addEventListener("click", () => {
             if (this.stageMapRenderer) {
-                this._stageMapUserPickedViewMode = true;
                 const newMode = this.stageMapRenderer.toggleViewMode();
                 const btn = document.getElementById("btn-stage-map-focus");
                 if (btn) btn.textContent = newMode === "full" ? "🌌 全景" : "🔭 聚焦";
@@ -797,8 +796,17 @@ export class GameEngine {
             modalEl.classList.add("ship-docked");
             modalEl.classList.remove("ship-window-exit", "hidden");
             modalEl.classList.add("ship-window-enter");
-            await this.waitMs(580);
+
+            const levelGrid = kind === "levels" ? this.levelGrid : null;
+            levelGrid?.classList.remove("slots-eject-played");
+            levelGrid?.classList.add("slots-ejecting");
+
+            const enterMs = kind === "levels" ? 1180 : 580;
+            await this.waitMs(enterMs);
+
             modalEl.classList.remove("ship-window-enter");
+            levelGrid?.classList.remove("slots-ejecting");
+            levelGrid?.classList.add("slots-eject-played");
         } finally {
             this._menuShipBusy = false;
         }
@@ -1336,6 +1344,7 @@ export class GameEngine {
             if (i === 1) card.setAttribute("data-legacy-id", "btn-menu-new-game");
             if (i === 2) card.setAttribute("data-legacy-id", "btn-menu-level2");
             card.setAttribute("data-level", String(i));
+            card.style.setProperty("--slot-i", String(i - 1));
             card.type = "button";
 
             // 不用 native disabled：锁定卡仍可点出 Toast 说明解锁条件
@@ -5495,11 +5504,6 @@ export class GameEngine {
     renderStageMap() {
         if (!this.stageMapRenderer && this.stageMapCanvas) {
             this.stageMapRenderer = new MapRenderer(this.stageMapCanvas);
-        }
-
-        // 手机竖屏：默认整舰等比缩小入画；用户手动切到聚焦后不再强行改回
-        if (this.stageMapRenderer && !this._stageMapUserPickedViewMode) {
-            this.stageMapRenderer.preferFullShipOnMobilePortrait();
         }
 
         const btnToggleFocus = document.getElementById("btn-stage-map-focus");
