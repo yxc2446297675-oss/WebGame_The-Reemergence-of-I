@@ -143,10 +143,19 @@ void main(){
 
     function resize() {
         if (!canvas) return;
-        // fixed 全屏：以视口为准，避免被半透明弹窗盖住后尺寸算错
-        const w = Math.max(2, window.innerWidth || document.documentElement.clientWidth || 2);
-        const h = Math.max(2, window.innerHeight || document.documentElement.clientHeight || 2);
-        const scale = isMobile() ? 0.55 : 0.75;
+        // 竖屏全屏：优先 visualViewport，避免移动端地址栏导致背景裁切/留白
+        const vv = window.visualViewport;
+        const w = Math.max(
+            2,
+            Math.round((vv && vv.width) || window.innerWidth || document.documentElement.clientWidth || 2)
+        );
+        const h = Math.max(
+            2,
+            Math.round((vv && vv.height) || window.innerHeight || document.documentElement.clientHeight || 2)
+        );
+        canvas.style.width = w + "px";
+        canvas.style.height = h + "px";
+        const scale = isMobile() ? 0.6 : 0.75;
         const bw = Math.max(2, Math.floor(w * scale));
         const bh = Math.max(2, Math.floor(h * scale));
         if (canvas.width !== bw || canvas.height !== bh) {
@@ -315,9 +324,16 @@ void main(){
         }
         if (typeof ResizeObserver !== "undefined") {
             resizeObs = new ResizeObserver(() => resize());
-            resizeObs.observe(canvas.parentElement || canvas);
-        } else {
-            window.addEventListener("resize", resize);
+            resizeObs.observe(document.documentElement);
+        }
+        window.addEventListener("resize", resize);
+        window.addEventListener("orientationchange", () => {
+            setTimeout(resize, 80);
+            setTimeout(resize, 320);
+        });
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener("resize", resize);
+            window.visualViewport.addEventListener("scroll", resize);
         }
         resize();
         return true;

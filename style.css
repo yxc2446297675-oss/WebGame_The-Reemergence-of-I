@@ -35,6 +35,9 @@ html, body {
     width: 100%;
     height: 100%;
     height: 100dvh; /* 适配移动端动态地址栏高度 */
+    min-height: 100svh;
+    min-height: -webkit-fill-available;
+    min-height: var(--app-height, 100dvh);
     overflow: hidden;
     background-color: var(--bg-space);
     color: var(--text-main);
@@ -55,11 +58,15 @@ html, body {
 #screen-menu {
     width: 100%;
     height: 100%;
+    height: 100dvh;
+    min-height: 100svh;
+    min-height: var(--app-height, 100dvh);
     display: flex;
     justify-content: center;
     align-items: flex-start;
     background: transparent;
-    position: relative;
+    position: fixed;
+    inset: 0;
     z-index: 100;
     overflow-x: hidden;
     overflow-y: auto;
@@ -72,12 +79,21 @@ html, body {
 /* 云间飞船 WebGL 背景：fixed 铺满，弹窗半透时仍可见 */
 .menu-sky-canvas {
     position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     inset: 0;
+    width: 100vw;
     width: 100%;
     height: 100%;
+    height: 100dvh;
+    min-height: 100svh;
+    min-height: var(--app-height, 100dvh);
     z-index: 1;
     pointer-events: none;
     display: block;
+    object-fit: cover;
     background:
         radial-gradient(ellipse 70% 50% at 50% 30%, #1a3048 0%, transparent 60%),
         linear-gradient(180deg, #060913 0%, #1a1520 45%, #3a2418 100%);
@@ -87,7 +103,16 @@ html, body {
 }
 .menu-sky-veil {
     position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     inset: 0;
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    min-height: 100svh;
+    min-height: var(--app-height, 100dvh);
     z-index: 2;
     pointer-events: none;
     /* 很轻，别把云海压没 */
@@ -414,12 +439,15 @@ html, body {
 #screen-q1-black, #screen-evening-black, #screen-death-black {
     width: 100%;
     height: 100%;
+    height: 100dvh;
+    min-height: var(--app-height, 100dvh);
     background-color: #000000;
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    position: absolute;
+    position: fixed;
     top: 0; left: 0;
+    inset: 0;
     z-index: 200;
     cursor: pointer;
     overflow-x: hidden;
@@ -923,9 +951,12 @@ html, body {
     width: 100%;
     height: 100%;
     height: 100dvh;
+    min-height: 100svh;
+    min-height: var(--app-height, 100dvh);
     display: flex;
     flex-direction: column;
-    position: relative;
+    position: fixed;
+    inset: 0;
     background: radial-gradient(circle at 60% 40%, #0d1527 0%, #050811 100%);
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -1590,6 +1621,8 @@ html, body {
     width: 100%;
     height: 100vh;
     height: 100dvh;
+    min-height: 100svh;
+    min-height: var(--app-height, 100dvh);
     background: #05070c;
     display: flex;
     align-items: center;
@@ -3224,12 +3257,43 @@ html, body {
 
     /* 主菜单手机端等比自适应 */
     #screen-menu {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100% !important;
+        height: var(--app-height, 100dvh) !important;
+        min-height: 100svh !important;
         padding: max(12px, env(safe-area-inset-top, 0px)) 10px max(12px, env(safe-area-inset-bottom, 0px)) !important;
+    }
+    .menu-sky-canvas,
+    .menu-sky-veil {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100% !important;
+        height: var(--app-height, 100dvh) !important;
+        min-height: 100svh !important;
+    }
+    #screen-game {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100% !important;
+        height: var(--app-height, 100dvh) !important;
+        min-height: 100svh !important;
+    }
+    .loading-screen,
+    #screen-q1-black,
+    #screen-evening-black,
+    #screen-death-black {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100% !important;
+        height: var(--app-height, 100dvh) !important;
+        min-height: 100svh !important;
     }
     .menu-container {
         width: min(94vw, 420px) !important;
         padding: 1.35rem 0.75rem 1rem !important;
         max-width: 420px !important;
+        max-height: none !important;
         box-sizing: border-box !important;
     }
     .menu-brand {
@@ -3253,6 +3317,8 @@ html, body {
         margin-bottom: 1.35rem !important;
     }
     .menu-actions {
+        display: flex !important;
+        flex-direction: column !important;
         gap: 0.48rem !important;
         margin-bottom: 1rem !important;
         width: 100% !important;
@@ -5114,9 +5180,9 @@ html, body {
    ========================================================================== */
 
 /* ==========================================================================
-   横屏排版精细化适配 (无论是原生横屏还是强制横屏，覆盖至 640px 手机与平板高度)
+   横屏排版精细化适配（仅横屏短高；竖屏游玩不受影响）
    ========================================================================== */
-@media (orientation: landscape) and (max-height: 640px), (max-height: 540px) {
+@media (orientation: landscape) and (max-height: 640px) {
     /* 顶栏紧凑化 */
     .game-top-bar {
         height: 38px;

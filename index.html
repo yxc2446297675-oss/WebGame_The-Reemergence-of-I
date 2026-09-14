@@ -5,13 +5,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="description" content="拟态残响 — 融合视觉小说叙事、肉鸽地图探索与 AI 伪人杀推理的网页原生单页游戏。">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>拟态残响 (视觉小说·肉鸽探索·AI伪人杀)</title>
-    <link rel="stylesheet" href="./style.css?v=1789365901435">
+    <link rel="stylesheet" href="./style.css?v=1789367008996">
+    <script>
+    /* 竖屏全屏：用真实可视高度驱动 --app-height，避免地址栏裁切背景/界面 */
+    (function () {
+        function setAppHeight() {
+            var h = (window.visualViewport && window.visualViewport.height)
+                || window.innerHeight
+                || document.documentElement.clientHeight
+                || 0;
+            if (h > 0) {
+                document.documentElement.style.setProperty("--app-height", Math.round(h) + "px");
+            }
+        }
+        setAppHeight();
+        window.addEventListener("resize", setAppHeight, { passive: true });
+        window.addEventListener("orientationchange", function () {
+            setTimeout(setAppHeight, 80);
+            setTimeout(setAppHeight, 320);
+        });
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener("resize", setAppHeight, { passive: true });
+            window.visualViewport.addEventListener("scroll", setAppHeight, { passive: true });
+        }
+    })();
+    </script>
 </head>
 <body>
 
@@ -934,7 +959,7 @@
     <div id="app-toast" class="app-toast" role="status" aria-live="polite"></div>
 
     <!-- 游戏启动引导脚本 (defer + BootLoader 回调；虎扑等宿主友好) -->
-    <script defer src="js/app.bundle.js?v=1789365901435" onload="window.__BootLoader && window.__BootLoader.onBundleLoaded && window.__BootLoader.onBundleLoaded()" onerror="window.__BootLoader && window.__BootLoader.onBundleError && window.__BootLoader.onBundleError()"></script>
+    <script defer src="js/app.bundle.js?v=1789367008996" onload="window.__BootLoader && window.__BootLoader.onBundleLoaded && window.__BootLoader.onBundleLoaded()" onerror="window.__BootLoader && window.__BootLoader.onBundleError && window.__BootLoader.onBundleError()"></script>
 </body>
 </html>
 
