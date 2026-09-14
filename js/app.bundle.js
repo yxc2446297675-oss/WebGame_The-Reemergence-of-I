@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-14T06:36:05.451Z
+ * 自动生成于 2026-09-14T06:40:44.675Z
  */
 (function() {
     'use strict';
@@ -8245,6 +8245,57 @@ class MapRenderer {
     }
 
     /**
+     * 竖屏船外星空：星云光晕 + 星点，让缩小后的舰体周围有可辨认的「舷外景色」
+     */
+    drawExteriorSpaceScenery(ctx, displayW, displayH, atmosphere = {}) {
+        if (!ctx) return;
+        ctx.save();
+        const cx = displayW * 0.5;
+        const cy = displayH * 0.42;
+
+        const nebula = ctx.createRadialGradient(cx, cy, 8, cx, cy, Math.max(displayW, displayH) * 0.72);
+        nebula.addColorStop(0, "rgba(56, 120, 180, 0.28)");
+        nebula.addColorStop(0.35, "rgba(90, 60, 140, 0.16)");
+        nebula.addColorStop(0.7, "rgba(20, 30, 60, 0.08)");
+        nebula.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = nebula;
+        ctx.fillRect(0, 0, displayW, displayH);
+
+        const horizon = ctx.createLinearGradient(0, displayH * 0.55, 0, displayH);
+        horizon.addColorStop(0, "rgba(0,0,0,0)");
+        horizon.addColorStop(0.55, "rgba(180, 90, 40, 0.10)");
+        horizon.addColorStop(1, "rgba(40, 18, 8, 0.22)");
+        ctx.fillStyle = horizon;
+        ctx.fillRect(0, 0, displayW, displayH);
+
+        const seed = Math.floor(displayW * 7 + displayH * 13);
+        const count = Math.min(120, Math.floor((displayW * displayH) / 2800));
+        for (let i = 0; i < count; i++) {
+            const n = (seed * (i + 3) * 1103515245 + 12345) >>> 0;
+            const x = (n % 1000) / 1000 * displayW;
+            const y = ((n >>> 10) % 1000) / 1000 * displayH;
+            const r = ((n >>> 20) % 3) + 0.6;
+            const a = 0.35 + ((n >>> 24) % 50) / 100;
+            ctx.fillStyle = `rgba(226, 232, 240, ${a})`;
+            ctx.beginPath();
+            ctx.arc(x, y, r * 0.55, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        const vignette = ctx.createRadialGradient(
+            cx, cy,
+            Math.min(displayW, displayH) * 0.12,
+            cx, cy,
+            Math.min(displayW, displayH) * 0.55
+        );
+        vignette.addColorStop(0, "rgba(5, 10, 22, 0.18)");
+        vignette.addColorStop(1, "rgba(5, 10, 22, 0)");
+        ctx.fillStyle = vignette;
+        ctx.fillRect(0, 0, displayW, displayH);
+        ctx.restore();
+    }
+
+    /**
      * 屏幕空间阶段光感：色温罩、径向雾、边缘辉光、伤亡血洗、警报闪烁
      */
     drawPhaseAtmosphereOverlay(ctx, displayW, displayH, profile, options = {}) {
@@ -8597,12 +8648,19 @@ class MapRenderer {
     /** 竖屏优先切到全舰等比全景（可手动再切回聚焦） */
     preferFullShipOnMobilePortrait() {
         if (!MapRenderer.isMobilePortrait()) return false;
-        if (this.viewMode === "full") return false;
-        this.viewMode = "full";
-        this.panX = 0;
-        this.panY = 0;
-        this.zoom = 1.0;
-        return true;
+        let changed = false;
+        if (this.viewMode !== "full") {
+            this.viewMode = "full";
+            changed = true;
+        }
+        // 强制回到可看见船外景色的基准缩放
+        if (this.zoom !== 1 || this.panX !== 0 || this.panY !== 0) {
+            this.zoom = 1.0;
+            this.panX = 0;
+            this.panY = 0;
+            changed = true;
+        }
+        return changed;
     }
 
     /**
@@ -8732,31 +8790,36 @@ class MapRenderer {
         let baseScale = 1.0;
         const mobilePortrait = MapRenderer.isMobilePortrait();
 
-        if (this.viewMode === "full") {
-            // 竖屏略减边距，把整舰尽量铺满可视区域（仍严格等比）
-            const padX = mobilePortrait ? 10 : 24;
-            const padY = mobilePortrait ? 14 : 24;
+        if (this.viewMode === "full" || mobilePortrait) {
+            // 竖屏：整舰大幅缩小，四周留出船外星空；桌面全景仍贴边适配
+            const padX = mobilePortrait ? Math.max(28, displayW * 0.22) : 24;
+            const padY = mobilePortrait ? Math.max(36, displayH * 0.18) : 24;
             const scaleX = (displayW - padX * 2) / layout.shipWorldW;
             const scaleY = (displayH - padY * 2) / layout.shipWorldH;
-            baseScale = Math.min(scaleX, scaleY); // 严格等比 Math.min，杜绝任何形变！
-            // 竖屏再略收一点，避免顶栏/底栏裁切船体外轮廓
+            baseScale = Math.min(scaleX, scaleY);
             if (mobilePortrait) {
-                baseScale *= 0.96;
+                // 再压一档：舰体约占屏宽约一半，船外景色必须进画
+                baseScale *= this.viewMode === "full" ? 0.88 : 0.72;
             }
-            targetCamX = shipCenterX;
-            targetCamY = shipCenterY;
-        } else {
-            // 聚焦模式：竖屏也按屏宽等比收敛，避免放得过大只剩局部
-            const minDim = Math.min(displayW, displayH);
-            if (mobilePortrait) {
-                const fitX = (displayW - 20) / layout.shipWorldW;
-                const fitY = (displayH - 28) / layout.shipWorldH;
-                const fitFull = Math.min(fitX, fitY);
-                // 聚焦约为全舰 1.55 倍，仍能看见周围舱室
-                baseScale = Math.max(fitFull * 1.35, Math.min(1.15, minDim / 480));
+            if (this.viewMode === "full" || !mobilePortrait) {
+                targetCamX = shipCenterX;
+                targetCamY = shipCenterY;
             } else {
-                baseScale = Math.max(0.75, Math.min(1.35, minDim / 440));
+                // 竖屏聚焦：仍用缩小后的全景尺度，但镜头跟当前舱室
+                const curN = levelMap.nodes[currentNodeId];
+                if (animatedMarker) {
+                    targetCamX = animatedMarker.x;
+                    targetCamY = animatedMarker.y;
+                } else if (curN) {
+                    const cp = this.getNodeCenter(curN);
+                    targetCamX = cp.x;
+                    targetCamY = cp.y;
+                }
             }
+        } else {
+            // 桌面聚焦模式
+            const minDim = Math.min(displayW, displayH);
+            baseScale = Math.max(0.75, Math.min(1.35, minDim / 440));
             const curN = levelMap.nodes[currentNodeId];
             if (animatedMarker) {
                 targetCamX = animatedMarker.x;
@@ -8776,25 +8839,43 @@ class MapRenderer {
         ctx.fillStyle = atmosphere.bg;
         ctx.fillRect(0, 0, displayW, displayH);
 
+        // 竖屏：先画船外星空景色层（星点 / 星云），再叠舰体，避免「舰体贴满屏」
+        if (mobilePortrait) {
+            this.drawExteriorSpaceScenery(ctx, displayW, displayH, atmosphere);
+        }
+
         ctx.save();
         // 应用居中锚定 + 用户平移 + 统一等比缩放矩阵变换
         ctx.translate(displayW / 2 + this.panX, displayH / 2 + this.panY);
         ctx.scale(uniformScale, uniformScale);
         ctx.translate(-targetCamX, -targetCamY);
 
-        // 绘制微弱背景装甲格栅
+        // 绘制微弱背景装甲格栅（竖屏扩大船外网格范围，显出舷外空间）
         ctx.strokeStyle = atmosphere.grid;
         ctx.lineWidth = 1;
         const gridSize = 32;
-        const gridMinX = -200;
-        const gridMaxX = layout.shipWorldW + 200;
-        const gridMinY = -200;
-        const gridMaxY = layout.shipWorldH + 200;
+        const gridPad = mobilePortrait ? 520 : 200;
+        const gridMinX = -gridPad;
+        const gridMaxX = layout.shipWorldW + gridPad;
+        const gridMinY = -gridPad;
+        const gridMaxY = layout.shipWorldH + gridPad;
         for (let x = gridMinX; x < gridMaxX; x += gridSize) {
             ctx.beginPath(); ctx.moveTo(x, gridMinY); ctx.lineTo(x, gridMaxY); ctx.stroke();
         }
         for (let y = gridMinY; y < gridMaxY; y += gridSize) {
             ctx.beginPath(); ctx.moveTo(gridMinX, y); ctx.lineTo(gridMaxX, y); ctx.stroke();
+        }
+
+        // 竖屏：舰体外淡轮廓光环，强调「船在星空中」而不是铺满战术板
+        if (mobilePortrait) {
+            ctx.save();
+            ctx.strokeStyle = "rgba(125, 211, 252, 0.18)";
+            ctx.lineWidth = 10;
+            ctx.strokeRect(-36, -36, layout.shipWorldW + 72, layout.shipWorldH + 72);
+            ctx.strokeStyle = "rgba(56, 189, 248, 0.28)";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(-18, -18, layout.shipWorldW + 36, layout.shipWorldH + 36);
+            ctx.restore();
         }
 
         // 2. 计算视野迷雾：已探明房间 + 其直接相邻一格的房间
