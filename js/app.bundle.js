@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-14T07:21:40.966Z
+ * 自动生成于 2026-09-14T07:23:06.515Z
  */
 (function() {
     'use strict';
@@ -12695,6 +12695,7 @@ class Level15InterrogationScene {
         if (!list || !stage) return;
 
         const onPointerDown = (e) => {
+            if (this.phase !== "map") return;
             const btn = e.target.closest(".l15-slot");
             if (!btn || btn.disabled || btn.classList.contains("is-placed")) return;
             e.preventDefault();
@@ -12751,7 +12752,7 @@ class Level15InterrogationScene {
             dropZone?.classList.remove("is-active", "is-hot");
             this._drag = null;
 
-            if (inside) {
+            if (inside && this.phase === "map") {
                 this.placeSlot(slotId);
             }
         };
@@ -12760,16 +12761,26 @@ class Level15InterrogationScene {
         window.addEventListener("pointermove", onPointerMove);
         window.addEventListener("pointerup", onPointerUp);
         window.addEventListener("pointercancel", onPointerUp);
-        this._unsubs.push(() => list.removeEventListener("pointerdown", onPointerDown));
-        this._unsubs.push(() => window.removeEventListener("pointermove", onPointerMove));
-        this._unsubs.push(() => window.removeEventListener("pointerup", onPointerUp));
-        this._unsubs.push(() => window.removeEventListener("pointercancel", onPointerUp));
+        // 独立于 _unsubs，便于 enterMap 重复挂载时正确拆除
+        this._dragUnsubs = [
+            () => list.removeEventListener("pointerdown", onPointerDown),
+            () => window.removeEventListener("pointermove", onPointerMove),
+            () => window.removeEventListener("pointerup", onPointerUp),
+            () => window.removeEventListener("pointercancel", onPointerUp)
+        ];
     }
 
     _teardownDrag() {
+        (this._dragUnsubs || []).forEach((fn) => {
+            try { fn(); } catch (e) { /* ignore */ }
+        });
+        this._dragUnsubs = [];
         if (this._drag?.ghost) this._drag.ghost.remove();
         this._drag = null;
         document.querySelectorAll(".l15-slot-ghost").forEach((n) => n.remove());
+        this.root?.querySelectorAll(".l15-slot.is-dragging-source").forEach((el) => {
+            el.classList.remove("is-dragging-source");
+        });
     }
 
     placeSlot(slotId) {
