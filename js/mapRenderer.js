@@ -870,7 +870,8 @@ export class MapRenderer {
         this.animating = false;
         this.animationFrameId = null;
         this.skipAnimation = null;
-        this.viewMode = "focus"; // "focus" | "full"
+        // 手机竖屏默认全舰全景等比适配，避免只看到局部浪费屏幕
+        this.viewMode = MapRenderer.isMobilePortrait() ? "full" : "focus";
 
         // 交互平移与缩放引擎属性 (工业化标准：支持手机双指锚点缩放、单指1:1平移、双击聚焦复位、滚轮光标锚点缩放)
         this.panX = 0;
@@ -902,6 +903,23 @@ export class MapRenderer {
         if (opts.interactive !== false) {
             this.initInteractiveGestures();
         }
+    }
+
+    /** 手机竖屏游玩：窄屏且高≥宽 */
+    static isMobilePortrait() {
+        if (typeof window === "undefined") return false;
+        const w = window.innerWidth || document.documentElement.clientWidth || 0;
+        const h = window.innerHeight || document.documentElement.clientHeight || 0;
+        const narrow = w > 0 && w <= 768;
+        const portrait = h >= w;
+        try {
+            if (window.matchMedia) {
+                const mqNarrow = window.matchMedia("(max-width: 768px)").matches;
+                const mqPortrait = window.matchMedia("(orientation: portrait)").matches;
+                return (mqNarrow || narrow) && (mqPortrait || portrait);
+            }
+        } catch (_) { /* ignore */ }
+        return narrow && portrait;
     }
 
     /**
@@ -1266,11 +1284,14 @@ export class MapRenderer {
     }
 
     zoomIn() {
-        this.animateCameraTo({ zoom: Math.min(3.5, this.zoom * 1.3) }, 200);
+        const maxZ = MapRenderer.isMobilePortrait() ? 2.8 : 3.5;
+        this.animateCameraTo({ zoom: Math.min(maxZ, this.zoom * 1.3) }, 200);
     }
 
     zoomOut() {
-        this.animateCameraTo({ zoom: Math.max(0.45, this.zoom * 0.77) }, 200);
+        // 竖屏允许缩得更小，方便一眼看全舰
+        const minZ = MapRenderer.isMobilePortrait() ? 0.35 : 0.45;
+        this.animateCameraTo({ zoom: Math.max(minZ, this.zoom * 0.77) }, 200);
     }
 
     /**
@@ -1280,6 +1301,17 @@ export class MapRenderer {
         this.viewMode = this.viewMode === "focus" ? "full" : "focus";
         this.animateCameraTo({ panX: 0, panY: 0, zoom: 1.0 }, 300);
         return this.viewMode;
+    }
+
+    /** 竖屏优先切到全舰等比全景（可手动再切回聚焦） */
+    preferFullShipOnMobilePortrait() {
+        if (!MapRenderer.isMobilePortrait()) return false;
+        if (this.viewMode === "full") return false;
+        this.viewMode = "full";
+        this.panX = 0;
+        this.panY = 0;
+        this.zoom = 1.0;
+        return true;
     }
 
     /**
@@ -1407,19 +1439,33 @@ export class MapRenderer {
         let targetCamX = shipCenterX;
         let targetCamY = shipCenterY;
         let baseScale = 1.0;
+        const mobilePortrait = MapRenderer.isMobilePortrait();
 
         if (this.viewMode === "full") {
-            const padX = 24;
-            const padY = 24;
+            // 竖屏略减边距，把整舰尽量铺满可视区域（仍严格等比）
+            const padX = mobilePortrait ? 10 : 24;
+            const padY = mobilePortrait ? 14 : 24;
             const scaleX = (displayW - padX * 2) / layout.shipWorldW;
             const scaleY = (displayH - padY * 2) / layout.shipWorldH;
             baseScale = Math.min(scaleX, scaleY); // 严格等比 Math.min，杜绝任何形变！
+            // 竖屏再略收一点，避免顶栏/底栏裁切船体外轮廓
+            if (mobilePortrait) {
+                baseScale *= 0.96;
+            }
             targetCamX = shipCenterX;
             targetCamY = shipCenterY;
         } else {
-            // 聚焦模式
+            // 聚焦模式：竖屏也按屏宽等比收敛，避免放得过大只剩局部
             const minDim = Math.min(displayW, displayH);
-            baseScale = Math.max(0.75, Math.min(1.35, minDim / 440));
+            if (mobilePortrait) {
+                const fitX = (displayW - 20) / layout.shipWorldW;
+                const fitY = (displayH - 28) / layout.shipWorldH;
+                const fitFull = Math.min(fitX, fitY);
+                // 聚焦约为全舰 1.55 倍，仍能看见周围舱室
+                baseScale = Math.max(fitFull * 1.35, Math.min(1.15, minDim / 480));
+            } else {
+                baseScale = Math.max(0.75, Math.min(1.35, minDim / 440));
+            }
             const curN = levelMap.nodes[currentNodeId];
             if (animatedMarker) {
                 targetCamX = animatedMarker.x;

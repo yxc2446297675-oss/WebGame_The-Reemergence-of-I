@@ -479,6 +479,7 @@ export class GameEngine {
         // 主舞台大地图浮动微控工具
         document.getElementById("btn-stage-map-focus")?.addEventListener("click", () => {
             if (this.stageMapRenderer) {
+                this._stageMapUserPickedViewMode = true;
                 const newMode = this.stageMapRenderer.toggleViewMode();
                 const btn = document.getElementById("btn-stage-map-focus");
                 if (btn) btn.textContent = newMode === "full" ? "🌌 全景" : "🔭 聚焦";
@@ -5358,6 +5359,11 @@ export class GameEngine {
     renderStageMap() {
         if (!this.stageMapRenderer && this.stageMapCanvas) {
             this.stageMapRenderer = new MapRenderer(this.stageMapCanvas);
+        }
+
+        // 手机竖屏：默认整舰等比缩小入画；用户手动切到聚焦后不再强行改回
+        if (this.stageMapRenderer && !this._stageMapUserPickedViewMode) {
+            this.stageMapRenderer.preferFullShipOnMobilePortrait();
         }
 
         const btnToggleFocus = document.getElementById("btn-stage-map-focus");
