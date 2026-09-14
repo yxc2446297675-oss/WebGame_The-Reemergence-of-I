@@ -1,6 +1,6 @@
 /**
  * DOPPELGANGER 完整打包脚本 (开箱即用，支持 file:// 本地双击直接畅玩)
- * 自动生成于 2026-09-14T06:40:44.675Z
+ * 自动生成于 2026-09-14T06:41:13.282Z
  */
 (function() {
     'use strict';
@@ -8648,19 +8648,12 @@ class MapRenderer {
     /** 竖屏优先切到全舰等比全景（可手动再切回聚焦） */
     preferFullShipOnMobilePortrait() {
         if (!MapRenderer.isMobilePortrait()) return false;
-        let changed = false;
-        if (this.viewMode !== "full") {
-            this.viewMode = "full";
-            changed = true;
-        }
-        // 强制回到可看见船外景色的基准缩放
-        if (this.zoom !== 1 || this.panX !== 0 || this.panY !== 0) {
-            this.zoom = 1.0;
-            this.panX = 0;
-            this.panY = 0;
-            changed = true;
-        }
-        return changed;
+        if (this.viewMode === "full") return false;
+        this.viewMode = "full";
+        this.panX = 0;
+        this.panY = 0;
+        this.zoom = 1.0;
+        return true;
     }
 
     /**
