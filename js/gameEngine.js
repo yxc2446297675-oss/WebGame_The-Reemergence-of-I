@@ -666,8 +666,11 @@ export class GameEngine {
         this.modalResult?.classList.add("hidden");
         this.hudMiniRadar?.classList.add("hidden");
         this.setMenuCinematicFocus(false);
-        if (typeof MenuSkyShader !== "undefined" && MenuSkyShader.resetPose) {
-            MenuSkyShader.resetPose(true);
+        const hangar = document.getElementById("menu-hangar-fx");
+        hangar?.classList.remove("is-active", "phase-approach", "phase-face", "phase-hatch", "phase-tray");
+        if (typeof MenuSkyShader !== "undefined") {
+            if (MenuSkyShader.resetPose) MenuSkyShader.resetPose(true);
+            if (MenuSkyShader.setCinematicLite) MenuSkyShader.setCinematicLite(false);
         }
         this.updateMenuButtons();
         this.ensureMenuSky(true);
@@ -718,12 +721,53 @@ export class GameEngine {
         this.screenMenu?.classList.toggle("menu-cinematic-focus", !!on);
     }
 
+    getHangarFx() {
+        return document.getElementById("menu-hangar-fx");
+    }
+
+    setHangarPhase(phase) {
+        const fx = this.getHangarFx();
+        if (!fx) return;
+        fx.classList.remove("phase-approach", "phase-face", "phase-hatch", "phase-tray");
+        if (phase) fx.classList.add(`phase-${phase}`);
+    }
+
+    async activateHangarFx(kind = "levels") {
+        const fx = this.getHangarFx();
+        if (!fx) return;
+        fx.classList.add("is-active");
+        fx.setAttribute("aria-hidden", "false");
+        // 不同入口略不同初始朝向，靠 CSS 变量也可；此处用 class 区分
+        fx.dataset.kind = kind;
+        this.setHangarPhase("approach");
+        await this.waitMs(280);
+        this.setHangarPhase("face");
+        await this.waitMs(420);
+        this.setHangarPhase("hatch");
+        await this.waitMs(480);
+        this.setHangarPhase("tray");
+    }
+
+    async deactivateHangarFx() {
+        const fx = this.getHangarFx();
+        if (!fx) return;
+        this.setHangarPhase("hatch");
+        await this.waitMs(120);
+        this.setHangarPhase("face");
+        await this.waitMs(280);
+        this.setHangarPhase("approach");
+        await this.waitMs(320);
+        fx.classList.remove("is-active", "phase-approach", "phase-face", "phase-hatch", "phase-tray");
+        fx.setAttribute("aria-hidden", "true");
+        delete fx.dataset.kind;
+    }
+
     waitMs(ms) {
         return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
     /**
-     * 菜单舰体动效：推近 → 转向 → 舷窗浮现面板
+     * 菜单机械动效：舱门对开 → 托盘弹出（对标磁带开盖/推入）
      * @param {"levels"|"archive"|"talent"} kind
      */
     async openMenuShipModal(modalEl, kind = "levels") {
@@ -731,25 +775,29 @@ export class GameEngine {
         this._menuShipBusy = true;
         try {
             this.ensureMenuSky(true);
+            const sky = (typeof MenuSkyShader !== "undefined") ? MenuSkyShader : null;
+            if (sky?.setCinematicLite) sky.setCinematicLite(true);
+
             this.setMenuCinematicFocus(true);
 
-            const sky = (typeof MenuSkyShader !== "undefined") ? MenuSkyShader : null;
-            if (sky) {
-                if (kind === "archive" && sky.approachArchive) await sky.approachArchive();
-                else if (kind === "talent" && sky.approachTalent) await sky.approachTalent();
-                else if (sky.approachLevels) await sky.approachLevels();
-                else if (sky.animatePose) {
-                    await sky.animatePose({ zoom: 2.2, yaw: -0.5, face: 1, window: 1 }, { duration: 820 });
-                }
-            } else {
-                await this.waitMs(420);
-            }
+            // 背景轻推近（低开销）与 DOM 舱门并行
+            const approachP = sky
+                ? (kind === "archive" && sky.approachArchive
+                    ? sky.approachArchive()
+                    : kind === "talent" && sky.approachTalent
+                        ? sky.approachTalent()
+                        : sky.approachLevels
+                            ? sky.approachLevels()
+                            : Promise.resolve())
+                : Promise.resolve();
+
+            await Promise.all([approachP, this.activateHangarFx(kind)]);
 
             this.applyMenuSkyBackdrop(modalEl);
             modalEl.classList.add("ship-docked");
             modalEl.classList.remove("ship-window-exit", "hidden");
             modalEl.classList.add("ship-window-enter");
-            await this.waitMs(520);
+            await this.waitMs(580);
             modalEl.classList.remove("ship-window-enter");
         } finally {
             this._menuShipBusy = false;
@@ -757,7 +805,7 @@ export class GameEngine {
     }
 
     /**
-     * 关闭舷窗并回退舰体姿态到初始闲置
+     * 关闭：托盘收回 → 舱门合上 → 飞船转回
      */
     async closeMenuShipModal(modalEl, { skipShipReset = false } = {}) {
         if (!modalEl || modalEl.classList.contains("hidden")) return;
@@ -766,14 +814,21 @@ export class GameEngine {
         try {
             modalEl.classList.remove("ship-window-enter");
             modalEl.classList.add("ship-window-exit");
-            await this.waitMs(400);
+            await this.waitMs(380);
             modalEl.classList.add("hidden");
             modalEl.classList.remove("ship-window-exit", "ship-docked");
 
             if (!skipShipReset) {
+                await this.deactivateHangarFx();
                 const sky = (typeof MenuSkyShader !== "undefined") ? MenuSkyShader : null;
                 if (sky?.resetPose) await sky.resetPose(false);
+                if (sky?.setCinematicLite) sky.setCinematicLite(false);
                 this.setMenuCinematicFocus(false);
+            } else {
+                const fx = this.getHangarFx();
+                fx?.classList.remove("is-active", "phase-approach", "phase-face", "phase-hatch", "phase-tray");
+                const sky = (typeof MenuSkyShader !== "undefined") ? MenuSkyShader : null;
+                if (sky?.setCinematicLite) sky.setCinematicLite(false);
             }
         } finally {
             this._menuShipBusy = false;

@@ -1910,20 +1910,181 @@ html, body {
     box-sizing: border-box;
 }
 
-/* 主菜单打开的弹窗：半透明，保留星际飞船背景 */
+/* 主菜单打开的弹窗：半透明，保留星际飞船背景（动效期禁用 blur 防卡顿） */
 .modal-backdrop.over-menu-sky {
-    background: rgba(4, 8, 18, 0.38);
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
+    background: rgba(4, 8, 18, 0.42);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
 }
 
-/* 舰体舷窗态：遮罩更透，弹窗像嵌在舰身中央 */
+/* ========== 机械舱门舞台（对标磁带开盖 / 卡带推入） ========== */
+.menu-hangar-fx {
+    position: fixed;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    display: grid;
+    place-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.28s ease, visibility 0.28s ease;
+    perspective: 1200px;
+}
+
+.menu-hangar-fx.is-active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.hangar-ship-rig {
+    width: min(92vw, 560px);
+    height: min(42vw, 260px);
+    transform-style: preserve-3d;
+    transform: rotateY(-58deg) rotateX(8deg) scale(0.72) translate3d(-8%, 6%, 0);
+    transition: transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+}
+
+.menu-hangar-fx.phase-approach .hangar-ship-rig {
+    transform: rotateY(-18deg) rotateX(4deg) scale(0.92) translate3d(0, 2%, 0);
+}
+
+.menu-hangar-fx.phase-face .hangar-ship-rig {
+    transform: rotateY(0deg) rotateX(2deg) scale(1.05) translate3d(0, 0, 0);
+}
+
+.menu-hangar-fx.phase-hatch .hangar-ship-rig,
+.menu-hangar-fx.phase-tray .hangar-ship-rig {
+    transform: rotateY(0deg) rotateX(0deg) scale(1.08) translate3d(0, -2%, 0);
+}
+
+.hangar-ship-body {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 48% / 42%;
+    background:
+        radial-gradient(ellipse 70% 80% at 50% 45%, #1a2438 0%, #0a101c 55%, #05070e 100%);
+    border: 2px solid rgba(148, 180, 210, 0.35);
+    box-shadow:
+        0 0 0 1px rgba(56, 189, 248, 0.12) inset,
+        0 20px 50px rgba(0, 0, 0, 0.55);
+    overflow: hidden;
+}
+
+.hangar-wing {
+    position: absolute;
+    top: 42%;
+    width: 22%;
+    height: 18%;
+    background: linear-gradient(90deg, #0c1422, #1a2740);
+    border: 1px solid rgba(125, 211, 252, 0.2);
+}
+.hangar-wing-l { left: -6%; border-radius: 40% 8% 8% 40%; transform: skewY(-6deg); }
+.hangar-wing-r { right: -6%; border-radius: 8% 40% 40% 8%; transform: skewY(6deg); }
+
+.hangar-bridge {
+    position: absolute;
+    top: 10%;
+    left: 50%;
+    width: 28%;
+    height: 16%;
+    transform: translateX(-50%);
+    border-radius: 40% 40% 20% 20%;
+    background: #121c2e;
+    border: 1px solid rgba(125, 211, 252, 0.28);
+}
+
+.hangar-engine {
+    position: absolute;
+    left: 6%;
+    top: 38%;
+    width: 10%;
+    height: 24%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(120, 230, 255, 0.85), rgba(40, 100, 255, 0.15) 60%, transparent 70%);
+    opacity: 0.7;
+    animation: hangarEnginePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes hangarEnginePulse {
+    0%, 100% { opacity: 0.45; transform: scaleX(0.9); }
+    50% { opacity: 0.9; transform: scaleX(1.15); }
+}
+
+.hangar-bay {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 54%;
+    height: 58%;
+    transform: translate(-50%, -50%);
+    border-radius: 10px;
+    overflow: hidden;
+    background: #02060c;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    box-shadow: 0 0 24px rgba(56, 189, 248, 0.18) inset;
+}
+
+.hangar-slot-glow {
+    position: absolute;
+    inset: 18%;
+    border-radius: 6px;
+    background: linear-gradient(180deg, rgba(56, 189, 248, 0.18), rgba(14, 165, 233, 0.04));
+    opacity: 0;
+    transition: opacity 0.35s ease;
+}
+
+.menu-hangar-fx.phase-hatch .hangar-slot-glow,
+.menu-hangar-fx.phase-tray .hangar-slot-glow {
+    opacity: 1;
+}
+
+.hangar-door {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    background:
+        linear-gradient(180deg, #243044 0%, #121a28 45%, #0a1018 100%);
+    border: 1px solid rgba(148, 180, 210, 0.28);
+    transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    padding: 8% 6%;
+    box-sizing: border-box;
+}
+
+.hangar-door-l { left: 0; transform-origin: left center; }
+.hangar-door-r { right: 0; transform-origin: right center; }
+
+.hangar-door-rib {
+    display: block;
+    height: 2px;
+    background: rgba(125, 211, 252, 0.28);
+    border-radius: 1px;
+}
+
+/* 舱门对开 —— 磁带舱盖开合感 */
+.menu-hangar-fx.phase-hatch .hangar-door-l,
+.menu-hangar-fx.phase-tray .hangar-door-l {
+    transform: translateX(-102%);
+}
+.menu-hangar-fx.phase-hatch .hangar-door-r,
+.menu-hangar-fx.phase-tray .hangar-door-r {
+    transform: translateX(102%);
+}
+
+/* 舰体舷窗态弹窗：像从舱口「弹出的卡带托盘」 */
 .modal-backdrop.over-menu-sky.ship-docked {
-    background: rgba(2, 6, 14, 0.22);
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
+    background: rgba(2, 6, 14, 0.28);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     align-items: center;
     justify-content: center;
+    z-index: 120;
 }
 
 .modal-backdrop.over-menu-sky.ship-docked .modal-box,
@@ -1932,87 +2093,102 @@ html, body {
 .modal-backdrop.over-menu-sky.ship-docked .talent-modal-box {
     width: min(92vw, 720px);
     max-height: min(68dvh, 620px);
-    border-radius: 14px;
+    border-radius: 10px;
     border: 1px solid rgba(125, 211, 252, 0.55);
     background:
-        linear-gradient(165deg, rgba(6, 16, 28, 0.94) 0%, rgba(8, 20, 34, 0.96) 55%, rgba(4, 10, 18, 0.97) 100%);
+        linear-gradient(165deg, rgba(6, 16, 28, 0.97) 0%, rgba(8, 20, 34, 0.98) 55%, rgba(4, 10, 18, 0.99) 100%);
     box-shadow:
         0 0 0 1px rgba(56, 189, 248, 0.18) inset,
-        0 0 40px rgba(56, 189, 248, 0.28),
-        0 18px 48px rgba(0, 0, 0, 0.55);
-    transform-origin: 50% 45%;
+        0 0 28px rgba(56, 189, 248, 0.22),
+        0 18px 40px rgba(0, 0, 0, 0.55);
+    transform-origin: 50% 60%;
 }
 
+/* 仅用 transform/opacity，禁止 blur（手机卡顿主因） */
 .modal-backdrop.ship-docked.ship-window-enter .modal-box,
 .modal-backdrop.ship-docked.ship-window-enter .level-select-modal-box,
 .modal-backdrop.ship-docked.ship-window-enter .persona-modal-box,
 .modal-backdrop.ship-docked.ship-window-enter .talent-modal-box {
-    animation: shipWindowReveal 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: hangarTrayEject 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .modal-backdrop.ship-docked.ship-window-exit .modal-box,
 .modal-backdrop.ship-docked.ship-window-exit .level-select-modal-box,
 .modal-backdrop.ship-docked.ship-window-exit .persona-modal-box,
 .modal-backdrop.ship-docked.ship-window-exit .talent-modal-box {
-    animation: shipWindowHide 0.42s cubic-bezier(0.4, 0, 0.2, 1) both;
+    animation: hangarTrayInsert 0.45s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
-@keyframes shipWindowReveal {
-    from {
+@keyframes hangarTrayEject {
+    0% {
         opacity: 0;
-        transform: translateY(18%) scale(0.86, 0.72);
-        filter: blur(8px);
-        clip-path: inset(42% 8% 42% 8% round 12px);
+        transform: translateY(42%) scale(0.72) rotateX(28deg);
     }
-    to {
+    55% {
         opacity: 1;
-        transform: translateY(0) scale(1);
-        filter: blur(0);
-        clip-path: inset(0 0 0 0 round 12px);
+        transform: translateY(-4%) scale(1.02) rotateX(-2deg);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1) rotateX(0deg);
     }
 }
 
-@keyframes shipWindowHide {
-    from {
+@keyframes hangarTrayInsert {
+    0% {
         opacity: 1;
-        transform: translateY(0) scale(1);
-        filter: blur(0);
-        clip-path: inset(0 0 0 0 round 12px);
+        transform: translateY(0) scale(1) rotateX(0deg);
     }
-    to {
+    100% {
         opacity: 0;
-        transform: translateY(12%) scale(0.9, 0.78);
-        filter: blur(6px);
-        clip-path: inset(38% 10% 38% 10% round 12px);
+        transform: translateY(38%) scale(0.78) rotateX(22deg);
     }
 }
 
 #screen-menu.menu-cinematic-focus .menu-container {
     opacity: 0;
     pointer-events: none;
-    transform: translateY(10px) scale(0.98);
-    filter: blur(4px);
+    transform: translateY(12px) scale(0.97);
     transition:
-        opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-        transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-        filter 0.45s ease;
+        opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 #screen-menu .menu-container {
     transition:
-        opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-        transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-        filter 0.45s ease;
+        opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.menu-hangar-fx.is-active ~ .menu-sky-veil,
+#screen-menu:has(.menu-hangar-fx.is-active) .menu-sky-canvas {
+    opacity: 0.55;
+    transition: opacity 0.4s ease;
 }
 
 @media (max-width: 768px) {
+    .hangar-ship-rig {
+        width: min(96vw, 420px);
+        height: min(48vw, 200px);
+    }
     .modal-backdrop.over-menu-sky.ship-docked .modal-box,
     .modal-backdrop.over-menu-sky.ship-docked .level-select-modal-box,
     .modal-backdrop.over-menu-sky.ship-docked .persona-modal-box,
     .modal-backdrop.over-menu-sky.ship-docked .talent-modal-box {
         width: min(96vw, 520px);
-        max-height: min(62dvh, 560px);
+        max-height: min(58dvh, 520px);
         padding: 12px 10px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hangar-ship-rig,
+    .hangar-door,
+    .menu-hangar-fx,
+    .modal-backdrop.ship-docked.ship-window-enter .modal-box,
+    .modal-backdrop.ship-docked.ship-window-exit .modal-box {
+        transition: none !important;
+        animation: none !important;
     }
 }
 

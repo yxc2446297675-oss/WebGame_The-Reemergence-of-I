@@ -107,10 +107,17 @@ void main(){
     sky += (0.5+0.5*sin(t*3.+sn*50.)) * smoothstep(0.97,1.,sn) * vec3(0.8,0.9,1.2);
   }
 
+  // 厚云（动效期用廉价噪声，避免 fbm 卡顿）
   float drift = t * 0.08;
-  float cloud = fbm(vec2(uv.x*2.6*aspect + drift, uv.y*1.8));
-  cloud += 0.45 * fbm(vec2(uv.x*4.2*aspect - drift*0.6, uv.y*2.8 + 3.));
-  cloud = smoothstep(0.42, 0.78, cloud);
+  float cloud;
+  if (zoom > 1.15 || face > 0.2) {
+    cloud = noise(vec2(uv.x*2.2*aspect + drift, uv.y*1.6));
+    cloud = smoothstep(0.45, 0.82, cloud);
+  } else {
+    cloud = fbm(vec2(uv.x*2.6*aspect + drift, uv.y*1.8));
+    cloud += 0.45 * fbm(vec2(uv.x*4.2*aspect - drift*0.6, uv.y*2.8 + 3.));
+    cloud = smoothstep(0.42, 0.78, cloud);
+  }
   float band = smoothstep(0.02, 0.28, uv.y) * (1. - smoothstep(0.48, 0.88, uv.y));
   cloud *= band;
   vec3 cloudCol = mix(vec3(0.55,0.35,0.4), vec3(1.0,0.88,0.75), cloud);
@@ -252,6 +259,14 @@ void main(){
         return animatePose(idle, { duration: 650 });
     }
 
+    let cineLite = false;
+    let lastDrawMs = 0;
+
+    function setCinematicLite(on) {
+        cineLite = !!on;
+        resize();
+    }
+
     function resize() {
         if (!canvas) return;
         const vv = window.visualViewport;
@@ -265,7 +280,9 @@ void main(){
         );
         canvas.style.width = w + "px";
         canvas.style.height = h + "px";
-        const scale = isMobile() ? 0.6 : 0.75;
+        // 动效期降分辨率，显著减卡
+        let scale = isMobile() ? 0.55 : 0.7;
+        if (cineLite) scale = isMobile() ? 0.32 : 0.42;
         const bw = Math.max(2, Math.floor(w * scale));
         const bh = Math.max(2, Math.floor(h * scale));
         if (canvas.width !== bw || canvas.height !== bh) {
@@ -382,6 +399,13 @@ void main(){
         if (document.hidden) return;
         const menu = document.getElementById("screen-menu");
         if (menu && menu.classList.contains("hidden")) return;
+
+        // 动效期限帧 ~30fps，闲置可满帧
+        if (cineLite && now - lastDrawMs < 32) {
+            tickPose(now);
+            return;
+        }
+        lastDrawMs = now;
 
         tickPose(now);
         const t = (now - startMs) * 0.001;
@@ -501,27 +525,25 @@ void main(){
         poseAnim = null;
     }
 
-    /** 预设：关卡选择 — 推近并转向正对 */
+    /** 预设：关卡选择 — 轻推近（重戏交给 DOM 舱门） */
     function approachLevels() {
         return animatePose(
-            { zoom: isMobile() ? 2.05 : 2.35, yaw: -0.55, face: 1, window: 1 },
-            { duration: 860 }
+            { zoom: isMobile() ? 1.35 : 1.45, yaw: -0.2, face: 0.55, window: 0.7 },
+            { duration: 520 }
         );
     }
 
-    /** 预设：图鉴 — 略侧推近 */
     function approachArchive() {
         return animatePose(
-            { zoom: isMobile() ? 1.75 : 1.95, yaw: 0.35, face: 0.72, window: 0.85 },
-            { duration: 720 }
+            { zoom: isMobile() ? 1.28 : 1.38, yaw: 0.18, face: 0.45, window: 0.6 },
+            { duration: 480 }
         );
     }
 
-    /** 预设：科技树 — 俯冲推近 */
     function approachTalent() {
         return animatePose(
-            { zoom: isMobile() ? 1.85 : 2.1, yaw: -0.25, face: 0.8, window: 0.9 },
-            { duration: 760 }
+            { zoom: isMobile() ? 1.32 : 1.42, yaw: -0.12, face: 0.5, window: 0.65 },
+            { duration: 500 }
         );
     }
 
@@ -534,6 +556,7 @@ void main(){
         setPose,
         getPose,
         resetPose,
+        setCinematicLite,
         approachLevels,
         approachArchive,
         approachTalent,

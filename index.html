@@ -12,7 +12,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>拟态残响 (视觉小说·肉鸽探索·AI伪人杀)</title>
-    <link rel="stylesheet" href="./style.css?v=1789369297472">
+    <link rel="stylesheet" href="./style.css?v=1789369819456">
     <script>
     /* 竖屏全屏：用真实可视高度驱动 --app-height，避免地址栏裁切背景/界面 */
     (function () {
@@ -167,6 +167,32 @@
     <div id="screen-menu">
         <canvas id="menu-sky-canvas" class="menu-sky-canvas" aria-hidden="true"></canvas>
         <div class="menu-sky-veil" aria-hidden="true"></div>
+
+        <!-- 菜单机械动效台：舱门开合 + 托盘滑出（对标磁带舱盖） -->
+        <div id="menu-hangar-fx" class="menu-hangar-fx" aria-hidden="true">
+            <div class="hangar-ship-rig">
+                <div class="hangar-ship-body">
+                    <div class="hangar-wing hangar-wing-l"></div>
+                    <div class="hangar-wing hangar-wing-r"></div>
+                    <div class="hangar-bridge"></div>
+                    <div class="hangar-bay">
+                        <div class="hangar-door hangar-door-l">
+                            <span class="hangar-door-rib"></span>
+                            <span class="hangar-door-rib"></span>
+                            <span class="hangar-door-rib"></span>
+                        </div>
+                        <div class="hangar-door hangar-door-r">
+                            <span class="hangar-door-rib"></span>
+                            <span class="hangar-door-rib"></span>
+                            <span class="hangar-door-rib"></span>
+                        </div>
+                        <div class="hangar-slot-glow"></div>
+                    </div>
+                    <div class="hangar-engine"></div>
+                </div>
+            </div>
+        </div>
+
         <div class="menu-container">
             <div class="title-hud">
                 <span class="hud-tag">PROJECT MIMIC // ROGUELIKE VN</span>
@@ -960,7 +986,7 @@
     <div id="app-toast" class="app-toast" role="status" aria-live="polite"></div>
 
     <!-- 游戏启动引导脚本 (defer + BootLoader 回调；虎扑等宿主友好) -->
-    <script defer src="js/app.bundle.js?v=1789369297472" onload="window.__BootLoader && window.__BootLoader.onBundleLoaded && window.__BootLoader.onBundleLoaded()" onerror="window.__BootLoader && window.__BootLoader.onBundleError && window.__BootLoader.onBundleError()"></script>
+    <script defer src="js/app.bundle.js?v=1789369819456" onload="window.__BootLoader && window.__BootLoader.onBundleLoaded && window.__BootLoader.onBundleLoaded()" onerror="window.__BootLoader && window.__BootLoader.onBundleError && window.__BootLoader.onBundleError()"></script>
 </body>
 </html>
 
